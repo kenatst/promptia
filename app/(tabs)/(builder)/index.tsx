@@ -56,46 +56,38 @@ import {
   STYLE_CHIPS,
   TONE_OPTIONS,
   OUTPUT_FORMATS,
+  CreationCategory,
 } from '@/data/gallerySeed';
 import { usePromptStore } from '@/store/promptStore';
 import { assemblePrompt } from '@/engine/promptEngine';
 import { PromptInputs, DEFAULT_INPUTS, PromptResult } from '@/types/prompt';
-import { VisualCategory } from '@/components/VisualCategory';
-import { GlassCard } from '@/components/GlassCard';
 
-const CATEGORY_ICONS: Record<string, React.ReactNode> = {
-  chat: <MessageSquare size={22} color="#6B7280" />,
-  code: <Code size={22} color="#6B7280" />,
-  writing: <PenTool size={22} color="#6B7280" />,
-  marketing: <Megaphone size={22} color="#6B7280" />,
-  email: <Mail size={22} color="#6B7280" />,
-  data: <BarChart3 size={22} color="#6B7280" />,
-  image_art: <Palette size={22} color="#6B7280" />,
-  photo: <Camera size={22} color="#6B7280" />,
-  video: <Film size={22} color="#6B7280" />,
-  logo: <Target size={22} color="#6B7280" />,
-  social: <Share2 size={22} color="#6B7280" />,
-  education: <BookOpen size={22} color="#6B7280" />,
-  seo: <Search size={22} color="#6B7280" />,
-  translate: <Globe size={22} color="#6B7280" />,
-  business: <Briefcase size={22} color="#6B7280" />,
-  ui_design: <Layout size={22} color="#6B7280" />,
+const CATEGORY_ICONS: Record<string, (color: string) => React.ReactNode> = {
+  chat: (c) => <MessageSquare size={20} color={c} />,
+  code: (c) => <Code size={20} color={c} />,
+  writing: (c) => <PenTool size={20} color={c} />,
+  marketing: (c) => <Megaphone size={20} color={c} />,
+  email: (c) => <Mail size={20} color={c} />,
+  data: (c) => <BarChart3 size={20} color={c} />,
+  image_art: (c) => <Palette size={20} color={c} />,
+  photo: (c) => <Camera size={20} color={c} />,
+  video: (c) => <Film size={20} color={c} />,
+  logo: (c) => <Target size={20} color={c} />,
+  social: (c) => <Share2 size={20} color={c} />,
+  education: (c) => <BookOpen size={20} color={c} />,
+  seo: (c) => <Search size={20} color={c} />,
+  translate: (c) => <Globe size={20} color={c} />,
+  business: (c) => <Briefcase size={20} color={c} />,
+  ui_design: (c) => <Layout size={20} color={c} />,
 };
 
 type BuilderMode = 'simple' | 'advanced';
-
 const WIZARD_STEPS = ['Category', 'Details', 'Options', 'Result'];
 
 export default function BuilderScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-
-  const {
-    currentInputs,
-    setCurrentInputs,
-    resetInputs,
-    savePrompt,
-  } = usePromptStore();
+  const { currentInputs, setCurrentInputs, resetInputs, savePrompt } = usePromptStore();
 
   const [mode, setMode] = useState<BuilderMode>('simple');
   const [selectedCategoryId, setSelectedCategoryId] = useState('chat');
@@ -110,6 +102,7 @@ export default function BuilderScreen() {
     [selectedCategoryId]
   );
 
+  const accentColor = selectedCategory.color;
   const isImageOrVideo = selectedCategory.type === 'image' || selectedCategory.type === 'video';
 
   useEffect(() => {
@@ -125,10 +118,7 @@ export default function BuilderScreen() {
     setSelectedCategoryId(categoryId);
     const cat = CREATION_CATEGORIES.find(c => c.id === categoryId);
     if (cat) {
-      setCurrentInputs({
-        model: cat.model,
-        tone: cat.defaultTone,
-      });
+      setCurrentInputs({ model: cat.model, tone: cat.defaultTone });
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [setCurrentInputs]);
@@ -141,9 +131,7 @@ export default function BuilderScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     const result = assemblePrompt(currentInputs);
     setGeneratedResult(result);
-    if (mode === 'advanced') {
-      setWizardStep(3);
-    }
+    if (mode === 'advanced') setWizardStep(3);
   }, [currentInputs, mode]);
 
   const handleCopy = useCallback(async () => {
@@ -206,8 +194,31 @@ export default function BuilderScreen() {
     }
   }, [currentInputs.objectiveChips, setCurrentInputs]);
 
+  const renderCategoryCard = useCallback(({ item }: { item: CreationCategory }) => {
+    const isSelected = selectedCategoryId === item.id;
+    const iconFn = CATEGORY_ICONS[item.id];
+    return (
+      <Pressable
+        onPress={() => handleCategorySelect(item.id)}
+        style={({ pressed }) => [
+          styles.catCard,
+          { backgroundColor: isSelected ? `${item.color}18` : '#FFFFFF' },
+          isSelected && { borderColor: item.color },
+          pressed && { transform: [{ scale: 0.95 }] },
+        ]}
+      >
+        <View style={[styles.catIconWrap, { backgroundColor: `${item.color}15` }]}>
+          {iconFn ? iconFn(item.color) : <Wand2 size={20} color={item.color} />}
+        </View>
+        <Text style={[styles.catLabel, isSelected && { color: item.color, fontWeight: '700' as const }]}>
+          {item.label}
+        </Text>
+      </Pressable>
+    );
+  }, [selectedCategoryId, handleCategorySelect]);
+
   const renderModeToggle = () => {
-    const toggleBg = slideAnim.interpolate({
+    const toggleLeft = slideAnim.interpolate({
       inputRange: [0, 1],
       outputRange: ['0%', '50%'],
     });
@@ -215,38 +226,20 @@ export default function BuilderScreen() {
     return (
       <View style={styles.modeToggleContainer}>
         <View style={styles.modeToggle}>
-          <Animated.View
-            style={[
-              styles.modeToggleIndicator,
-              { left: toggleBg },
-            ]}
-          />
+          <Animated.View style={[styles.modeIndicator, { left: toggleLeft }]} />
           <Pressable
-            style={styles.modeToggleBtn}
-            onPress={() => {
-              setMode('simple');
-              setGeneratedResult(null);
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }}
+            style={styles.modeBtn}
+            onPress={() => { setMode('simple'); setGeneratedResult(null); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
           >
-            <Zap size={14} color={mode === 'simple' ? '#111827' : '#9CA3AF'} />
-            <Text style={[styles.modeToggleText, mode === 'simple' && styles.modeToggleTextActive]}>
-              Quick
-            </Text>
+            <Zap size={14} color={mode === 'simple' ? accentColor : '#9CA3AF'} />
+            <Text style={[styles.modeBtnText, mode === 'simple' && { color: '#111827' }]}>Quick</Text>
           </Pressable>
           <Pressable
-            style={styles.modeToggleBtn}
-            onPress={() => {
-              setMode('advanced');
-              setWizardStep(0);
-              setGeneratedResult(null);
-              Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-            }}
+            style={styles.modeBtn}
+            onPress={() => { setMode('advanced'); setWizardStep(0); setGeneratedResult(null); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
           >
-            <Sliders size={14} color={mode === 'advanced' ? '#111827' : '#9CA3AF'} />
-            <Text style={[styles.modeToggleText, mode === 'advanced' && styles.modeToggleTextActive]}>
-              Advanced
-            </Text>
+            <Sliders size={14} color={mode === 'advanced' ? accentColor : '#9CA3AF'} />
+            <Text style={[styles.modeBtnText, mode === 'advanced' && { color: '#111827' }]}>Advanced</Text>
           </Pressable>
         </View>
       </View>
@@ -259,7 +252,7 @@ export default function BuilderScreen() {
         <View key={step} style={styles.wizardStepRow}>
           <View style={[
             styles.wizardDot,
-            i <= wizardStep && { backgroundColor: '#111827' },
+            i <= wizardStep && { backgroundColor: accentColor },
             i < wizardStep && { backgroundColor: Colors.tertiary },
           ]}>
             {i < wizardStep ? (
@@ -268,7 +261,7 @@ export default function BuilderScreen() {
               <Text style={[styles.wizardDotText, i <= wizardStep && { color: '#FFF' }]}>{i + 1}</Text>
             )}
           </View>
-          <Text style={[styles.wizardStepLabel, i === wizardStep && styles.wizardStepLabelActive]}>
+          <Text style={[styles.wizardStepLabel, i === wizardStep && { color: accentColor, fontWeight: '700' as const }]}>
             {step}
           </Text>
           {i < WIZARD_STEPS.length - 1 && (
@@ -281,29 +274,23 @@ export default function BuilderScreen() {
 
   const renderSimpleMode = () => (
     <>
-      <View style={styles.categorySection}>
+      <View style={styles.catSection}>
         <FlatList
           data={CREATION_CATEGORIES}
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={styles.categoryList}
-          renderItem={({ item, index }) => (
-            <VisualCategory
-              label={item.label}
-              icon={CATEGORY_ICONS[item.id]}
-              selected={selectedCategoryId === item.id}
-              onPress={() => handleCategorySelect(item.id)}
-              index={index}
-            />
-          )}
+          contentContainerStyle={styles.catList}
+          renderItem={renderCategoryCard}
         />
       </View>
 
-      <GlassCard variant="input-container" style={styles.mainInputCard}>
+      <View style={[styles.mainCard, { borderTopColor: accentColor }]}>
         <View style={styles.cardHeader}>
-          <View style={[styles.iconBox, { backgroundColor: `${selectedCategory.color}15` }]}>
-            <Wand2 size={22} color={selectedCategory.color} />
+          <View style={[styles.cardIconBox, { backgroundColor: `${accentColor}15` }]}>
+            {CATEGORY_ICONS[selectedCategoryId]
+              ? CATEGORY_ICONS[selectedCategoryId](accentColor)
+              : <Wand2 size={20} color={accentColor} />}
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.cardTitle}>{selectedCategory.label}</Text>
@@ -315,20 +302,52 @@ export default function BuilderScreen() {
           value={currentInputs.objective}
           onChangeText={(text) => setCurrentInputs({ objective: text })}
           placeholder="Describe your idea in detail..."
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor="#B0B5BE"
           multiline
-          style={styles.input}
+          style={styles.mainInput}
           textAlignVertical="top"
         />
+
+        {(isImageOrVideo ? STYLE_CHIPS : OBJECTIVE_CHIPS).length > 0 && (
+          <View style={styles.quickChips}>
+            <Text style={styles.quickChipsLabel}>Quick tags</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickChipsList}>
+              {(isImageOrVideo ? STYLE_CHIPS : OBJECTIVE_CHIPS).slice(0, 10).map((chip) => {
+                const isSelected = currentInputs.objectiveChips.includes(chip);
+                return (
+                  <Pressable
+                    key={chip}
+                    onPress={() => toggleChip(chip)}
+                    style={[
+                      styles.quickChip,
+                      isSelected && { backgroundColor: `${accentColor}15`, borderColor: accentColor },
+                    ]}
+                  >
+                    <Text style={[styles.quickChipText, isSelected && { color: accentColor, fontWeight: '700' as const }]}>
+                      {chip}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        )}
 
         <Pressable
           onPress={handleGenerate}
           style={({ pressed }) => [styles.generateBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
         >
-          <Wand2 size={18} color="#FFF" />
-          <Text style={styles.generateBtnText}>Generate Prompt</Text>
+          <LinearGradient
+            colors={[accentColor, '#111827']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={styles.generateGradient}
+          >
+            <Wand2 size={18} color="#FFF" />
+            <Text style={styles.generateBtnText}>Generate Prompt</Text>
+          </LinearGradient>
         </Pressable>
-      </GlassCard>
+      </View>
 
       {generatedResult && renderResult()}
     </>
@@ -341,19 +360,20 @@ export default function BuilderScreen() {
       <View style={styles.categoryGrid}>
         {CREATION_CATEGORIES.map((cat) => {
           const isSelected = selectedCategoryId === cat.id;
+          const iconFn = CATEGORY_ICONS[cat.id];
           return (
             <Pressable
               key={cat.id}
               onPress={() => handleCategorySelect(cat.id)}
               style={[
-                styles.categoryGridItem,
+                styles.gridItem,
                 isSelected && { backgroundColor: `${cat.color}15`, borderColor: cat.color },
               ]}
             >
-              <View style={[styles.categoryGridIcon, { backgroundColor: `${cat.color}12` }]}>
-                {CATEGORY_ICONS[cat.id]}
+              <View style={[styles.gridItemIcon, { backgroundColor: `${cat.color}12` }]}>
+                {iconFn ? iconFn(cat.color) : <Wand2 size={20} color={cat.color} />}
               </View>
-              <Text style={[styles.categoryGridLabel, isSelected && { color: '#111827', fontWeight: '700' as const }]}>
+              <Text style={[styles.gridItemLabel, isSelected && { color: cat.color, fontWeight: '700' as const }]}>
                 {cat.label}
               </Text>
             </Pressable>
@@ -368,17 +388,17 @@ export default function BuilderScreen() {
       <Text style={styles.stepTitle}>Describe your prompt</Text>
       <Text style={styles.stepSubtitle}>Be as specific as possible for better results</Text>
 
-      <GlassCard variant="input-container" style={styles.wizardCard}>
+      <View style={styles.wizardInputCard}>
         <TextInput
           value={currentInputs.objective}
           onChangeText={(text) => setCurrentInputs({ objective: text })}
           placeholder="What do you want to achieve?"
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor="#B0B5BE"
           multiline
           style={styles.wizardInput}
           textAlignVertical="top"
         />
-      </GlassCard>
+      </View>
 
       <Text style={styles.chipSectionTitle}>Quick Tags</Text>
       <View style={styles.chipWrap}>
@@ -388,9 +408,9 @@ export default function BuilderScreen() {
             <Pressable
               key={chip}
               onPress={() => toggleChip(chip)}
-              style={[styles.chip, isSelected && { backgroundColor: `${selectedCategory.color}18`, borderColor: selectedCategory.color }]}
+              style={[styles.chip, isSelected && { backgroundColor: `${accentColor}15`, borderColor: accentColor }]}
             >
-              <Text style={[styles.chipText, isSelected && { color: selectedCategory.color, fontWeight: '700' as const }]}>
+              <Text style={[styles.chipText, isSelected && { color: accentColor, fontWeight: '700' as const }]}>
                 {chip}
               </Text>
             </Pressable>
@@ -401,15 +421,15 @@ export default function BuilderScreen() {
       {isImageOrVideo && (
         <>
           <Text style={styles.chipSectionTitle}>Style</Text>
-          <GlassCard variant="3d-light" style={styles.optionCard}>
+          <View style={styles.fieldCard}>
             <TextInput
               value={currentInputs.style || ''}
               onChangeText={(text) => setCurrentInputs({ style: text })}
               placeholder="e.g. Photorealistic, Anime, Oil Painting..."
-              placeholderTextColor="#9CA3AF"
-              style={styles.optionInput}
+              placeholderTextColor="#B0B5BE"
+              style={styles.fieldInput}
             />
-          </GlassCard>
+          </View>
         </>
       )}
     </>
@@ -429,13 +449,10 @@ export default function BuilderScreen() {
               return (
                 <Pressable
                   key={opt.value}
-                  onPress={() => {
-                    setCurrentInputs({ tone: opt.value as any });
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }}
-                  style={[styles.chip, isSelected && { backgroundColor: `${selectedCategory.color}18`, borderColor: selectedCategory.color }]}
+                  onPress={() => { setCurrentInputs({ tone: opt.value as any }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                  style={[styles.chip, isSelected && { backgroundColor: `${accentColor}15`, borderColor: accentColor }]}
                 >
-                  <Text style={[styles.chipText, isSelected && { color: selectedCategory.color, fontWeight: '700' as const }]}>
+                  <Text style={[styles.chipText, isSelected && { color: accentColor, fontWeight: '700' as const }]}>
                     {opt.label}
                   </Text>
                 </Pressable>
@@ -450,13 +467,10 @@ export default function BuilderScreen() {
               return (
                 <Pressable
                   key={len}
-                  onPress={() => {
-                    setCurrentInputs({ length: len });
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }}
-                  style={[styles.chip, isSelected && { backgroundColor: `${selectedCategory.color}18`, borderColor: selectedCategory.color }]}
+                  onPress={() => { setCurrentInputs({ length: len }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                  style={[styles.chip, isSelected && { backgroundColor: `${accentColor}15`, borderColor: accentColor }]}
                 >
-                  <Text style={[styles.chipText, isSelected && { color: selectedCategory.color, fontWeight: '700' as const }]}>
+                  <Text style={[styles.chipText, isSelected && { color: accentColor, fontWeight: '700' as const }]}>
                     {len.charAt(0).toUpperCase() + len.slice(1)}
                   </Text>
                 </Pressable>
@@ -471,13 +485,10 @@ export default function BuilderScreen() {
               return (
                 <Pressable
                   key={fmt}
-                  onPress={() => {
-                    setCurrentInputs({ outputFormat: fmt.toLowerCase() });
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  }}
-                  style={[styles.chip, isSelected && { backgroundColor: `${selectedCategory.color}18`, borderColor: selectedCategory.color }]}
+                  onPress={() => { setCurrentInputs({ outputFormat: fmt.toLowerCase() }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                  style={[styles.chip, isSelected && { backgroundColor: `${accentColor}15`, borderColor: accentColor }]}
                 >
-                  <Text style={[styles.chipText, isSelected && { color: selectedCategory.color, fontWeight: '700' as const }]}>
+                  <Text style={[styles.chipText, isSelected && { color: accentColor, fontWeight: '700' as const }]}>
                     {fmt}
                   </Text>
                 </Pressable>
@@ -490,63 +501,63 @@ export default function BuilderScreen() {
       {isImageOrVideo && (
         <>
           <Text style={styles.chipSectionTitle}>Lighting</Text>
-          <GlassCard variant="3d-light" style={styles.optionCard}>
+          <View style={styles.fieldCard}>
             <TextInput
               value={currentInputs.lighting || ''}
               onChangeText={(text) => setCurrentInputs({ lighting: text })}
               placeholder="e.g. Golden hour, Studio, Neon..."
-              placeholderTextColor="#9CA3AF"
-              style={styles.optionInput}
+              placeholderTextColor="#B0B5BE"
+              style={styles.fieldInput}
             />
-          </GlassCard>
+          </View>
 
           <Text style={styles.chipSectionTitle}>Camera Angle</Text>
-          <GlassCard variant="3d-light" style={styles.optionCard}>
+          <View style={styles.fieldCard}>
             <TextInput
               value={currentInputs.cameraAngle || ''}
               onChangeText={(text) => setCurrentInputs({ cameraAngle: text })}
               placeholder="e.g. Close-up, Wide angle, Bird's eye..."
-              placeholderTextColor="#9CA3AF"
-              style={styles.optionInput}
+              placeholderTextColor="#B0B5BE"
+              style={styles.fieldInput}
             />
-          </GlassCard>
+          </View>
 
           <Text style={styles.chipSectionTitle}>Negative Prompt</Text>
-          <GlassCard variant="3d-light" style={styles.optionCard}>
+          <View style={styles.fieldCard}>
             <TextInput
               value={currentInputs.negativePrompt || ''}
               onChangeText={(text) => setCurrentInputs({ negativePrompt: text })}
               placeholder="What to exclude..."
-              placeholderTextColor="#9CA3AF"
-              style={styles.optionInput}
+              placeholderTextColor="#B0B5BE"
+              style={styles.fieldInput}
             />
-          </GlassCard>
+          </View>
         </>
       )}
 
       <Text style={styles.chipSectionTitle}>Audience</Text>
-      <GlassCard variant="3d-light" style={styles.optionCard}>
+      <View style={styles.fieldCard}>
         <TextInput
           value={currentInputs.audience}
           onChangeText={(text) => setCurrentInputs({ audience: text })}
           placeholder="Who is this for?"
-          placeholderTextColor="#9CA3AF"
-          style={styles.optionInput}
+          placeholderTextColor="#B0B5BE"
+          style={styles.fieldInput}
         />
-      </GlassCard>
+      </View>
 
       <Text style={styles.chipSectionTitle}>Constraints</Text>
-      <GlassCard variant="3d-light" style={styles.optionCard}>
+      <View style={styles.fieldCard}>
         <TextInput
           value={currentInputs.constraints}
           onChangeText={(text) => setCurrentInputs({ constraints: text })}
           placeholder="Any specific rules or limitations..."
-          placeholderTextColor="#9CA3AF"
+          placeholderTextColor="#B0B5BE"
           multiline
-          style={[styles.optionInput, { minHeight: 60 }]}
+          style={[styles.fieldInput, { minHeight: 60 }]}
           textAlignVertical="top"
         />
-      </GlassCard>
+      </View>
     </>
   );
 
@@ -557,7 +568,10 @@ export default function BuilderScreen() {
     return (
       <View style={styles.resultSection}>
         <View style={styles.resultHeader}>
-          <Text style={styles.resultTitle}>Generated Prompt</Text>
+          <View style={styles.resultTitleRow}>
+            <View style={[styles.resultDot, { backgroundColor: accentColor }]} />
+            <Text style={styles.resultTitle}>Generated Prompt</Text>
+          </View>
           <View style={styles.resultActions}>
             <Pressable
               onPress={handleCopy}
@@ -574,14 +588,14 @@ export default function BuilderScreen() {
           </View>
         </View>
 
-        <GlassCard variant="3d-light" style={styles.resultCard}>
+        <View style={[styles.resultCard, { borderLeftColor: accentColor }]}>
           <Text style={styles.resultPromptText} selectable>
             {generatedResult.finalPrompt}
           </Text>
-        </GlassCard>
+        </View>
 
         {metadata.assumptions.length > 0 && (
-          <View style={styles.metaBlock}>
+          <View style={[styles.metaBlock, { backgroundColor: `${Colors.blue}08` }]}>
             <View style={styles.metaHeader}>
               <Info size={14} color={Colors.blue} />
               <Text style={[styles.metaTitle, { color: Colors.blue }]}>Assumptions</Text>
@@ -593,7 +607,7 @@ export default function BuilderScreen() {
         )}
 
         {metadata.warnings.length > 0 && (
-          <View style={styles.metaBlock}>
+          <View style={[styles.metaBlock, { backgroundColor: `${Colors.accent}08` }]}>
             <View style={styles.metaHeader}>
               <AlertTriangle size={14} color={Colors.accent} />
               <Text style={[styles.metaTitle, { color: Colors.accent }]}>Warnings</Text>
@@ -605,7 +619,7 @@ export default function BuilderScreen() {
         )}
 
         {metadata.questions.length > 0 && (
-          <View style={styles.metaBlock}>
+          <View style={[styles.metaBlock, { backgroundColor: `${Colors.secondary}08` }]}>
             <View style={styles.metaHeader}>
               <HelpCircle size={14} color={Colors.secondary} />
               <Text style={[styles.metaTitle, { color: Colors.secondary }]}>Suggestions</Text>
@@ -631,30 +645,33 @@ export default function BuilderScreen() {
 
       <View style={styles.wizardNav}>
         {wizardStep > 0 && wizardStep < 3 && (
-          <Pressable onPress={handlePrevStep} style={styles.wizardNavBtnSecondary}>
+          <Pressable onPress={handlePrevStep} style={styles.wizardNavBack}>
             <ChevronLeft size={18} color="#111827" />
-            <Text style={styles.wizardNavBtnSecondaryText}>Back</Text>
+            <Text style={styles.wizardNavBackText}>Back</Text>
           </Pressable>
         )}
         {wizardStep === 3 && (
-          <Pressable onPress={handleReset} style={styles.wizardNavBtnSecondary}>
+          <Pressable onPress={handleReset} style={styles.wizardNavBack}>
             <RotateCcw size={16} color="#111827" />
-            <Text style={styles.wizardNavBtnSecondaryText}>New Prompt</Text>
+            <Text style={styles.wizardNavBackText}>New Prompt</Text>
           </Pressable>
         )}
         {wizardStep < 3 && (
           <Pressable
             onPress={handleNextStep}
-            style={[styles.wizardNavBtn, wizardStep === 0 ? { flex: 1 } : {}]}
+            style={[styles.wizardNavNext, wizardStep === 0 ? { flex: 1 } : {}]}
           >
-            <Text style={styles.wizardNavBtnText}>
-              {wizardStep === 2 ? 'Generate' : 'Next'}
-            </Text>
-            {wizardStep === 2 ? (
-              <Wand2 size={18} color="#FFF" />
-            ) : (
-              <ChevronRight size={18} color="#FFF" />
-            )}
+            <LinearGradient
+              colors={[accentColor, '#111827']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={styles.wizardNavNextGradient}
+            >
+              <Text style={styles.wizardNavNextText}>
+                {wizardStep === 2 ? 'Generate' : 'Next'}
+              </Text>
+              {wizardStep === 2 ? <Wand2 size={18} color="#FFF" /> : <ChevronRight size={18} color="#FFF" />}
+            </LinearGradient>
           </Pressable>
         )}
       </View>
@@ -663,27 +680,19 @@ export default function BuilderScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={StyleSheet.absoluteFill}>
-        <LinearGradient
-          colors={['#FAFAFA', '#FFFBF2']}
-          style={StyleSheet.absoluteFill}
-        />
-      </View>
+      <LinearGradient colors={['#FAFAFA', '#FFF8EE', '#FEF5F0']} style={StyleSheet.absoluteFill} />
 
-      <KeyboardAvoidingView style={styles.keyboardView} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+      <KeyboardAvoidingView style={styles.flex1} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
-          contentContainerStyle={[
-            styles.scrollContent,
-            { paddingTop: insets.top + 16, paddingBottom: 140 }
-          ]}
+          contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 16, paddingBottom: 140 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
             <Text style={styles.title}>Create</Text>
-            <View style={styles.badge}>
-              <Sparkles size={14} color="#F59E0B" />
-              <Text style={styles.badgeText}>Pro</Text>
+            <View style={styles.proBadge}>
+              <Sparkles size={13} color="#D97706" />
+              <Text style={styles.proBadgeText}>Pro</Text>
             </View>
           </View>
 
@@ -701,7 +710,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FAFAFA',
   },
-  keyboardView: {
+  flex1: {
     flex: 1,
   },
   scrollContent: {
@@ -719,17 +728,19 @@ const styles = StyleSheet.create({
     color: '#111827',
     letterSpacing: -0.8,
   },
-  badge: {
+  proBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FEF3C7',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
-    gap: 6,
+    gap: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(217,119,6,0.15)',
   },
-  badgeText: {
-    color: '#F59E0B',
+  proBadgeText: {
+    color: '#D97706',
     fontWeight: '700' as const,
     fontSize: 12,
   },
@@ -745,7 +756,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     width: 240,
   },
-  modeToggleIndicator: {
+  modeIndicator: {
     position: 'absolute',
     top: 4,
     width: '50%',
@@ -758,7 +769,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 2,
   },
-  modeToggleBtn: {
+  modeBtn: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
@@ -767,25 +778,60 @@ const styles = StyleSheet.create({
     gap: 6,
     zIndex: 1,
   },
-  modeToggleText: {
+  modeBtnText: {
     fontSize: 13,
     fontWeight: '600' as const,
     color: '#9CA3AF',
   },
-  modeToggleTextActive: {
-    color: '#111827',
-  },
-  categorySection: {
+  catSection: {
     marginHorizontal: -20,
     marginBottom: 24,
   },
-  categoryList: {
+  catList: {
     paddingHorizontal: 20,
     gap: 10,
   },
-  mainInputCard: {
+  catCard: {
+    width: 82,
+    paddingVertical: 14,
+    paddingHorizontal: 6,
+    borderRadius: 18,
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1.5,
+    borderColor: 'rgba(0,0,0,0.04)',
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+  },
+  catIconWrap: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  catLabel: {
+    fontSize: 11,
+    color: '#6B7280',
+    fontWeight: '600' as const,
+    textAlign: 'center',
+  },
+  mainCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 28,
     padding: 20,
     marginBottom: 24,
+    borderTopWidth: 3,
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 5,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.02)',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -793,10 +839,10 @@ const styles = StyleSheet.create({
     gap: 12,
     marginBottom: 16,
   },
-  iconBox: {
+  cardIconBox: {
     width: 44,
     height: 44,
-    borderRadius: 22,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -810,27 +856,50 @@ const styles = StyleSheet.create({
     color: '#9CA3AF',
     marginTop: 2,
   },
-  input: {
+  mainInput: {
     fontSize: 16,
     color: '#1F2937',
     minHeight: 100,
-    marginBottom: 20,
+    marginBottom: 16,
     lineHeight: 24,
     textAlignVertical: 'top',
   },
+  quickChips: {
+    marginBottom: 20,
+  },
+  quickChipsLabel: {
+    fontSize: 12,
+    fontWeight: '600' as const,
+    color: '#9CA3AF',
+    marginBottom: 8,
+  },
+  quickChipsList: {
+    gap: 8,
+  },
+  quickChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 16,
+    backgroundColor: '#F3F4F6',
+    borderWidth: 1.5,
+    borderColor: 'transparent',
+  },
+  quickChipText: {
+    fontSize: 12,
+    fontWeight: '500' as const,
+    color: '#6B7280',
+  },
   generateBtn: {
-    backgroundColor: '#111827',
+    borderRadius: 26,
+    overflow: 'hidden',
+  },
+  generateGradient: {
     height: 52,
     borderRadius: 26,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
   },
   generateBtnText: {
     color: '#FFF',
@@ -867,10 +936,6 @@ const styles = StyleSheet.create({
     fontWeight: '500' as const,
     marginLeft: 4,
   },
-  wizardStepLabelActive: {
-    color: '#111827',
-    fontWeight: '700' as const,
-  },
   wizardLine: {
     width: 20,
     height: 2,
@@ -896,13 +961,13 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 10,
   },
-  categoryGridItem: {
+  gridItem: {
     width: '30%',
     flexGrow: 1,
     flexBasis: '30%',
     paddingVertical: 14,
     paddingHorizontal: 10,
-    borderRadius: 16,
+    borderRadius: 18,
     backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
     borderColor: 'rgba(0,0,0,0.04)',
@@ -914,22 +979,31 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   },
-  categoryGridIcon: {
+  gridItemIcon: {
     width: 40,
     height: 40,
-    borderRadius: 20,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  categoryGridLabel: {
+  gridItemLabel: {
     fontSize: 12,
     color: '#6B7280',
     fontWeight: '600' as const,
     textAlign: 'center',
   },
-  wizardCard: {
+  wizardInputCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
     padding: 16,
     marginBottom: 20,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
   },
   wizardInput: {
     fontSize: 16,
@@ -963,11 +1037,19 @@ const styles = StyleSheet.create({
     fontWeight: '500' as const,
     color: '#6B7280',
   },
-  optionCard: {
-    padding: 0,
+  fieldCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.03,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
     marginBottom: 4,
   },
-  optionInput: {
+  fieldInput: {
     fontSize: 15,
     color: '#1F2937',
     padding: 14,
@@ -978,27 +1060,7 @@ const styles = StyleSheet.create({
     gap: 12,
     marginTop: 24,
   },
-  wizardNavBtn: {
-    flex: 1,
-    backgroundColor: '#111827',
-    height: 52,
-    borderRadius: 26,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 5,
-  },
-  wizardNavBtnText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700' as const,
-  },
-  wizardNavBtnSecondary: {
+  wizardNavBack: {
     height: 52,
     borderRadius: 26,
     flexDirection: 'row',
@@ -1008,10 +1070,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     backgroundColor: '#F3F4F6',
   },
-  wizardNavBtnSecondaryText: {
+  wizardNavBackText: {
     color: '#111827',
     fontSize: 15,
     fontWeight: '600' as const,
+  },
+  wizardNavNext: {
+    flex: 1,
+    borderRadius: 26,
+    overflow: 'hidden',
+  },
+  wizardNavNextGradient: {
+    height: 52,
+    borderRadius: 26,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  wizardNavNextText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700' as const,
   },
   resultSection: {
     gap: 16,
@@ -1020,6 +1100,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+  },
+  resultTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  resultDot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
   },
   resultTitle: {
     fontSize: 20,
@@ -1039,7 +1129,15 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   resultCard: {
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 18,
+    borderLeftWidth: 4,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
   },
   resultPromptText: {
     fontSize: 14,
@@ -1048,6 +1146,8 @@ const styles = StyleSheet.create({
   },
   metaBlock: {
     gap: 6,
+    borderRadius: 16,
+    padding: 14,
   },
   metaHeader: {
     flexDirection: 'row',

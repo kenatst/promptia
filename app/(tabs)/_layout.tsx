@@ -1,21 +1,26 @@
 import React from 'react';
-import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
-import { BlurView } from 'expo-blur';
-import { Bookmark, Compass, Wand2, Plus, Home } from 'lucide-react-native';
+import { Bookmark, Compass, Plus, Settings } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-// Custom Tab Bar: White Pill Layout
 function FloatingTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
-  const bottomPos = insets.bottom + 10;
+  const bottomPos = insets.bottom + 8;
+
+  const TAB_CONFIG: Record<string, { Icon: any; label: string }> = {
+    'gallery': { Icon: Compass, label: 'Discover' },
+    '(builder)': { Icon: null, label: 'Create' },
+    'saved': { Icon: Bookmark, label: 'Library' },
+    'profile': { Icon: Settings, label: 'Settings' },
+  };
 
   return (
     <View style={[styles.tabContainer, { bottom: bottomPos }]}>
       <View style={styles.pill}>
         {state.routes.map((route: any, index: number) => {
-          const { options } = descriptors[route.key];
           const isFocused = state.index === index;
+          const config = TAB_CONFIG[route.name];
 
           const onPress = () => {
             const event = navigation.emit({
@@ -23,37 +28,43 @@ function FloatingTabBar({ state, descriptors, navigation }: any) {
               target: route.key,
               canPreventDefault: true,
             });
-
             if (!isFocused && !event.defaultPrevented) {
               navigation.navigate(route.name);
             }
           };
 
-          let Icon = Home;
-          if (route.name === '(builder)') Icon = Wand2;
-          if (route.name === 'gallery') Icon = Compass;
-          if (route.name === 'saved') Icon = Bookmark;
-
           const isCenter = route.name === '(builder)';
+
+          if (isCenter) {
+            return (
+              <Pressable
+                key={route.key}
+                onPress={onPress}
+                style={styles.tabItem}
+              >
+                <View style={styles.centerButton}>
+                  <Plus size={24} color="#FFF" strokeWidth={3} />
+                </View>
+              </Pressable>
+            );
+          }
+
+          const { Icon, label } = config || { Icon: Settings, label: '' };
 
           return (
             <Pressable
               key={route.key}
               onPress={onPress}
-              style={[styles.tabItem, isCenter ? styles.centerTab : {}]}
+              style={styles.tabItem}
             >
-              {isCenter ? (
-                <View style={styles.centerButton}>
-                  <Plus size={28} color="#FFF" strokeWidth={3} />
-                </View>
-              ) : (
-                <Icon
-                  size={24}
-                  // Dark Icons for Light Mode
-                  color={isFocused ? '#111827' : '#9CA3AF'}
-                  strokeWidth={2.5}
-                />
-              )}
+              <Icon
+                size={22}
+                color={isFocused ? '#111827' : '#B0B5BE'}
+                strokeWidth={isFocused ? 2.5 : 2}
+              />
+              <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>
+                {label}
+              </Text>
             </Pressable>
           );
         })}
@@ -62,36 +73,19 @@ function FloatingTabBar({ state, descriptors, navigation }: any) {
   );
 }
 
-
 export default function TabsLayout() {
   return (
     <Tabs
       tabBar={(props) => <FloatingTabBar {...props} />}
       screenOptions={{
         headerShown: false,
-        tabBarStyle: {
-          display: 'none',
-        }
+        tabBarStyle: { display: 'none' },
       }}
     >
-      <Tabs.Screen
-        name="gallery"
-        options={{
-          title: 'Explore',
-        }}
-      />
-      <Tabs.Screen
-        name="(builder)"
-        options={{
-          title: 'Create',
-        }}
-      />
-      <Tabs.Screen
-        name="saved"
-        options={{
-          title: 'Library',
-        }}
-      />
+      <Tabs.Screen name="gallery" options={{ title: 'Discover' }} />
+      <Tabs.Screen name="(builder)" options={{ title: 'Create' }} />
+      <Tabs.Screen name="saved" options={{ title: 'Library' }} />
+      <Tabs.Screen name="profile" options={{ title: 'Settings' }} />
     </Tabs>
   );
 }
@@ -99,19 +93,18 @@ export default function TabsLayout() {
 const styles = StyleSheet.create({
   tabContainer: {
     position: 'absolute',
-    left: 60,
-    right: 60,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: '#FFFFFF', // Pure White Pill
-    // Strong Shadow
+    left: 20,
+    right: 20,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOpacity: 0.1,
-    shadowRadius: 20,
+    shadowRadius: 24,
     shadowOffset: { width: 0, height: 10 },
     elevation: 20,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.02)',
+    borderColor: 'rgba(0,0,0,0.03)',
   },
   pill: {
     flexDirection: 'row',
@@ -124,22 +117,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: '100%',
     flex: 1,
+    gap: 2,
   },
-  centerTab: {
-    marginBottom: 0,
-    zIndex: 10,
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: '600' as const,
+    color: '#B0B5BE',
+  },
+  tabLabelActive: {
+    color: '#111827',
+    fontWeight: '700' as const,
   },
   centerButton: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#111827', // Black Center Button on White Pill
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    backgroundColor: '#111827',
     alignItems: 'center',
     justifyContent: 'center',
     shadowColor: '#111827',
     shadowOpacity: 0.3,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 5 },
-    elevation: 10,
-  }
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 8,
+  },
 });
