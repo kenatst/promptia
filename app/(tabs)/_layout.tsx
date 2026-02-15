@@ -1,5 +1,5 @@
 import React from 'react';
-import { Platform, Pressable, StyleSheet, Text, View, Shadow } from 'react-native';
+import { Platform, Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { BlurView } from 'expo-blur';
 import { Bookmark, Compass, Wand2, Plus, Home } from 'lucide-react-native';

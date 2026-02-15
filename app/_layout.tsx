@@ -15,9 +15,9 @@ function RootLayoutNav() {
     <Stack
       screenOptions={{
         headerBackTitle: "Back",
-        headerStyle: { backgroundColor: Colors.background },
-        headerTintColor: Colors.text,
-        contentStyle: { backgroundColor: Colors.background },
+        headerStyle: { backgroundColor: '#FAFAFA' },
+        headerTintColor: '#111827',
+        contentStyle: { backgroundColor: '#FAFAFA' },
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -26,8 +26,8 @@ function RootLayoutNav() {
         options={{
           presentation: "modal",
           headerTitle: "Prompt Detail",
-          headerStyle: { backgroundColor: Colors.background },
-          headerTintColor: Colors.text,
+          headerStyle: { backgroundColor: '#FAFAFA' },
+          headerTintColor: '#111827',
           headerShadowVisible: false,
         }}
       />
@@ -43,7 +43,7 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <GestureHandlerRootView>
-        <StatusBar style="light" />
+        <StatusBar style="dark" />
         <RootLayoutNav />
       </GestureHandlerRootView>
     </QueryClientProvider>

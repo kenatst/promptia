@@ -1,47 +1,54 @@
 const Colors = {
-  // Light "Creamy" Background
   background: '#FAFAFA',
   backgroundGradientStart: '#FAFAFA',
-  backgroundGradientEnd: '#FFFBF2', // Slight warmth at bottom
+  backgroundGradientMid: '#FEFCF8',
+  backgroundGradientEnd: '#FFFBF2',
 
-  // Card Backgrounds
   cardBg: '#FFFFFF',
 
-  // Specific Accents (Keep Pastels but they pop on white)
   accent: '#F59E0B',
+  accentDim: 'rgba(245, 158, 11, 0.12)',
+  accentGlow: 'rgba(245, 158, 11, 0.3)',
 
-  // The "Recipe" card colors (Light Mode)
-  yellowCard: '#FFF9C4',
-  yellowCardDark: '#FDE047',
+  secondary: '#8B5CF6',
+  secondaryDim: 'rgba(139, 92, 246, 0.12)',
 
-  // Category Circle Backgrounds (Slightly stronger to pop on white)
-  circleGreen: '#D1FAE5',
-  circleOrange: '#FFEDD5',
-  circleYellow: '#FEF3C7',
-  circlePurple: '#EDE9FE',
-  circlePink: '#FCE7F3',
-  circleBlue: '#DBEAFE',
+  tertiary: '#10B981',
+  tertiaryDim: 'rgba(16, 185, 129, 0.12)',
 
-  // Text
-  text: '#1F2937', // Dark Grey/Blue
-  textDark: '#111827', // Almost Black
-  textSecondary: '#6B7280', // Medium Grey
-  textTertiary: '#9CA3AF', // Light Grey
+  blue: '#3B82F6',
+  blueDim: 'rgba(59, 130, 246, 0.12)',
 
-  // Glass (Now "Frosted White" for light mode)
+  cyan: '#06B6D4',
+  cyanDim: 'rgba(6, 182, 212, 0.12)',
+
+  pink: '#EC4899',
+  pinkDim: 'rgba(236, 72, 153, 0.12)',
+
+  yellow: '#EAB308',
+  yellowDim: 'rgba(234, 179, 8, 0.12)',
+
+  teal: '#14B8A6',
+  tealDim: 'rgba(20, 184, 166, 0.12)',
+
+  danger: '#EF4444',
+  dangerDim: 'rgba(239, 68, 68, 0.12)',
+
+  text: '#1F2937',
+  textDark: '#111827',
+  textSecondary: '#6B7280',
+  textTertiary: '#9CA3AF',
+  textInverse: '#FFFFFF',
+
   glass: 'rgba(255, 255, 255, 0.7)',
+  glassMedium: 'rgba(0, 0, 0, 0.04)',
   glassBorder: 'rgba(0, 0, 0, 0.05)',
+  glassBorderLight: 'rgba(0, 0, 0, 0.03)',
+  borderAccent: 'rgba(245, 158, 11, 0.25)',
 
-  // Tab Bar
-  tabBar: '#FFFFFF', // Clean White Pill
-
-  // Action Buttons
-  primaryButton: '#111827', // Black
+  tabBar: '#FFFFFF',
+  primaryButton: '#111827',
   primaryButtonText: '#FFFFFF',
-
-  // "Aegean Breeze" Card
-  purpleCardBg: '#F3E8FF', // Very Light purple
-  greenCardBg: '#ECFDF5',  // Very Light green
 } as const;
 
 export default Colors;

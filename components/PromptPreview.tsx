@@ -17,7 +17,7 @@ function PromptPreviewComponent({ result }: PromptPreviewProps) {
 
   return (
     <View style={styles.container}>
-      <GlassCard accent>
+      <GlassCard variant="3d-light">
         <View style={styles.header}>
           <View style={styles.dot} />
           <Text style={styles.headerText}>Live Preview</Text>
@@ -80,7 +80,7 @@ function PromptPreviewComponent({ result }: PromptPreviewProps) {
           {result.metadata.checklist.length > 0 && (
             <View style={styles.metaSection}>
               <View style={styles.metaHeader}>
-                <CheckCircle size={14} color={Colors.success} />
+                <CheckCircle size={14} color={Colors.tertiary} />
                 <Text style={styles.metaTitle}>Checklist</Text>
               </View>
               {result.metadata.checklist.map((c, i) => (
@@ -112,7 +112,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: Colors.success,
+    backgroundColor: Colors.tertiary,
   },
   headerText: {
     fontSize: 13,
@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
   },
   metaCheck: {
     fontSize: 13,
-    color: Colors.success,
+    color: Colors.tertiary,
     paddingLeft: 20,
   },
 });

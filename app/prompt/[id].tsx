@@ -5,17 +5,16 @@ import {
   StyleSheet,
   ScrollView,
   Alert,
-  TouchableOpacity,
+  Pressable,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
-import { Copy, User, Tag, Sparkles, Shuffle, Heart } from 'lucide-react-native';
+import { Copy, User, Tag, Sparkles, Shuffle, Heart, Check } from 'lucide-react-native';
 import { GlassCard } from '@/components/GlassCard';
-import { GlassButton } from '@/components/GlassButton';
-import { gallerySeed } from '@/data/gallerySeed';
+import { gallerySeed, CREATION_CATEGORIES } from '@/data/gallerySeed';
 import { usePromptStore } from '@/store/promptStore';
 import { getModelLabel } from '@/engine/promptEngine';
 import { GalleryItem, SavedPrompt, ModelType, DEFAULT_INPUTS } from '@/types/prompt';
@@ -26,13 +25,6 @@ const MODEL_COLORS: Record<ModelType, string> = {
   midjourney: Colors.secondary,
   sdxl: Colors.cyan,
   video: Colors.pink,
-};
-
-const MODEL_EMOJIS: Record<string, string> = {
-  chatgpt: '💬',
-  midjourney: '🎨',
-  sdxl: '🖼️',
-  video: '🎬',
 };
 
 function getPromptText(item: { source: 'gallery'; data: GalleryItem } | { source: 'saved'; data: SavedPrompt }): string {
@@ -91,6 +83,8 @@ export default function PromptDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { savedPrompts, setCurrentInputs } = usePromptStore();
   const router = useRouter();
+  const [copiedIndex, setCopiedIndex] = React.useState<number | null>(null);
+  const [fullCopied, setFullCopied] = React.useState(false);
 
   const item = useMemo(() => {
     const gallery = gallerySeed.find((g) => g.id === id);
@@ -105,30 +99,49 @@ export default function PromptDetailScreen() {
   const prompt = useMemo(() => (item ? getPromptText(item) : ''), [item]);
   const promptSegments = useMemo(() => parseSegments(prompt), [prompt]);
 
-  const handleCopy = useCallback(async (text: string) => {
+  const handleCopy = useCallback(async (text: string, index?: number) => {
     await Clipboard.setStringAsync(text);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Copied!', 'Copied to clipboard');
+    if (index !== undefined) {
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 1500);
+    }
   }, []);
+
+  const handleCopyFull = useCallback(async () => {
+    await Clipboard.setStringAsync(prompt);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setFullCopied(true);
+    setTimeout(() => setFullCopied(false), 2000);
+  }, [prompt]);
 
   const handleRemix = useCallback(() => {
     if (!item) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setCurrentInputs({
+
+    const newInputs = {
       ...DEFAULT_INPUTS,
-      objective: item.data.title,
+      objective: item.source === 'gallery' ? item.data.prompt : item.data.finalPrompt,
       model: item.data.model,
       objectiveChips: item.data.tags.slice(0, 3),
-      style: item.source === 'gallery' ? item.data.style : (item.data.inputs?.style ?? ''),
-    });
-    router.back();
-    setTimeout(() => router.push('/(tabs)/(builder)'), 100);
+    };
+
+    if (item.source === 'gallery') {
+      newInputs.style = item.data.style;
+    } else if (item.data.inputs?.style) {
+      newInputs.style = item.data.inputs.style;
+    }
+
+    setCurrentInputs(newInputs);
+    router.dismiss();
+    setTimeout(() => {
+      router.navigate('/(tabs)/(builder)' as any);
+    }, 150);
   }, [item, setCurrentInputs, router]);
 
   if (!item) {
     return (
       <View style={styles.centered}>
-        <Text style={styles.emptyEmoji}>🔍</Text>
         <Text style={styles.notFound}>Prompt not found</Text>
       </View>
     );
@@ -137,14 +150,13 @@ export default function PromptDetailScreen() {
   const title = item.data.title;
   const model = item.data.model;
   const tags = item.data.tags;
-  const emoji = MODEL_EMOJIS[model] ?? '💬';
   const modelColor = MODEL_COLORS[model] ?? Colors.accent;
   const hasImage = item.source === 'gallery' && item.data.thumbnail;
 
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={[Colors.backgroundGradientStart, Colors.backgroundGradientMid, Colors.backgroundGradientEnd]}
+        colors={['#FAFAFA', '#FEFCF8', '#FFFBF2']}
         style={StyleSheet.absoluteFill}
       />
       <ScrollView
@@ -160,19 +172,16 @@ export default function PromptDetailScreen() {
               transition={300}
             />
             <LinearGradient
-              colors={['transparent', Colors.background]}
+              colors={['transparent', '#FAFAFA']}
               style={styles.heroGradient}
             />
           </View>
         )}
 
         <View style={styles.headerSection}>
-          <View style={styles.titleRow}>
-            <Text style={styles.titleEmoji}>{emoji}</Text>
-            <Text style={styles.title}>{title}</Text>
-          </View>
+          <Text style={styles.title}>{title}</Text>
           <View style={styles.metaRow}>
-            <View style={[styles.modelBadge, { backgroundColor: `${modelColor}18`, borderColor: `${modelColor}35` }]}>
+            <View style={[styles.modelBadge, { backgroundColor: `${modelColor}15`, borderColor: `${modelColor}30` }]}>
               <Text style={[styles.modelText, { color: modelColor }]}>{getModelLabel(model)}</Text>
             </View>
             {item.source === 'gallery' && (
@@ -183,13 +192,13 @@ export default function PromptDetailScreen() {
             )}
             {item.source === 'gallery' && item.data.isEditorPick && (
               <View style={styles.pickBadge}>
-                <Sparkles size={10} color="#FFD700" />
+                <Sparkles size={10} color="#D97706" />
                 <Text style={styles.pickText}>Editor Pick</Text>
               </View>
             )}
             {item.source === 'gallery' && (
               <View style={styles.likesRow}>
-                <Heart size={12} color={Colors.pink} fill={Colors.pink} />
+                <Heart size={12} color={Colors.pink} />
                 <Text style={styles.likesText}>{item.data.likes.toLocaleString()}</Text>
               </View>
             )}
@@ -199,16 +208,20 @@ export default function PromptDetailScreen() {
         <View style={styles.segmentsSection}>
           <Text style={styles.sectionTitle}>Prompt Segments</Text>
           {promptSegments.map((seg, i) => (
-            <GlassCard key={i}>
+            <GlassCard key={i} variant="3d-light" style={styles.segmentCard}>
               <View style={styles.segmentHeader}>
                 <Text style={[styles.segmentLabel, { color: modelColor }]}>{seg.label}</Text>
-                <TouchableOpacity
-                  onPress={() => handleCopy(seg.content)}
+                <Pressable
+                  onPress={() => handleCopy(seg.content, i)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  style={styles.copyBtn}
+                  style={[styles.copyBtn, copiedIndex === i && { backgroundColor: Colors.tertiaryDim }]}
                 >
-                  <Copy size={14} color={Colors.textSecondary} />
-                </TouchableOpacity>
+                  {copiedIndex === i ? (
+                    <Check size={14} color={Colors.tertiary} />
+                  ) : (
+                    <Copy size={14} color={Colors.textSecondary} />
+                  )}
+                </Pressable>
               </View>
               <Text style={styles.segmentContent} selectable>{seg.content}</Text>
             </GlassCard>
@@ -232,22 +245,30 @@ export default function PromptDetailScreen() {
         )}
 
         <View style={styles.actionsSection}>
-          <GlassButton
-            label="Copy Full Prompt"
-            onPress={() => handleCopy(prompt)}
-            variant="primary"
-            size="lg"
-            icon={<Copy size={18} color={Colors.textInverse} />}
-            fullWidth
-          />
-          <GlassButton
-            label="Remix in Builder"
+          <Pressable
+            onPress={handleCopyFull}
+            style={({ pressed }) => [
+              styles.primaryAction,
+              pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+              fullCopied && { backgroundColor: Colors.tertiary },
+            ]}
+          >
+            {fullCopied ? <Check size={18} color="#FFF" /> : <Copy size={18} color="#FFF" />}
+            <Text style={styles.primaryActionText}>
+              {fullCopied ? 'Copied!' : 'Copy Full Prompt'}
+            </Text>
+          </Pressable>
+
+          <Pressable
             onPress={handleRemix}
-            variant="accent"
-            size="md"
-            icon={<Shuffle size={16} color={Colors.accent} />}
-            fullWidth
-          />
+            style={({ pressed }) => [
+              styles.secondaryAction,
+              pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+            ]}
+          >
+            <Shuffle size={16} color="#111827" />
+            <Text style={styles.secondaryActionText}>Remix in Builder</Text>
+          </Pressable>
         </View>
 
         <View style={styles.bottomPad} />
@@ -259,7 +280,7 @@ export default function PromptDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#FAFAFA',
   },
   content: {
     paddingBottom: 40,
@@ -268,11 +289,8 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: Colors.background,
+    backgroundColor: '#FAFAFA',
     gap: 12,
-  },
-  emptyEmoji: {
-    fontSize: 48,
   },
   notFound: {
     fontSize: 16,
@@ -295,20 +313,11 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     gap: 12,
   },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  titleEmoji: {
-    fontSize: 28,
-  },
   title: {
     fontSize: 24,
     fontWeight: '800' as const,
-    color: Colors.text,
+    color: '#111827',
     lineHeight: 30,
-    flex: 1,
     letterSpacing: -0.3,
   },
   metaRow: {
@@ -341,17 +350,17 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    backgroundColor: 'rgba(255, 215, 0, 0.12)',
+    backgroundColor: 'rgba(217, 119, 6, 0.1)',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.25)',
+    borderColor: 'rgba(217, 119, 6, 0.2)',
   },
   pickText: {
     fontSize: 11,
     fontWeight: '700' as const,
-    color: '#FFD700',
+    color: '#D97706',
   },
   likesRow: {
     flexDirection: 'row',
@@ -375,6 +384,9 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase' as const,
     letterSpacing: 1,
   },
+  segmentCard: {
+    padding: 16,
+  },
   segmentHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -390,11 +402,11 @@ const styles = StyleSheet.create({
   copyBtn: {
     padding: 6,
     borderRadius: 8,
-    backgroundColor: Colors.glassMedium,
+    backgroundColor: '#F3F4F6',
   },
   segmentContent: {
     fontSize: 14,
-    color: Colors.text,
+    color: '#1F2937',
     lineHeight: 22,
   },
   tagsSection: {
@@ -413,12 +425,12 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
   },
   tag: {
-    backgroundColor: Colors.glassMedium,
+    backgroundColor: '#F3F4F6',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 10,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
+    borderColor: 'rgba(0,0,0,0.04)',
   },
   tagText: {
     fontSize: 13,
@@ -428,6 +440,39 @@ const styles = StyleSheet.create({
   actionsSection: {
     gap: 10,
     paddingHorizontal: 20,
+  },
+  primaryAction: {
+    backgroundColor: '#111827',
+    height: 52,
+    borderRadius: 26,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 5,
+  },
+  primaryActionText: {
+    color: '#FFF',
+    fontSize: 16,
+    fontWeight: '700' as const,
+  },
+  secondaryAction: {
+    height: 52,
+    borderRadius: 26,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  secondaryActionText: {
+    color: '#111827',
+    fontSize: 15,
+    fontWeight: '600' as const,
   },
   bottomPad: {
     height: 40,

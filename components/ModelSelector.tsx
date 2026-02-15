@@ -85,9 +85,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 16,
     borderRadius: 16,
-    backgroundColor: Colors.surfaceElevated,
+    backgroundColor: '#F9FAFB',
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: 'rgba(0,0,0,0.05)',
     gap: 6,
   },
   itemSelected: {

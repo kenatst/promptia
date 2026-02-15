@@ -41,19 +41,19 @@ export function GlowButton({
     }));
 
     // Light Mode Colors
-    let bgColors = ['#111827', '#374151']; // Black to Dark Grey
+    let bgColors: [string, string] = ['#111827', '#374151'];
     let textColor = '#FFFFFF';
     let border = 'transparent';
 
     if (variant === 'secondary') {
-        bgColors = ['#FFFFFF', '#F3F4F6']; // White to Light Grey
+        bgColors = ['#FFFFFF', '#F3F4F6'];
         textColor = '#111827';
         border = 'rgba(0,0,0,0.05)';
     } else if (variant === 'destructive') {
-        bgColors = ['#EF4444', '#DC2626'];
+        bgColors = ['#EF4444', '#DC2626'] as [string, string];
         textColor = '#FFFFFF';
     } else if (variant === 'glass') {
-        bgColors = ['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.4)'];
+        bgColors = ['rgba(255,255,255,0.7)', 'rgba(255,255,255,0.4)'] as [string, string];
         textColor = '#1F2937';
         border = 'rgba(0,0,0,0.05)';
     }

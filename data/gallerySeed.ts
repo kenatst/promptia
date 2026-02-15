@@ -3,8 +3,8 @@ import Colors from '@/constants/colors';
 
 export interface CreationCategory {
   id: string;
-  emoji: string;
   label: string;
+  icon: string;
   model: ModelType;
   type: 'text' | 'image' | 'video';
   defaultChips: string[];
@@ -14,22 +14,22 @@ export interface CreationCategory {
 }
 
 export const CREATION_CATEGORIES: CreationCategory[] = [
-  { id: 'chat', emoji: '💬', label: 'Chat & Q\u200BA', model: 'chatgpt', type: 'text', defaultChips: ['Explain', 'Analyze'], defaultTone: 'professional', color: Colors.accent, dimColor: Colors.accentDim },
-  { id: 'code', emoji: '💻', label: 'Code & Dev', model: 'chatgpt', type: 'text', defaultChips: ['Debug', 'Generate', 'Review'], defaultTone: 'technical', color: Colors.tertiary, dimColor: Colors.tertiaryDim },
-  { id: 'writing', emoji: '✍️', label: 'Writing', model: 'chatgpt', type: 'text', defaultChips: ['Write', 'Create'], defaultTone: 'creative', color: Colors.blue, dimColor: Colors.blueDim },
-  { id: 'marketing', emoji: '📢', label: 'Marketing', model: 'chatgpt', type: 'text', defaultChips: ['Write', 'Optimize'], defaultTone: 'persuasive', color: Colors.pink, dimColor: Colors.pinkDim },
-  { id: 'email', emoji: '📧', label: 'Email', model: 'chatgpt', type: 'text', defaultChips: ['Write', 'Plan'], defaultTone: 'professional', color: Colors.yellow, dimColor: Colors.yellowDim },
-  { id: 'data', emoji: '📊', label: 'Data & Analysis', model: 'chatgpt', type: 'text', defaultChips: ['Analyze', 'Summarize'], defaultTone: 'technical', color: Colors.secondary, dimColor: Colors.secondaryDim },
-  { id: 'image_art', emoji: '🎨', label: 'Image Art', model: 'midjourney', type: 'image', defaultChips: [], defaultTone: 'creative', color: Colors.secondary, dimColor: Colors.secondaryDim },
-  { id: 'photo', emoji: '📸', label: 'Photography', model: 'sdxl', type: 'image', defaultChips: [], defaultTone: 'creative', color: Colors.cyan, dimColor: Colors.cyanDim },
-  { id: 'video', emoji: '🎬', label: 'Video Clip', model: 'video', type: 'video', defaultChips: [], defaultTone: 'creative', color: Colors.pink, dimColor: Colors.pinkDim },
-  { id: 'logo', emoji: '🎯', label: 'Logo & Brand', model: 'midjourney', type: 'image', defaultChips: [], defaultTone: 'creative', color: Colors.accent, dimColor: Colors.accentDim },
-  { id: 'social', emoji: '📱', label: 'Social Media', model: 'chatgpt', type: 'text', defaultChips: ['Create', 'Write'], defaultTone: 'casual', color: Colors.teal, dimColor: Colors.tealDim },
-  { id: 'education', emoji: '📚', label: 'Education', model: 'chatgpt', type: 'text', defaultChips: ['Explain', 'Create'], defaultTone: 'academic', color: Colors.blue, dimColor: Colors.blueDim },
-  { id: 'seo', emoji: '🔍', label: 'SEO & Content', model: 'chatgpt', type: 'text', defaultChips: ['Optimize', 'Research'], defaultTone: 'technical', color: Colors.yellow, dimColor: Colors.yellowDim },
-  { id: 'translate', emoji: '🌐', label: 'Translation', model: 'chatgpt', type: 'text', defaultChips: ['Translate'], defaultTone: 'professional', color: Colors.tertiary, dimColor: Colors.tertiaryDim },
-  { id: 'business', emoji: '💼', label: 'Business Plan', model: 'chatgpt', type: 'text', defaultChips: ['Plan', 'Analyze'], defaultTone: 'professional', color: Colors.accent, dimColor: Colors.accentDim },
-  { id: 'ui_design', emoji: '🖥️', label: 'UI Design', model: 'midjourney', type: 'image', defaultChips: [], defaultTone: 'creative', color: Colors.cyan, dimColor: Colors.cyanDim },
+  { id: 'chat', label: 'Chat', icon: 'message', model: 'chatgpt', type: 'text', defaultChips: ['Explain', 'Analyze'], defaultTone: 'professional', color: Colors.accent, dimColor: Colors.accentDim },
+  { id: 'code', label: 'Code', icon: 'code', model: 'chatgpt', type: 'text', defaultChips: ['Debug', 'Generate', 'Review'], defaultTone: 'technical', color: Colors.tertiary, dimColor: Colors.tertiaryDim },
+  { id: 'writing', label: 'Writing', icon: 'pen', model: 'chatgpt', type: 'text', defaultChips: ['Write', 'Create'], defaultTone: 'creative', color: Colors.blue, dimColor: Colors.blueDim },
+  { id: 'marketing', label: 'Marketing', icon: 'megaphone', model: 'chatgpt', type: 'text', defaultChips: ['Write', 'Optimize'], defaultTone: 'persuasive', color: Colors.pink, dimColor: Colors.pinkDim },
+  { id: 'email', label: 'Email', icon: 'mail', model: 'chatgpt', type: 'text', defaultChips: ['Write', 'Plan'], defaultTone: 'professional', color: Colors.yellow, dimColor: Colors.yellowDim },
+  { id: 'data', label: 'Data', icon: 'bar-chart', model: 'chatgpt', type: 'text', defaultChips: ['Analyze', 'Summarize'], defaultTone: 'technical', color: Colors.secondary, dimColor: Colors.secondaryDim },
+  { id: 'image_art', label: 'Art', icon: 'palette', model: 'midjourney', type: 'image', defaultChips: [], defaultTone: 'creative', color: Colors.secondary, dimColor: Colors.secondaryDim },
+  { id: 'photo', label: 'Photo', icon: 'camera', model: 'sdxl', type: 'image', defaultChips: [], defaultTone: 'creative', color: Colors.cyan, dimColor: Colors.cyanDim },
+  { id: 'video', label: 'Video', icon: 'film', model: 'video', type: 'video', defaultChips: [], defaultTone: 'creative', color: Colors.pink, dimColor: Colors.pinkDim },
+  { id: 'logo', label: 'Logo', icon: 'target', model: 'midjourney', type: 'image', defaultChips: [], defaultTone: 'creative', color: Colors.accent, dimColor: Colors.accentDim },
+  { id: 'social', label: 'Social', icon: 'share', model: 'chatgpt', type: 'text', defaultChips: ['Create', 'Write'], defaultTone: 'casual', color: Colors.teal, dimColor: Colors.tealDim },
+  { id: 'education', label: 'Education', icon: 'book', model: 'chatgpt', type: 'text', defaultChips: ['Explain', 'Create'], defaultTone: 'academic', color: Colors.blue, dimColor: Colors.blueDim },
+  { id: 'seo', label: 'SEO', icon: 'search', model: 'chatgpt', type: 'text', defaultChips: ['Optimize', 'Research'], defaultTone: 'technical', color: Colors.yellow, dimColor: Colors.yellowDim },
+  { id: 'translate', label: 'Translate', icon: 'globe', model: 'chatgpt', type: 'text', defaultChips: ['Translate'], defaultTone: 'professional', color: Colors.tertiary, dimColor: Colors.tertiaryDim },
+  { id: 'business', label: 'Business', icon: 'briefcase', model: 'chatgpt', type: 'text', defaultChips: ['Plan', 'Analyze'], defaultTone: 'professional', color: Colors.accent, dimColor: Colors.accentDim },
+  { id: 'ui_design', label: 'UI Design', icon: 'layout', model: 'midjourney', type: 'image', defaultChips: [], defaultTone: 'creative', color: Colors.cyan, dimColor: Colors.cyanDim },
 ];
 
 export const gallerySeed: GalleryItem[] = [
@@ -231,4 +231,4 @@ export const OUTPUT_FORMATS = [
   'Text', 'Markdown', 'JSON', 'HTML', 'CSV', 'Code', 'List', 'Table',
 ];
 
-export const GALLERY_FILTERS = ['All', 'Text', 'Image', 'Video', 'Trending', 'Editor Picks'];
+export const GALLERY_FILTERS = ['All', 'Text', 'Image', 'Video', 'Editor Picks'];

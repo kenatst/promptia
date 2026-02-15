@@ -35,7 +35,7 @@ export function PromptCard({
     onUseInBuilder,
     onRemoveTag,
 }: PromptCardProps) {
-    const category = CREATION_CATEGORIES.find(c => c.id === prompt.category || c.model === prompt.model) || CREATION_CATEGORIES[0];
+    const category = CREATION_CATEGORIES.find(c => c.model === prompt.model) || CREATION_CATEGORIES[0];
     const accentColor = category.color || Colors.accent;
 
     // Light Mode: Pastel Backgrounds instead of Glass
@@ -61,7 +61,6 @@ export function PromptCard({
                 <View style={styles.header}>
                     <View style={{ flex: 1 }}>
                         <View style={styles.catRow}>
-                            <Text style={styles.emoji}>{category.emoji}</Text>
                             <Text style={[styles.catName, { color: accentColor }]}>{category.label}</Text>
                         </View>
                         <Text style={styles.title} numberOfLines={2}>{prompt.title}</Text>
