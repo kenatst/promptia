@@ -68,7 +68,7 @@ function GalleryContent() {
           <View style={styles.cardImageWrap}>
             <Image source={{ uri: item.thumbnail }} style={styles.cardImage} contentFit="cover" transition={200} />
             <View style={styles.cardOverlay} />
-            <View style={[styles.typeBadge, { backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }]}>
+            <View style={[styles.typeBadge, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
               {item.type === 'video' ? <Film size={12} color="#FFF" /> : <ImageIcon size={12} color="#FFF" />}
               <Text style={styles.typeBadgeText}>{getModelLabel(item.model)}</Text>
             </View>
@@ -86,7 +86,7 @@ function GalleryContent() {
           <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
 
           <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={2}>
-            {item.description || item.prompt.slice(0, 80)}...
+            {item.prompt.slice(0, 80)}...
           </Text>
 
           <View style={styles.cardFooter}>

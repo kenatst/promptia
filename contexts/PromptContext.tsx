@@ -31,6 +31,7 @@ interface PromptState {
   completeOnboarding: () => void;
 }
 
+// @ts-ignore
 export const [PromptProvider, usePromptStore] = createContextHook<PromptState>(() => {
   const queryClient = useQueryClient();
   const [currentInputs, setCurrentInputsState] = useState<PromptInputs>({ ...DEFAULT_INPUTS });

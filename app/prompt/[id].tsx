@@ -39,9 +39,9 @@ function parseSegments(prompt: string): { label: string; content: string }[] {
 
   for (const line of lines) {
     if (line.startsWith('##') || line.startsWith('Scene:') || line.startsWith('Camera:') ||
-        line.startsWith('Lighting:') || line.startsWith('Style:') || line.startsWith('Positive:') ||
-        line.startsWith('Negative:') || line.startsWith('Duration:') || line.startsWith('Motion:') ||
-        line.startsWith('Aspect Ratio:')) {
+      line.startsWith('Lighting:') || line.startsWith('Style:') || line.startsWith('Positive:') ||
+      line.startsWith('Negative:') || line.startsWith('Duration:') || line.startsWith('Motion:') ||
+      line.startsWith('Aspect Ratio:')) {
       if (currentLabel || currentContent.length > 0) {
         segments.push({ label: currentLabel || 'Content', content: currentContent.join('\n').trim() });
       }
@@ -83,7 +83,7 @@ function PromptDetailContent() {
   const item = useMemo(() => {
     const gallery = gallerySeed.find((g) => g.id === id);
     if (gallery) return { source: 'gallery' as const, data: gallery };
-    const saved = savedPrompts.find((s) => s.id === id);
+    const saved = savedPrompts.find((s: SavedPrompt) => s.id === id);
     if (saved) return { source: 'saved' as const, data: saved };
     return null;
   }, [id, savedPrompts]);
@@ -137,7 +137,7 @@ function PromptDetailContent() {
   const title = item.data.title;
   const model = item.data.model;
   const tags = item.data.tags;
-  const modelColor = MODEL_COLORS[model] ?? '#F59E0B';
+  const modelColor = MODEL_COLORS[model as ModelType] ?? '#F59E0B';
   const hasImage = item.source === 'gallery' && item.data.thumbnail;
 
   return (
@@ -204,7 +204,7 @@ function PromptDetailContent() {
               <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{t.detail.tags}</Text>
             </View>
             <View style={styles.tagRow}>
-              {tags.map((tag) => (
+              {tags.map((tag: string) => (
                 <View key={tag} style={[styles.tag, { backgroundColor: colors.bgSecondary, borderColor: colors.cardBorder }]}>
                   <Text style={[styles.tagText, { color: colors.textSecondary }]}>{tag}</Text>
                 </View>

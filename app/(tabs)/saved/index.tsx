@@ -74,18 +74,18 @@ const SavedContent = () => {
     let items = savedPrompts;
 
     if (selectedFolderId) {
-      items = items.filter(p => p.folderId === selectedFolderId);
+      items = items.filter((p: SavedPrompt) => p.folderId === selectedFolderId);
     }
 
-    if (activeFilter === 'favorites') items = items.filter(p => p.isFavorite);
-    else if (activeFilter === 'text') items = items.filter(p => p.type === 'text');
-    else if (activeFilter === 'image') items = items.filter(p => p.type === 'image');
-    else if (activeFilter === 'video') items = items.filter(p => p.type === 'video');
+    if (activeFilter === 'favorites') items = items.filter((p: SavedPrompt) => p.isFavorite);
+    else if (activeFilter === 'text') items = items.filter((p: SavedPrompt) => p.type === 'text');
+    else if (activeFilter === 'image') items = items.filter((p: SavedPrompt) => p.type === 'image');
+    else if (activeFilter === 'video') items = items.filter((p: SavedPrompt) => p.type === 'video');
 
     if (localSearch.trim()) {
       const q = localSearch.toLowerCase();
-      items = items.filter((p) =>
-        p.title.toLowerCase().includes(q) || p.tags.some((tag) => tag.toLowerCase().includes(q))
+      items = items.filter((p: SavedPrompt) =>
+        p.title.toLowerCase().includes(q) || p.tags.some((tag: string) => tag.toLowerCase().includes(q))
       );
     }
     return items;
@@ -123,9 +123,9 @@ const SavedContent = () => {
     router.navigate('/(tabs)/(builder)' as any);
   }, [setCurrentInputs, router]);
 
-  const handleOpenDetail = useCallback((prompt: SavedPrompt) => {
+  const handlePromptPress = useCallback((item: SavedPrompt) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    router.push(`/prompt/${prompt.id}` as any);
+    router.push(`/prompt/${item.id}` as any);
   }, [router]);
 
   const handleCreateFolder = useCallback(() => {
@@ -191,7 +191,7 @@ const SavedContent = () => {
             const isActive = isAll ? !selectedFolderId : selectedFolderId === item.id;
             const count = isAll
               ? savedPrompts.length
-              : savedPrompts.filter(p => p.folderId === item.id).length;
+              : savedPrompts.filter((p: SavedPrompt) => p.folderId === item.id).length;
 
             return (
               <Pressable
@@ -234,15 +234,15 @@ const SavedContent = () => {
     );
   };
 
-  const renderItem = useCallback(({ item }: { item: SavedPrompt }) => {
+  const renderPromptItem = useCallback(({ item }: { item: SavedPrompt }) => {
     const modelColor = MODEL_COLORS[item.model] ?? '#F59E0B';
     const isCopied = copiedId === item.id;
     const iconFn = MODEL_ICONS[item.model];
 
     return (
       <Pressable
-        onPress={() => handleOpenDetail(item)}
-        style={({ pressed }) => [
+        onPress={() => handlePromptPress(item)}
+        style={({ pressed }: { pressed: boolean }) => [
           styles.card,
           { backgroundColor: colors.card, borderColor: colors.cardBorder },
           pressed && { transform: [{ scale: 0.98 }] },
@@ -317,7 +317,28 @@ const SavedContent = () => {
         </View>
       </Pressable>
     );
-  }, [copiedId, handleCopy, handleDelete, handleRemix, handleOpenDetail, toggleFavorite, getTimeAgo, colors, t, isDark]);
+  }, [copiedId, handleCopy, handleDelete, handleRemix, handlePromptPress, toggleFavorite, getTimeAgo, colors, t, isDark]);
+
+  const renderFilterTab = useCallback((tab: { key: FilterTab; label: string }) => {
+    const isActive = activeFilter === tab.key;
+    return (
+      <Pressable
+        onPress={() => { setActiveFilter(tab.key); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+        style={[
+          styles.filterTab,
+          { backgroundColor: isActive ? (isDark ? '#F59E0B' : '#0F172A') : colors.chipBg },
+        ]}
+      >
+        <Text style={[
+          styles.filterTabText,
+          { color: colors.textSecondary },
+          isActive && { color: '#FFFFFF' },
+        ]}>
+          {tab.label}
+        </Text>
+      </Pressable>
+    );
+  }, [activeFilter, isDark, colors]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
@@ -355,33 +376,14 @@ const SavedContent = () => {
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item.key}
           contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
-          renderItem={({ item: tab }) => {
-            const isActive = activeFilter === tab.key;
-            return (
-              <Pressable
-                onPress={() => { setActiveFilter(tab.key); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                style={[
-                  styles.filterTab,
-                  { backgroundColor: isActive ? (isDark ? '#F59E0B' : '#0F172A') : colors.chipBg },
-                ]}
-              >
-                <Text style={[
-                  styles.filterTabText,
-                  { color: colors.textSecondary },
-                  isActive && { color: '#FFFFFF' },
-                ]}>
-                  {tab.label}
-                </Text>
-              </Pressable>
-            );
-          }}
+          renderItem={({ item }) => renderFilterTab(item)}
         />
       </View>
 
       <FlatList
         data={filteredPrompts}
         keyExtractor={(item) => item.id}
-        renderItem={renderItem}
+        renderItem={renderPromptItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
@@ -457,10 +459,14 @@ const SavedContent = () => {
               <Folder size={18} color={colors.textSecondary} />
               <Text style={[styles.moveFolderText, { color: colors.text }]}>No Folder</Text>
             </Pressable>
-            {folders.map((folder) => (
+            {folders.map((folder: PromptFolder) => (
               <Pressable
                 key={folder.id}
-                onPress={() => handleMoveToFolder(folder.id)}
+                onPress={() => {
+                  moveToFolder(movePromptId, folder.id);
+                  setShowMoveModal(false);
+                  Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+                }}
                 style={[styles.moveFolderOption, { borderBottomColor: colors.separator }]}
               >
                 <Folder size={18} color={folder.color} />
@@ -468,6 +474,18 @@ const SavedContent = () => {
                 <ChevronRight size={16} color={colors.textTertiary} />
               </Pressable>
             ))}
+            <Pressable
+              onPress={() => {
+                moveToFolder(movePromptId, null);
+                setShowMoveModal(false);
+                Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              }}
+              style={[styles.moveFolderOption, { borderBottomColor: colors.separator }]}
+            >
+              <X size={18} color={colors.textTertiary} />
+              <Text style={[styles.moveFolderText, { color: colors.text }]}>{t.library.removeFromFolder}</Text>
+              <ChevronRight size={16} color={colors.textTertiary} />
+            </Pressable>
           </View>
         </Pressable>
       </Modal>
