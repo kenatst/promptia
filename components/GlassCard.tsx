@@ -56,38 +56,41 @@ function GlassCardComponent({
 
   const animatedStyle = useAnimatedStyle(() => {
     const scale = interpolate(progress.value, [0, 1], [1, 0.97]);
-    const borderOpacity = interpolate(progress.value, [0, 1], [1, 0.75]);
+    const opacity = interpolate(progress.value, [0, 1], [1, 0.85]);
     return {
       transform: [{ scale }],
-      opacity: borderOpacity,
+      opacity,
     };
   });
 
   const borderColor = useMemo(() => {
     if (accentColor || accent) {
-      return `${accentColor ?? Colors.accent}66`;
+      return `${accentColor ?? Colors.accent}55`;
     }
-
     if (variant === 'elevated') {
-      return 'rgba(255, 255, 255, 0.12)';
+      return Colors.glassBorderLight;
     }
-
     return Colors.glassBorder;
   }, [accent, accentColor, variant]);
 
   const glowStyle = useMemo(() => {
     if (variant === 'elevated' || Boolean(accentColor) || accent) {
       return {
-        shadowColor: accentColor ?? Colors.accent,
-        shadowOpacity: 0.18,
+        shadowColor: accentColor ?? Colors.purple,
+        shadowOpacity: 0.25,
+        shadowRadius: 20,
+        shadowOffset: { width: 0, height: 8 },
       };
     }
-
-    return null;
+    return {
+      shadowColor: Colors.purple,
+      shadowOpacity: 0.12,
+      shadowRadius: 16,
+      shadowOffset: { width: 0, height: 8 },
+    };
   }, [accent, accentColor, variant]);
 
   const sharedProps = {
-    style: [styles.wrapper, { borderColor }, glowStyle, style],
     onPressIn,
     onPressOut,
     onPress,
@@ -98,7 +101,7 @@ function GlassCardComponent({
   const content = (
     <View style={[styles.content, noPadding ? styles.noPadding : styles.padding, contentStyle]}>
       <LinearGradient
-        colors={['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.00)']}
+        colors={['rgba(160, 130, 255, 0.10)', 'rgba(130, 90, 255, 0.02)', 'rgba(130, 90, 255, 0.00)']}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={styles.innerHighlight}
@@ -122,19 +125,15 @@ export const GlassCard = React.memo(GlassCardComponent);
 
 const styles = StyleSheet.create({
   wrapper: {
-    borderRadius: 20,
+    borderRadius: 24,
     overflow: 'hidden',
     borderWidth: 1,
-    backgroundColor: Colors.glass,
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 16,
-    shadowOffset: { width: 0, height: 10 },
+    backgroundColor: 'rgba(20, 16, 48, 0.65)',
     elevation: 12,
   },
   content: {
     position: 'relative',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: 'rgba(130, 90, 255, 0.04)',
   },
   padding: {
     padding: 18,
@@ -147,7 +146,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    height: '30%',
+    height: '40%',
     zIndex: 1,
   },
 });

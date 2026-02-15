@@ -67,20 +67,20 @@ export default function PromptDetailScreen() {
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={[Colors.background, Colors.backgroundGradientMid, Colors.background]} style={StyleSheet.absoluteFill} />
+      <LinearGradient colors={[Colors.backgroundGradientStart, Colors.backgroundGradientMid, Colors.backgroundGradientEnd]} style={StyleSheet.absoluteFill} />
       <LinearGradient
-        colors={[`${prompt.accentColor}14`, 'rgba(8,8,8,0)']}
+        colors={[`${prompt.accentColor}16`, Colors.atmospherePurple, 'rgba(11,10,26,0)']}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={styles.glow}
       />
 
-      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}> 
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
         <Pressable onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.iconBtn}>
-          <ArrowLeft size={20} color={Colors.textSecondary} />
+          <ArrowLeft size={20} color="rgba(255,255,255,0.70)" />
         </Pressable>
         <Pressable onPress={handleShare} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.iconBtn}>
-          <Share2 size={18} color={Colors.textSecondary} />
+          <Share2 size={18} color="rgba(255,255,255,0.70)" />
         </Pressable>
       </View>
 
@@ -90,7 +90,7 @@ export default function PromptDetailScreen() {
       >
         <View style={styles.headerWrap}>
           <Text style={styles.title}>{prompt.title}</Text>
-          <View style={[styles.categoryBadge, { borderColor: `${prompt.accentColor}88`, backgroundColor: `${prompt.accentColor}22` }]}>
+          <View style={[styles.categoryBadge, { borderColor: `${prompt.accentColor}55`, backgroundColor: `${prompt.accentColor}15` }]}>
             <Text style={[styles.categoryBadgeText, { color: prompt.accentColor }]}>
               {category.emoji} {category.label}
             </Text>
@@ -104,8 +104,8 @@ export default function PromptDetailScreen() {
         </View>
       </ScrollView>
 
-      <View style={[styles.bottomCta, { paddingBottom: insets.bottom + 10 }]}> 
-        <GlowButton title="Remix in Builder" onPress={handleRemix} />
+      <View style={[styles.bottomCta, { paddingBottom: insets.bottom + 10 }]}>
+        <GlowButton title="✨ Remix in Builder" onPress={handleRemix} />
       </View>
 
       {toast ? (
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: -70,
     right: -70,
-    height: 320,
+    height: 350,
   },
   topBar: {
     position: 'absolute',
@@ -140,31 +140,31 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   iconBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(130, 90, 255, 0.10)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
+    borderColor: 'rgba(130, 90, 255, 0.20)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   headerWrap: {
-    gap: 10,
-    marginBottom: 16,
+    gap: 12,
+    marginBottom: 20,
   },
   title: {
-    fontSize: 29,
-    lineHeight: 35,
+    fontSize: 30,
+    lineHeight: 36,
     color: Colors.text,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: -0.5,
   },
   categoryBadge: {
     alignSelf: 'flex-start',
     borderWidth: 1,
     borderRadius: 999,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
   },
   categoryBadgeText: {
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   sectionsWrap: {
-    gap: 12,
+    gap: 14,
   },
   bottomCta: {
     position: 'absolute',
@@ -182,19 +182,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
-    backgroundColor: 'rgba(8,8,8,0.92)',
+    borderTopColor: 'rgba(130, 90, 255, 0.10)',
+    backgroundColor: 'rgba(11, 10, 26, 0.92)',
   },
   toast: {
     position: 'absolute',
     left: 20,
     right: 20,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    backgroundColor: 'rgba(18,18,18,0.95)',
+    borderColor: 'rgba(130, 90, 255, 0.20)',
+    backgroundColor: 'rgba(16, 14, 36, 0.95)',
     alignItems: 'center',
-    paddingVertical: 9,
+    paddingVertical: 10,
   },
   toastText: {
     color: Colors.text,

@@ -22,39 +22,52 @@ export const CATEGORY_COLORS = {
 } as const;
 
 const Colors = {
-  background: '#080808',
-  backgroundElevated: '#0F0F10',
-  backgroundGradientStart: '#080808',
-  backgroundGradientMid: '#0A0A0B',
-  backgroundGradientEnd: '#080808',
+  // Deep midnight purple backgrounds
+  background: '#0B0A1A',
+  backgroundElevated: '#100F24',
+  backgroundGradientStart: '#0B0A1A',
+  backgroundGradientMid: '#110E2A',
+  backgroundGradientEnd: '#0B0A1A',
 
-  atmosphereAmber: 'rgba(245, 158, 11, 0.06)',
-  atmosphereBlue: 'rgba(59, 130, 246, 0.05)',
-  atmospherePurple: 'rgba(168, 85, 247, 0.04)',
+  // Atmospheric glows
+  atmosphereAmber: 'rgba(245, 158, 11, 0.08)',
+  atmosphereBlue: 'rgba(99, 102, 241, 0.06)',
+  atmospherePurple: 'rgba(139, 92, 246, 0.10)',
 
-  glass: 'rgba(255, 255, 255, 0.05)',
-  glassMedium: 'rgba(255, 255, 255, 0.08)',
-  glassStrong: 'rgba(255, 255, 255, 0.12)',
-  glassHighlight: 'rgba(255, 255, 255, 0.08)',
-  glassBorder: 'rgba(255, 255, 255, 0.08)',
-  glassBorderLight: 'rgba(255, 255, 255, 0.12)',
-  glassBorderStrong: 'rgba(255, 255, 255, 0.18)',
+  // Purple-tinted glass surfaces
+  glass: 'rgba(130, 90, 255, 0.06)',
+  glassMedium: 'rgba(130, 90, 255, 0.10)',
+  glassStrong: 'rgba(130, 90, 255, 0.15)',
+  glassHighlight: 'rgba(255, 255, 255, 0.06)',
+  glassBorder: 'rgba(130, 90, 255, 0.14)',
+  glassBorderLight: 'rgba(130, 90, 255, 0.20)',
+  glassBorderStrong: 'rgba(130, 90, 255, 0.28)',
 
-  surface: 'rgba(255, 255, 255, 0.05)',
-  surfaceElevated: 'rgba(255, 255, 255, 0.08)',
-  surfaceLight: 'rgba(255, 255, 255, 0.12)',
-  surfaceHighlight: 'rgba(255, 255, 255, 0.16)',
+  // Surfaces
+  surface: 'rgba(130, 90, 255, 0.06)',
+  surfaceElevated: 'rgba(130, 90, 255, 0.10)',
+  surfaceLight: 'rgba(255, 255, 255, 0.10)',
+  surfaceHighlight: 'rgba(255, 255, 255, 0.14)',
 
-  border: 'rgba(255, 255, 255, 0.06)',
-  borderLight: 'rgba(255, 255, 255, 0.10)',
-  borderAccent: 'rgba(245, 158, 11, 0.26)',
+  // Borders
+  border: 'rgba(130, 90, 255, 0.10)',
+  borderLight: 'rgba(130, 90, 255, 0.16)',
+  borderAccent: 'rgba(245, 158, 11, 0.30)',
 
+  // Amber accent (matches reference yellow CTA)
   accent: '#F59E0B',
   accentLight: '#FBBF24',
   accentDark: '#D97706',
-  accentDim: 'rgba(245, 158, 11, 0.18)',
-  accentGlow: 'rgba(245, 158, 11, 0.40)',
+  accentDim: 'rgba(245, 158, 11, 0.20)',
+  accentGlow: 'rgba(245, 158, 11, 0.45)',
 
+  // Purple primary
+  purple: '#8B5CF6',
+  purpleLight: '#A78BFA',
+  purpleDim: 'rgba(139, 92, 246, 0.20)',
+  purpleGlow: 'rgba(139, 92, 246, 0.40)',
+
+  // Section colors
   role: '#A855F7',
   task: '#F59E0B',
   context: '#3B82F6',
@@ -62,49 +75,54 @@ const Colors = {
   format: '#22C55E',
   examples: '#F97316',
 
+  // Named colors
   cyan: '#06B6D4',
-  cyanDim: 'rgba(6, 182, 212, 0.16)',
-  cyanGlow: 'rgba(6, 182, 212, 0.30)',
+  cyanDim: 'rgba(6, 182, 212, 0.18)',
+  cyanGlow: 'rgba(6, 182, 212, 0.35)',
 
   secondary: '#8B5CF6',
-  secondaryDim: 'rgba(139, 92, 246, 0.16)',
+  secondaryDim: 'rgba(139, 92, 246, 0.18)',
   tertiary: '#10B981',
-  tertiaryDim: 'rgba(16, 185, 129, 0.16)',
+  tertiaryDim: 'rgba(16, 185, 129, 0.18)',
 
   pink: '#EC4899',
-  pinkDim: 'rgba(236, 72, 153, 0.16)',
+  pinkDim: 'rgba(236, 72, 153, 0.18)',
   blue: '#3B82F6',
-  blueDim: 'rgba(59, 130, 246, 0.16)',
+  blueDim: 'rgba(59, 130, 246, 0.18)',
   orange: '#F97316',
-  orangeDim: 'rgba(249, 115, 22, 0.16)',
+  orangeDim: 'rgba(249, 115, 22, 0.18)',
   yellow: '#FBBF24',
-  yellowDim: 'rgba(251, 191, 36, 0.16)',
+  yellowDim: 'rgba(251, 191, 36, 0.18)',
   teal: '#14B8A6',
-  tealDim: 'rgba(20, 184, 166, 0.16)',
+  tealDim: 'rgba(20, 184, 166, 0.18)',
 
   success: '#34D399',
   danger: '#EF4444',
-  dangerDim: 'rgba(239, 68, 68, 0.14)',
+  dangerDim: 'rgba(239, 68, 68, 0.16)',
   warning: '#F59E0B',
 
+  // Text
   text: '#FFFFFF',
-  textSecondary: 'rgba(255, 255, 255, 0.85)',
-  textTertiary: 'rgba(255, 255, 255, 0.45)',
-  textInverse: '#080808',
+  textSecondary: 'rgba(255, 255, 255, 0.82)',
+  textTertiary: 'rgba(255, 255, 255, 0.42)',
+  textInverse: '#0B0A1A',
   white: '#FFFFFF',
 
-  tabBar: 'rgba(8, 8, 8, 0.70)',
-  tabBarBorder: 'rgba(255, 255, 255, 0.06)',
+  // Tab bar
+  tabBar: 'rgba(11, 10, 26, 0.80)',
+  tabBarBorder: 'rgba(130, 90, 255, 0.12)',
 
-  overlay: 'rgba(8, 8, 8, 0.75)',
-  overlayLight: 'rgba(8, 8, 8, 0.55)',
+  // Overlays
+  overlay: 'rgba(11, 10, 26, 0.80)',
+  overlayLight: 'rgba(11, 10, 26, 0.60)',
 
-  cardGradientStart: 'rgba(255, 255, 255, 0.06)',
-  cardGradientEnd: 'rgba(255, 255, 255, 0.01)',
-  cardHighlight: 'rgba(255, 255, 255, 0.08)',
+  // Card gradients
+  cardGradientStart: 'rgba(130, 90, 255, 0.08)',
+  cardGradientEnd: 'rgba(130, 90, 255, 0.01)',
+  cardHighlight: 'rgba(255, 255, 255, 0.06)',
 
-  glassBg: 'rgba(12, 12, 12, 0.86)',
-  glassHighlightLegacy: 'rgba(255, 255, 255, 0.03)',
+  glassBg: 'rgba(16, 14, 36, 0.90)',
+  glassHighlightLegacy: 'rgba(130, 90, 255, 0.04)',
 } as const;
 
 export default Colors;

@@ -116,9 +116,11 @@ function CategoryCard({
         <GlassCard
           variant="interactive"
           accentColor={selected ? category.accentColor : undefined}
-          style={[styles.categoryCard, selected && { borderColor: category.accentColor }]}
+          style={[styles.categoryCard, selected && { borderColor: category.accentColor, borderWidth: 1.5 }]}
         >
-          <Text style={styles.categoryEmoji}>{category.emoji}</Text>
+          <View style={[styles.emojiCircle, { backgroundColor: `${category.accentColor}18`, borderColor: `${category.accentColor}35` }]}>
+            <Text style={styles.categoryEmoji}>{category.emoji}</Text>
+          </View>
           <Text style={styles.categoryTitle}>{category.label}</Text>
           <Text style={styles.categorySubtitle}>{category.subtitle}</Text>
         </GlassCard>
@@ -284,7 +286,7 @@ export default function BuilderScreen() {
   const renderStep1 = useCallback(() => {
     return (
       <View style={styles.stepBody}>
-        <Text style={styles.heading}>What are you creating?</Text>
+        <Text style={styles.heading}>✨ What are you creating?</Text>
         <Text style={styles.subheading}>Pick a category to get started</Text>
 
         <FlatList
@@ -310,7 +312,7 @@ export default function BuilderScreen() {
   const renderStep2 = useCallback(() => {
     return (
       <View style={styles.stepBody}>
-        <Text style={styles.heading}>Describe your goal</Text>
+        <Text style={styles.heading}>🎯 Describe your goal</Text>
         <Text style={styles.subheading}>
           {selectedCategory.emoji} {selectedCategory.label} · {getModelLabel(builder.config.targetModel ?? selectedCategory.recommendedModel)}
         </Text>
@@ -338,7 +340,9 @@ export default function BuilderScreen() {
             style={styles.textArea}
             textAlignVertical="top"
           />
-          <Text style={styles.tokenCounter}>{tokenEstimate} tokens est.</Text>
+          <View style={styles.tokenBadge}>
+            <Text style={styles.tokenText}>{tokenEstimate} tokens</Text>
+          </View>
         </GlassCard>
 
         <View style={styles.chipsWrap}>
@@ -369,7 +373,7 @@ export default function BuilderScreen() {
   const renderStep3 = useCallback(() => {
     return (
       <View style={styles.stepBody}>
-        <Text style={styles.heading}>Add context</Text>
+        <Text style={styles.heading}>🧩 Add context</Text>
         <Text style={styles.subheading}>The more context, the better the prompt</Text>
 
         {isTextCategory ? (
@@ -415,8 +419,8 @@ export default function BuilderScreen() {
                 <Switch
                   value={Boolean(builder.config.context.addChainOfThought)}
                   onValueChange={(value) => updateContext({ addChainOfThought: value })}
-                  trackColor={{ false: 'rgba(255,255,255,0.25)', true: `${selectedCategory.accentColor}70` }}
-                  thumbColor={builder.config.context.addChainOfThought ? selectedCategory.accentColor : '#ddd'}
+                  trackColor={{ false: 'rgba(130, 90, 255, 0.25)', true: `${selectedCategory.accentColor}70` }}
+                  thumbColor={builder.config.context.addChainOfThought ? selectedCategory.accentColor : '#ccc'}
                 />
               </View>
             </GlassCard>
@@ -560,7 +564,7 @@ export default function BuilderScreen() {
   const renderStep4 = useCallback(() => {
     return (
       <View style={styles.stepBody}>
-        <Text style={styles.heading}>Fine-tune</Text>
+        <Text style={styles.heading}>⚙️ Fine-tune</Text>
         <Text style={styles.subheading}>Adjust for the best result</Text>
 
         {(isTextCategory || isVideoCategory) && (
@@ -688,7 +692,7 @@ export default function BuilderScreen() {
               style={styles.advancedHeader}
             >
               <Text style={styles.fieldLabel}>Advanced</Text>
-              {advancedOpen ? <ChevronUp size={16} color={Colors.textSecondary} /> : <ChevronDown size={16} color={Colors.textSecondary} />}
+              {advancedOpen ? <ChevronUp size={16} color="rgba(130,90,255,0.6)" /> : <ChevronDown size={16} color="rgba(130,90,255,0.6)" />}
             </Pressable>
 
             {advancedOpen ? (
@@ -715,8 +719,8 @@ export default function BuilderScreen() {
                   <Switch
                     value={Boolean(builder.config.finetuneOptions.addExamples)}
                     onValueChange={(value) => updateFineTune({ addExamples: value })}
-                    trackColor={{ false: 'rgba(255,255,255,0.25)', true: `${selectedCategory.accentColor}70` }}
-                    thumbColor={builder.config.finetuneOptions.addExamples ? selectedCategory.accentColor : '#ddd'}
+                    trackColor={{ false: 'rgba(130,90,255,0.25)', true: `${selectedCategory.accentColor}70` }}
+                    thumbColor={builder.config.finetuneOptions.addExamples ? selectedCategory.accentColor : '#ccc'}
                   />
                 </View>
 
@@ -781,10 +785,10 @@ export default function BuilderScreen() {
     }
 
     return (
-      <View style={styles.stepBody}> 
+      <View style={styles.stepBody}>
         <View style={styles.readyHeader}>
           <View style={styles.readyTitleWrap}>
-            <Text style={styles.heading}>Ready</Text>
+            <Text style={styles.heading}>🚀 Ready</Text>
             <View style={styles.godBadge}>
               <Sparkles size={13} color={Colors.accent} />
               <Text style={styles.godBadgeText}>God-tier</Text>
@@ -792,7 +796,7 @@ export default function BuilderScreen() {
           </View>
 
           <Animated.View entering={ZoomIn.delay(400).springify()}>
-            <View style={[styles.scoreBadge, { borderColor: `${scoreColor(builder.result.qualityScore)}88`, backgroundColor: `${scoreColor(builder.result.qualityScore)}22` }]}>
+            <View style={[styles.scoreBadge, { borderColor: `${scoreColor(builder.result.qualityScore)}66`, backgroundColor: `${scoreColor(builder.result.qualityScore)}18` }]}>
               <Text style={[styles.scoreText, { color: scoreColor(builder.result.qualityScore) }]}>{builder.result.qualityScore}</Text>
             </View>
           </Animated.View>
@@ -892,18 +896,18 @@ export default function BuilderScreen() {
   return (
     <View style={styles.container}>
       <LinearGradient
-        colors={[Colors.background, Colors.backgroundGradientMid, Colors.background]}
+        colors={[Colors.backgroundGradientStart, Colors.backgroundGradientMid, Colors.backgroundGradientEnd]}
         style={StyleSheet.absoluteFill}
       />
       <LinearGradient
-        colors={[`${selectedCategory.accentColor}14`, 'rgba(8,8,8,0)']}
+        colors={[`${selectedCategory.accentColor}12`, Colors.atmospherePurple, 'rgba(11,10,26,0)']}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
         style={styles.atmosphereGlow}
       />
 
       <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={[styles.progressWrap, { paddingTop: insets.top + 8 }]}> 
+        <View style={[styles.progressWrap, { paddingTop: insets.top + 8 }]}>
           <WizardProgress
             currentStep={builder.step}
             totalSteps={5}
@@ -924,7 +928,7 @@ export default function BuilderScreen() {
         </ScrollView>
 
         {builder.step < 5 ? (
-          <View style={[styles.navBar, { paddingBottom: insets.bottom + 12 }]}> 
+          <View style={[styles.navBar, { paddingBottom: insets.bottom + 12 }]}>
             <View style={styles.navRow}>
               {builder.step > 1 ? (
                 <GlowButton title="Back" variant="secondary" size="medium" onPress={prevStep} style={styles.navHalf} />
@@ -932,7 +936,7 @@ export default function BuilderScreen() {
                 <View style={styles.navHalf} />
               )}
               <GlowButton
-                title={builder.step === 4 ? 'Generate' : 'Next'}
+                title={builder.step === 4 ? '✨ Generate' : 'Next'}
                 size="medium"
                 onPress={nextStep}
                 style={styles.navHalf}
@@ -940,7 +944,7 @@ export default function BuilderScreen() {
             </View>
           </View>
         ) : (
-          <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}> 
+          <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}>
             <View style={styles.actionRow}>
               <GlowButton title="Copy" variant="secondary" size="medium" onPress={handleCopyPrompt} style={styles.actionHalf} />
               <GlowButton title="Save" variant="primary" size="medium" onPress={handleSavePrompt} style={styles.actionHalf} />
@@ -972,7 +976,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: -100,
     right: -100,
-    height: 320,
+    height: 350,
   },
   progressWrap: {
     paddingHorizontal: 20,
@@ -987,37 +991,46 @@ const styles = StyleSheet.create({
     gap: 16,
   },
   stepBody: {
-    gap: 14,
+    gap: 16,
   },
   heading: {
     fontSize: 30,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: -0.5,
     color: '#fff',
   },
   subheading: {
     fontSize: 14,
     color: Colors.textTertiary,
-    marginTop: -2,
+    marginTop: -4,
   },
   categoryList: {
-    gap: 10,
+    gap: 12,
   },
   categoryRow: {
-    gap: 10,
+    gap: 12,
   },
   categoryWrap: {
     flex: 1,
     maxWidth: '50%',
   },
   categoryCard: {
-    minHeight: 132,
+    minHeight: 140,
     justifyContent: 'center',
     alignItems: 'flex-start',
     gap: 8,
   },
+  emojiCircle: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
   categoryEmoji: {
-    fontSize: 26,
+    fontSize: 22,
   },
   categoryTitle: {
     fontSize: 16,
@@ -1027,48 +1040,58 @@ const styles = StyleSheet.create({
   categorySubtitle: {
     fontSize: 12,
     color: Colors.textTertiary,
+    lineHeight: 16,
   },
   input: {
     fontSize: 15,
     color: Colors.text,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 12,
+    backgroundColor: 'rgba(130, 90, 255, 0.05)',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderColor: 'rgba(130, 90, 255, 0.12)',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
   textArea: {
     minHeight: 140,
     fontSize: 16,
     color: Colors.text,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 14,
+    backgroundColor: 'rgba(130, 90, 255, 0.05)',
+    borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 13,
-    paddingVertical: 12,
+    borderColor: 'rgba(130, 90, 255, 0.12)',
+    paddingHorizontal: 14,
+    paddingVertical: 14,
   },
   textAreaCompact: {
     minHeight: 104,
     fontSize: 15,
     color: Colors.text,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-    borderRadius: 12,
+    backgroundColor: 'rgba(130, 90, 255, 0.05)',
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    borderColor: 'rgba(130, 90, 255, 0.12)',
+    paddingHorizontal: 14,
+    paddingVertical: 12,
   },
-  tokenCounter: {
+  tokenBadge: {
     alignSelf: 'flex-end',
-    marginTop: 8,
-    fontSize: 12,
-    color: Colors.textTertiary,
+    marginTop: 10,
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(245, 158, 11, 0.30)',
+  },
+  tokenText: {
+    fontSize: 11,
+    color: Colors.accent,
+    fontWeight: '700',
   },
   fieldLabel: {
     fontSize: 13,
-    color: Colors.textSecondary,
+    color: 'rgba(255,255,255,0.70)',
     fontWeight: '600',
     marginBottom: 8,
   },
@@ -1085,7 +1108,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   stackSm: {
-    gap: 8,
+    gap: 10,
   },
   toggleRow: {
     flexDirection: 'row',
@@ -1114,10 +1137,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.45)',
-    backgroundColor: 'rgba(245,158,11,0.16)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
+    borderColor: 'rgba(245,158,11,0.40)',
+    backgroundColor: 'rgba(245,158,11,0.12)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 999,
   },
   godBadgeText: {
@@ -1126,15 +1149,15 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   scoreBadge: {
-    minWidth: 52,
-    height: 34,
-    borderWidth: 1,
-    borderRadius: 12,
+    minWidth: 54,
+    height: 36,
+    borderWidth: 1.5,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
   },
   scoreText: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '800',
   },
   toggleLine: {
@@ -1144,7 +1167,7 @@ const styles = StyleSheet.create({
   conciseText: {
     color: Colors.textSecondary,
     fontSize: 14,
-    lineHeight: 21,
+    lineHeight: 22,
   },
   cardTitle: {
     fontSize: 14,
@@ -1153,7 +1176,7 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   metaItem: {
-    color: Colors.textSecondary,
+    color: 'rgba(255,255,255,0.60)',
     fontSize: 13,
     lineHeight: 20,
     marginBottom: 4,
@@ -1165,9 +1188,9 @@ const styles = StyleSheet.create({
     bottom: 0,
     paddingHorizontal: 20,
     paddingTop: 12,
-    backgroundColor: 'rgba(8,8,8,0.92)',
+    backgroundColor: 'rgba(11, 10, 26, 0.92)',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: 'rgba(130, 90, 255, 0.10)',
   },
   navRow: {
     flexDirection: 'row',
@@ -1184,9 +1207,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: 12,
     gap: 10,
-    backgroundColor: 'rgba(8,8,8,0.92)',
+    backgroundColor: 'rgba(11, 10, 26, 0.92)',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.06)',
+    borderTopColor: 'rgba(130, 90, 255, 0.10)',
   },
   actionRow: {
     flexDirection: 'row',
@@ -1200,10 +1223,10 @@ const styles = StyleSheet.create({
     left: 20,
     right: 20,
     paddingVertical: 10,
-    borderRadius: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    backgroundColor: 'rgba(18,18,18,0.95)',
+    borderColor: 'rgba(130, 90, 255, 0.20)',
+    backgroundColor: 'rgba(16, 14, 36, 0.95)',
     alignItems: 'center',
   },
   toastText: {

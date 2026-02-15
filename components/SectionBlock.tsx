@@ -30,10 +30,12 @@ function SectionBlockComponent({ section, onCopied }: SectionBlockProps) {
     <GlassCard variant="interactive" onPress={handleCopy}>
       <View style={styles.headerRow}>
         <View style={styles.titleWrap}>
-          <Text style={styles.emoji}>{section.emoji}</Text>
+          <View style={[styles.emojiWrap, { backgroundColor: `${section.color}20`, borderColor: `${section.color}35` }]}>
+            <Text style={styles.emoji}>{section.emoji}</Text>
+          </View>
           <Text style={[styles.title, { color: section.color }]}>{section.header}</Text>
         </View>
-        <Copy size={14} color={Colors.textTertiary} />
+        <Copy size={14} color="rgba(130, 90, 255, 0.45)" />
       </View>
       <Text style={styles.content}>{section.content}</Text>
     </GlassCard>
@@ -47,24 +49,32 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    marginBottom: 12,
   },
   titleWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 10,
+  },
+  emojiWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   emoji: {
-    fontSize: 16,
+    fontSize: 14,
   },
   title: {
     fontSize: 14,
     fontWeight: '700',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
   content: {
     color: Colors.textSecondary,
     fontSize: 14,
-    lineHeight: 21,
+    lineHeight: 22,
   },
 });

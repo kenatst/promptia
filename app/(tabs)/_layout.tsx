@@ -8,12 +8,17 @@ import Colors from '@/constants/colors';
 
 function TabBackground() {
   if (Platform.OS === 'web') {
-    return <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.background }]} />;
+    return (
+      <View style={StyleSheet.absoluteFill}>
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.tabBar }]} />
+        <View style={styles.topBorder} />
+      </View>
+    );
   }
 
   return (
     <View style={StyleSheet.absoluteFill}>
-      <BlurView tint="dark" intensity={80} style={StyleSheet.absoluteFill} />
+      <BlurView tint="dark" intensity={90} style={StyleSheet.absoluteFill} />
       <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.tabBar }]} />
       <View style={styles.topBorder} />
     </View>
@@ -26,7 +31,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: Colors.accent,
-        tabBarInactiveTintColor: Colors.textTertiary,
+        tabBarInactiveTintColor: 'rgba(130, 90, 255, 0.45)',
         tabBarBackground: () => <TabBackground />,
         tabBarStyle: {
           position: 'absolute',
@@ -39,8 +44,8 @@ export default function TabsLayout() {
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '600',
-          letterSpacing: 0.2,
+          fontWeight: '700',
+          letterSpacing: 0.3,
         },
       }}
     >
@@ -76,6 +81,6 @@ const styles = StyleSheet.create({
     right: 0,
     top: 0,
     height: 1,
-    backgroundColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(130, 90, 255, 0.15)',
   },
 });

@@ -1,78 +1,27 @@
-import React, { useCallback, useMemo, useState } from 'react';
-import {
-  Alert,
-  FlatList,
-  Pressable,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { BlurView } from 'expo-blur';
+import React, { useCallback, useMemo } from 'react';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Search, Star, X } from 'lucide-react-native';
+import { Search, X, Star } from 'lucide-react-native';
 import Animated, {
-  interpolate,
+  FadeInDown,
   useAnimatedStyle,
   useSharedValue,
-  withTiming,
+  withSpring,
 } from 'react-native-reanimated';
 
 import Colors from '@/constants/colors';
-import { AnimatedChip } from '@/components/AnimatedChip';
-import { PromptCard } from '@/components/PromptCard';
-import { EXPLORE_FILTERS, gallerySeed, getCategoryById } from '@/data/gallerySeed';
+import { gallerySeed, getCategoryById, EXPLORE_FILTERS, type ExploreFilter } from '@/data/gallerySeed';
 import { usePromptStore } from '@/store/promptStore';
-import { ExploreFilter, GalleryItem, Prompt } from '@/types/prompt';
+import { Prompt } from '@/types/prompt';
+import { AnimatedChip } from '@/components/AnimatedChip';
+import { GlassCard } from '@/components/GlassCard';
+import { PromptCard } from '@/components/PromptCard';
 import { sharePromptText } from '@/utils/sharePrompt';
 
 const AnimatedView = Animated.createAnimatedComponent(View);
-
-function FeaturedHero({
-  item,
-  onOpen,
-  onRemix,
-}: {
-  item: GalleryItem;
-  onOpen: (item: Prompt) => void;
-  onRemix: (item: Prompt) => void;
-}) {
-  const category = getCategoryById(item.category);
-
-  return (
-    <Pressable onPress={() => onOpen(item)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-      <View style={styles.featuredCard}>
-        <LinearGradient
-          colors={[`${item.accentColor}B0`, `${item.accentColor}45`, 'rgba(8,8,8,0.95)']}
-          style={StyleSheet.absoluteFill}
-        />
-        <View style={styles.featuredBadge}>
-          <Star size={10} color="#FFD166" />
-          <Text style={styles.featuredBadgeText}>Editor Pick</Text>
-        </View>
-
-        <View style={styles.featuredBottom}>
-          <Text style={styles.featuredTitle} numberOfLines={2}>
-            {item.title}
-          </Text>
-          <View style={styles.featuredMetaRow}>
-            <View style={[styles.categoryPill, { borderColor: `${item.accentColor}88`, backgroundColor: `${item.accentColor}25` }]}>
-              <Text style={[styles.categoryPillText, { color: '#fff' }]}>{category.label}</Text>
-            </View>
-            <Text style={styles.likesText}>❤️ {item.likeCount.toLocaleString()}</Text>
-          </View>
-
-          <Pressable onPress={() => onRemix(item)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.remixMiniBtn}>
-            <Text style={styles.remixMiniText}>Remix →</Text>
-          </Pressable>
-        </View>
-      </View>
-    </Pressable>
-  );
-}
 
 export default function GalleryScreen() {
   const insets = useSafeAreaInsets();
@@ -80,203 +29,200 @@ export default function GalleryScreen() {
 
   const {
     explore,
-    setExploreFilter,
     setExploreSearchQuery,
+    setExploreFilter,
+    saveToLibrary,
     prefillBuilderFromPrompt,
-    savePromptToLibrary,
   } = usePromptStore();
 
-  const [searchFocused, setSearchFocused] = useState(false);
-  const focus = useSharedValue(0);
+  const searchFocused = useSharedValue(0);
+
+  const onSearchFocus = useCallback(() => {
+    searchFocused.value = withSpring(1, { damping: 18, stiffness: 260 });
+  }, [searchFocused]);
+
+  const onSearchBlur = useCallback(() => {
+    searchFocused.value = withSpring(0, { damping: 18, stiffness: 260 });
+  }, [searchFocused]);
 
   const searchStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(focus.value, [0, 1], [1, 1.02]) }],
-    borderColor: focus.value > 0.5 ? `${Colors.accent}88` : 'rgba(255,255,255,0.10)',
+    borderColor: searchFocused.value > 0.5 ? Colors.accent : 'rgba(130, 90, 255, 0.18)',
   }));
 
   const filteredPrompts = useMemo(() => {
-    let list = gallerySeed;
+    let items = [...gallerySeed];
 
-    if (explore.filter === 'Text') {
-      list = list.filter((item) => item.type === 'text');
+    if (explore.filter !== 'All') {
+      items = items.filter((p) => getCategoryById(p.category).label === explore.filter);
     }
 
-    if (explore.filter === 'Image') {
-      list = list.filter((item) => item.type === 'image');
-    }
-
-    if (explore.filter === 'Video') {
-      list = list.filter((item) => item.type === 'video');
-    }
-
-    if (explore.filter === 'Code') {
-      list = list.filter((item) => item.category === 'code_dev');
-    }
-
-    if (explore.filter === 'Creative') {
-      const creativeCategories = new Set(['writing', 'image_art', 'photography', 'video_clip', 'ui_design', 'logo_brand', 'social_media']);
-      list = list.filter((item) => creativeCategories.has(item.category));
-    }
-
-    if (explore.filter === 'Business') {
-      const businessCategories = new Set(['marketing', 'email', 'business_plan', 'data_analysis', 'legal', 'productivity']);
-      list = list.filter((item) => businessCategories.has(item.category));
-    }
-
-    const query = explore.searchQuery.trim().toLowerCase();
-    if (query.length === 0) {
-      return list;
-    }
-
-    return list.filter((item) => {
-      const categoryLabel = getCategoryById(item.category).label.toLowerCase();
-      return (
-        item.title.toLowerCase().includes(query) ||
-        categoryLabel.includes(query) ||
-        item.tags.some((tag) => tag.toLowerCase().includes(query))
+    if (explore.searchQuery.trim()) {
+      const q = explore.searchQuery.toLowerCase();
+      items = items.filter(
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.tags.some((tag) => tag.toLowerCase().includes(q)) ||
+          p.fullPrompt.toLowerCase().includes(q)
       );
-    });
+    }
+
+    return items;
   }, [explore.filter, explore.searchQuery]);
 
-  const featuredPrompts = useMemo(() => gallerySeed.filter((item) => item.isEditorPick), []);
+  const editorPicks = useMemo(() => gallerySeed.filter((p) => p.editorPick).slice(0, 3), []);
 
-  const handleOpenPrompt = useCallback(
+  const handlePromptPress = useCallback(
     (prompt: Prompt) => {
       router.push(`/prompt/${prompt.id}`);
     },
     [router]
   );
 
-  const handleRemixPrompt = useCallback(
+  const handleRemix = useCallback(
     (prompt: Prompt) => {
-      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
       prefillBuilderFromPrompt(prompt);
       router.push('/(tabs)/(builder)');
     },
     [prefillBuilderFromPrompt, router]
   );
 
-  const handleSavePrompt = useCallback(
+  const handleSave = useCallback(
     (prompt: Prompt) => {
-      savePromptToLibrary(prompt);
+      saveToLibrary(prompt);
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      Alert.alert('Saved', 'Prompt added to Library.');
     },
-    [savePromptToLibrary]
+    [saveToLibrary]
   );
 
-  const handleSharePrompt = useCallback(async (prompt: Prompt) => {
+  const handleShare = useCallback(async (prompt: Prompt) => {
     await sharePromptText(prompt.fullPrompt, prompt.title);
   }, []);
 
-  const renderPrompt = useCallback(
-    ({ item }: { item: GalleryItem }) => (
-      <PromptCard
-        prompt={item}
-        variant="gallery"
-        onPress={handleOpenPrompt}
-        onRemix={handleRemixPrompt}
-        onUseInBuilder={handleRemixPrompt}
-        onSave={handleSavePrompt}
-        onShare={handleSharePrompt}
-      />
-    ),
-    [handleOpenPrompt, handleRemixPrompt, handleSavePrompt, handleSharePrompt]
+  const handleUseInBuilder = useCallback(
+    (prompt: Prompt) => {
+      prefillBuilderFromPrompt(prompt);
+      router.push('/(tabs)/(builder)');
+    },
+    [prefillBuilderFromPrompt, router]
   );
 
-  const renderFeatured = useCallback(
-    ({ item }: { item: GalleryItem }) => <FeaturedHero item={item} onOpen={handleOpenPrompt} onRemix={handleRemixPrompt} />,
-    [handleOpenPrompt, handleRemixPrompt]
+  const clearSearch = useCallback(() => {
+    setExploreSearchQuery('');
+  }, [setExploreSearchQuery]);
+
+  const renderFeaturedCard = useCallback(
+    (prompt: Prompt, index: number) => {
+      const category = getCategoryById(prompt.category);
+      return (
+        <Animated.View key={prompt.id} entering={FadeInDown.delay(index * 100).duration(300)}>
+          <Pressable onPress={() => handlePromptPress(prompt)}>
+            <GlassCard accent accentColor={prompt.accentColor} style={styles.featuredCard}>
+              <View style={styles.featuredBadge}>
+                <Star size={12} color={Colors.accent} fill={Colors.accent} />
+                <Text style={styles.featuredBadgeText}>Editor's Pick</Text>
+              </View>
+              <Text style={styles.featuredTitle} numberOfLines={2}>{prompt.title}</Text>
+              <Text style={styles.featuredPreview} numberOfLines={2}>
+                {(prompt.concisePrompt || prompt.fullPrompt).replace(/\s+/g, ' ').trim()}
+              </Text>
+              <View style={[styles.featuredCat, { borderColor: `${prompt.accentColor}55`, backgroundColor: `${prompt.accentColor}15` }]}>
+                <Text style={[styles.featuredCatText, { color: prompt.accentColor }]}>{category.emoji} {category.label}</Text>
+              </View>
+            </GlassCard>
+          </Pressable>
+        </Animated.View>
+      );
+    },
+    [handlePromptPress]
   );
 
   return (
     <View style={styles.container}>
-      <LinearGradient colors={[Colors.background, Colors.backgroundGradientMid, Colors.background]} style={StyleSheet.absoluteFill} />
       <LinearGradient
-        colors={[`${Colors.blue}14`, 'rgba(8,8,8,0)']}
+        colors={[Colors.backgroundGradientStart, Colors.backgroundGradientMid, Colors.backgroundGradientEnd]}
+        style={StyleSheet.absoluteFill}
+      />
+      <LinearGradient
+        colors={[Colors.atmospherePurple, 'rgba(11,10,26,0)']}
         start={{ x: 0.5, y: 0 }}
         end={{ x: 0.5, y: 1 }}
-        style={styles.glow}
+        style={styles.atmosphereGlow}
       />
 
-      <View style={[styles.stickyHeader, { paddingTop: insets.top + 6 }]}>
-        <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
-        <Text style={styles.headerTitle}>Explore</Text>
+      <View style={[styles.stickyHeader, { paddingTop: insets.top + 8 }]}>
+        <Text style={styles.heading}>🔮 Explore</Text>
 
         <AnimatedView style={[styles.searchWrap, searchStyle]}>
-          <Search size={17} color={searchFocused ? Colors.accent : Colors.textTertiary} />
+          <Search size={17} color="rgba(130, 90, 255, 0.50)" />
           <TextInput
             value={explore.searchQuery}
             onChangeText={setExploreSearchQuery}
-            onFocus={() => {
-              setSearchFocused(true);
-              focus.value = withTiming(1, { duration: 180 });
-            }}
-            onBlur={() => {
-              setSearchFocused(false);
-              focus.value = withTiming(0, { duration: 180 });
-            }}
-            placeholder="Search prompts"
+            placeholder="Search prompts..."
             placeholderTextColor={Colors.textTertiary}
             style={styles.searchInput}
+            onFocus={onSearchFocus}
+            onBlur={onSearchBlur}
           />
           {explore.searchQuery.length > 0 ? (
-            <Pressable onPress={() => setExploreSearchQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Pressable onPress={clearSearch} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
               <X size={16} color={Colors.textTertiary} />
             </Pressable>
           ) : null}
         </AnimatedView>
 
-        <Text style={styles.countLabel}>{filteredPrompts.length} prompts</Text>
+        <FlatList
+          data={EXPLORE_FILTERS as readonly ExploreFilter[]}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item}
+          contentContainerStyle={styles.filterRow}
+          renderItem={({ item }) => (
+            <AnimatedChip
+              label={item}
+              selected={explore.filter === item}
+              onPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                setExploreFilter(item);
+              }}
+              accentColor={Colors.accent}
+            />
+          )}
+        />
       </View>
 
       <FlatList
         data={filteredPrompts}
         keyExtractor={(item) => item.id}
-        windowSize={5}
-        renderItem={renderPrompt}
+        contentContainerStyle={[styles.list, { paddingBottom: insets.bottom + 100 }]}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingTop: insets.top + 170, paddingHorizontal: 20, paddingBottom: insets.bottom + 120 }}
-        ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
         ListHeaderComponent={
-          <View style={styles.listHeader}> 
-            <FlatList
-              data={EXPLORE_FILTERS as readonly ExploreFilter[]}
-              keyExtractor={(item) => item}
-              horizontal
-              windowSize={5}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.filtersRow}
-              renderItem={({ item }) => (
-                <AnimatedChip
-                  label={item}
-                  selected={explore.filter === item}
-                  onPress={() => {
-                    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                    setExploreFilter(item);
-                  }}
-                  accentColor={Colors.accent}
-                />
-              )}
-            />
-
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Featured</Text>
+          editorPicks.length > 0 && explore.filter === 'All' && !explore.searchQuery ? (
+            <View style={styles.featuredSection}>
+              <Text style={styles.sectionTitle}>⭐ Editor's Picks</Text>
+              <View style={styles.featuredStack}>
+                {editorPicks.map((p, i) => renderFeaturedCard(p, i))}
+              </View>
             </View>
-
-            <FlatList
-              data={featuredPrompts}
-              keyExtractor={(item) => item.id}
-              horizontal
-              windowSize={5}
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.featuredList}
-              renderItem={renderFeatured}
+          ) : null
+        }
+        renderItem={({ item, index }) => (
+          <Animated.View entering={FadeInDown.delay(index * 50).duration(250)}>
+            <PromptCard
+              prompt={item}
+              variant="gallery"
+              onPress={handlePromptPress}
+              onRemix={handleRemix}
+              onSave={handleSave}
+              onShare={handleShare}
+              onUseInBuilder={handleUseInBuilder}
             />
-
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>All Prompts</Text>
-            </View>
+          </Animated.View>
+        )}
+        ItemSeparatorComponent={() => <View style={styles.separator} />}
+        ListEmptyComponent={
+          <View style={styles.emptyState}>
+            <Text style={styles.emptyTitle}>No prompts found</Text>
+            <Text style={styles.emptySubtitle}>Try a different search or filter</Text>
           </View>
         }
       />
@@ -289,143 +235,119 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  glow: {
+  atmosphereGlow: {
     position: 'absolute',
     top: 0,
     left: -80,
     right: -80,
-    height: 320,
+    height: 300,
   },
   stickyHeader: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    zIndex: 30,
     paddingHorizontal: 20,
-    paddingBottom: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.06)',
-    overflow: 'hidden',
+    paddingBottom: 8,
+    gap: 12,
+    zIndex: 10,
   },
-  headerTitle: {
-    fontSize: 31,
-    color: Colors.text,
-    fontWeight: '700',
+  heading: {
+    fontSize: 32,
+    fontWeight: '800',
+    color: '#fff',
     letterSpacing: -0.5,
-    marginBottom: 10,
   },
   searchWrap: {
-    borderWidth: 1,
-    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(130, 90, 255, 0.08)',
+    borderRadius: 16,
+    borderWidth: 1.2,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     gap: 10,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-    paddingHorizontal: 12,
-    paddingVertical: 11,
   },
   searchInput: {
     flex: 1,
-    color: Colors.text,
     fontSize: 15,
+    color: Colors.text,
   },
-  countLabel: {
-    marginTop: 10,
-    color: Colors.textTertiary,
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  listHeader: {
-    gap: 14,
-    marginBottom: 14,
-  },
-  filtersRow: {
+  filterRow: {
     gap: 8,
-    paddingRight: 16,
+    paddingRight: 12,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  list: {
+    paddingHorizontal: 20,
+    paddingTop: 8,
+  },
+  separator: {
+    height: 12,
+  },
+  featuredSection: {
+    marginBottom: 20,
+    gap: 14,
   },
   sectionTitle: {
-    color: Colors.text,
-    fontSize: 20,
-    fontWeight: '600',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#fff',
   },
-  featuredList: {
+  featuredStack: {
     gap: 12,
-    paddingRight: 20,
   },
   featuredCard: {
-    width: 310,
-    height: 200,
-    borderRadius: 22,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.12)',
-    justifyContent: 'space-between',
+    paddingVertical: 18,
+    paddingHorizontal: 18,
+    gap: 10,
   },
   featuredBadge: {
-    margin: 12,
-    alignSelf: 'flex-start',
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 5,
-    borderRadius: 999,
+    gap: 6,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(245, 158, 11, 0.12)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderColor: 'rgba(245, 158, 11, 0.30)',
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
   },
   featuredBadgeText: {
-    color: '#fff',
     fontSize: 11,
+    color: Colors.accent,
     fontWeight: '700',
-  },
-  featuredBottom: {
-    gap: 9,
-    padding: 14,
   },
   featuredTitle: {
-    color: '#fff',
-    fontSize: 21,
+    fontSize: 20,
     fontWeight: '700',
-    letterSpacing: -0.4,
+    color: '#fff',
+    letterSpacing: -0.3,
   },
-  featuredMetaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
+  featuredPreview: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.60)',
+    lineHeight: 20,
   },
-  categoryPill: {
+  featuredCat: {
+    alignSelf: 'flex-start',
     borderWidth: 1,
     borderRadius: 999,
-    paddingHorizontal: 9,
-    paddingVertical: 5,
-  },
-  categoryPillText: {
-    fontSize: 11,
-    fontWeight: '600',
-  },
-  likesText: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  remixMiniBtn: {
-    alignSelf: 'flex-end',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.25)',
-    backgroundColor: 'rgba(255,255,255,0.14)',
     paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 999,
+    paddingVertical: 4,
   },
-  remixMiniText: {
-    color: '#fff',
-    fontSize: 12,
+  featuredCatText: {
+    fontSize: 11,
     fontWeight: '700',
+  },
+  emptyState: {
+    paddingVertical: 60,
+    alignItems: 'center',
+    gap: 8,
+  },
+  emptyTitle: {
+    color: 'rgba(255,255,255,0.50)',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  emptySubtitle: {
+    color: Colors.textTertiary,
+    fontSize: 13,
   },
 });

@@ -29,7 +29,7 @@ function WizardProgressComponent({ currentStep, totalSteps, stepLabels, accentCo
   }, [normalizedStep, totalSteps]);
 
   useEffect(() => {
-    progress.value = withTiming(progressRatio, { duration: 250 });
+    progress.value = withTiming(progressRatio, { duration: 300 });
   }, [progress, progressRatio]);
 
   const onTrackLayout = (event: LayoutChangeEvent) => {
@@ -44,7 +44,7 @@ function WizardProgressComponent({ currentStep, totalSteps, stepLabels, accentCo
     <View style={styles.container}>
       <View style={styles.headerRow}>
         <Text style={styles.headerLabel}>{stepLabels[normalizedStep - 1] ?? 'Step'}</Text>
-        <Text style={styles.headerCount}>
+        <Text style={[styles.headerCount, { color: accentColor }]}>
           {normalizedStep}
           <Text style={styles.headerTotal}>/{totalSteps}</Text>
         </Text>
@@ -66,14 +66,13 @@ function WizardProgressComponent({ currentStep, totalSteps, stepLabels, accentCo
                 <View
                   style={[
                     styles.dot,
-                    isComplete && styles.dotComplete,
-                    isActive && styles.dotActive,
-                    isActive && { borderColor: accentColor, shadowColor: accentColor },
+                    isComplete && [styles.dotComplete, { backgroundColor: accentColor, borderColor: accentColor }],
+                    isActive && [styles.dotActive, { borderColor: accentColor, shadowColor: accentColor }],
                   ]}
                 >
                   {isComplete ? <Text style={styles.check}>✓</Text> : null}
                 </View>
-                <Text style={[styles.stepLabel, isActive && { color: Colors.textSecondary }]} numberOfLines={1}>
+                <Text style={[styles.stepLabel, isActive && { color: '#fff' }]} numberOfLines={1}>
                   {label}
                 </Text>
               </View>
@@ -89,7 +88,7 @@ export const WizardProgress = React.memo(WizardProgressComponent);
 
 const styles = StyleSheet.create({
   container: {
-    gap: 10,
+    gap: 12,
   },
   headerRow: {
     flexDirection: 'row',
@@ -98,15 +97,14 @@ const styles = StyleSheet.create({
   },
   headerLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    color: Colors.textSecondary,
+    fontWeight: '700',
+    color: 'rgba(255,255,255,0.70)',
     textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    letterSpacing: 1,
   },
   headerCount: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: Colors.accent,
+    fontSize: 16,
+    fontWeight: '800',
   },
   headerTotal: {
     color: Colors.textTertiary,
@@ -118,16 +116,16 @@ const styles = StyleSheet.create({
   },
   track: {
     position: 'absolute',
-    left: 16,
-    right: 16,
-    top: 8,
-    height: 2,
-    backgroundColor: 'rgba(255,255,255,0.10)',
+    left: 18,
+    right: 18,
+    top: 9,
+    height: 3,
+    backgroundColor: 'rgba(130, 90, 255, 0.14)',
     borderRadius: 8,
     overflow: 'hidden',
   },
   trackFill: {
-    height: 2,
+    height: 3,
     borderRadius: 8,
   },
   stepsRow: {
@@ -135,17 +133,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   stepNode: {
-    width: 54,
+    width: 56,
     alignItems: 'center',
     gap: 8,
   },
   dot: {
-    width: 12,
-    height: 12,
+    width: 14,
+    height: 14,
     borderRadius: 999,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.18)',
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(130, 90, 255, 0.25)',
+    backgroundColor: 'rgba(130, 90, 255, 0.06)',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -154,22 +152,22 @@ const styles = StyleSheet.create({
     borderColor: Colors.accent,
   },
   dotActive: {
-    width: 14,
-    height: 14,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    shadowOpacity: 0.55,
-    shadowRadius: 10,
+    width: 16,
+    height: 16,
+    backgroundColor: 'rgba(130, 90, 255, 0.15)',
+    shadowOpacity: 0.6,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 0 },
   },
   check: {
     fontSize: 9,
-    lineHeight: 10,
-    color: '#2a1700',
+    lineHeight: 11,
+    color: '#1A0E00',
     fontWeight: '900',
   },
   stepLabel: {
     fontSize: 10,
-    fontWeight: '500',
+    fontWeight: '600',
     color: Colors.textTertiary,
     textAlign: 'center',
   },

@@ -28,8 +28,8 @@ function AnimatedChipComponent({ label, selected, onPress, accentColor = Colors.
   const syncSelection = useCallback(
     (value: boolean) => {
       selection.value = withSpring(value ? 1 : 0, {
-        damping: 20,
-        stiffness: 300,
+        damping: 18,
+        stiffness: 280,
       });
     },
     [selection]
@@ -40,12 +40,12 @@ function AnimatedChipComponent({ label, selected, onPress, accentColor = Colors.
   }, [selected, syncSelection]);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: interpolate(selection.value, [0, 1], [0.95, 1]) }],
-    backgroundColor: interpolateColor(selection.value, [0, 1], ['rgba(255,255,255,0.06)', `${accentColor}33`]),
-    borderColor: interpolateColor(selection.value, [0, 1], ['rgba(255,255,255,0.12)', accentColor]),
+    transform: [{ scale: interpolate(selection.value, [0, 1], [0.96, 1.02]) }],
+    backgroundColor: interpolateColor(selection.value, [0, 1], ['rgba(130, 90, 255, 0.08)', `${accentColor}30`]),
+    borderColor: interpolateColor(selection.value, [0, 1], ['rgba(130, 90, 255, 0.18)', accentColor]),
   }));
 
-  const textColor = useMemo(() => (selected ? '#FFFFFF' : 'rgba(255,255,255,0.60)'), [selected]);
+  const textColor = useMemo(() => (selected ? '#FFFFFF' : 'rgba(255,255,255,0.55)'), [selected]);
 
   const handlePress = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -71,14 +71,14 @@ export const AnimatedChip = React.memo(AnimatedChipComponent);
 const styles = StyleSheet.create({
   base: {
     borderRadius: 999,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 9,
+    borderWidth: 1.2,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
   },
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 7,
   },
   icon: {
     alignItems: 'center',
@@ -87,5 +87,6 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 13,
     fontWeight: '600',
+    letterSpacing: 0.1,
   },
 });

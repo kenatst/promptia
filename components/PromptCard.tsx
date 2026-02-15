@@ -90,21 +90,21 @@ function PromptCardComponent({
     Alert.alert('Prompt actions', prompt.title, [
       onUseInBuilder
         ? {
-            text: 'Use in Builder',
-            onPress: () => onUseInBuilder(prompt),
-          }
+          text: 'Use in Builder',
+          onPress: () => onUseInBuilder(prompt),
+        }
         : undefined,
       onSave
         ? {
-            text: 'Save to Library',
-            onPress: () => onSave(prompt),
-          }
+          text: 'Save to Library',
+          onPress: () => onSave(prompt),
+        }
         : undefined,
       onShare
         ? {
-            text: 'Share',
-            onPress: () => onShare(prompt),
-          }
+          text: 'Share',
+          onPress: () => onShare(prompt),
+        }
         : undefined,
       { text: 'Cancel', style: 'cancel' },
     ].filter(Boolean) as { text: string; onPress?: () => void; style?: 'cancel' | 'default' | 'destructive' }[]);
@@ -125,7 +125,7 @@ function PromptCardComponent({
             <View style={styles.content}>
               <View style={styles.headerRow}>
                 <View style={styles.badges}>
-                  <View style={[styles.categoryBadge, { borderColor: `${badgeColor}70`, backgroundColor: `${badgeColor}22` }]}>
+                  <View style={[styles.categoryBadge, { borderColor: `${badgeColor}55`, backgroundColor: `${badgeColor}18` }]}>
                     <Text style={[styles.categoryBadgeText, { color: badgeColor }]}>{getCategoryLabel(prompt.category)}</Text>
                   </View>
                   <Text style={styles.modelText}>{getModelLabel(prompt.model)}</Text>
@@ -141,7 +141,6 @@ function PromptCardComponent({
                 <Text style={styles.preview} numberOfLines={variant === 'gallery' ? 2 : 1}>
                   {preview}
                 </Text>
-                <View pointerEvents="none" style={styles.previewFade} />
               </View>
 
               <View style={styles.tagsRow}>
@@ -151,9 +150,9 @@ function PromptCardComponent({
                     onLongPress={
                       variant === 'library' && onRemoveTag
                         ? () => {
-                            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-                            onRemoveTag(prompt, tag);
-                          }
+                          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+                          onRemoveTag(prompt, tag);
+                        }
                         : undefined
                     }
                     hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
@@ -187,11 +186,11 @@ function PromptCardComponent({
                 <View style={styles.footerRow}>
                   <View style={styles.inlineActions}>
                     <Pressable onPress={() => onCopy?.(prompt)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.actionBtn}>
-                      <Copy size={13} color={Colors.textSecondary} />
+                      <Copy size={13} color="rgba(130, 90, 255, 0.50)" />
                       <Text style={styles.actionText}>Copy</Text>
                     </Pressable>
                     <Pressable onPress={() => onEdit?.(prompt)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.actionBtn}>
-                      <Pencil size={13} color={Colors.textSecondary} />
+                      <Pencil size={13} color="rgba(130, 90, 255, 0.50)" />
                       <Text style={styles.actionText}>Edit</Text>
                     </Pressable>
                     <Pressable onPress={() => onDelete?.(prompt)} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.actionBtn}>
@@ -216,14 +215,14 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
   },
   accentBar: {
-    width: 3,
-    borderTopLeftRadius: 20,
-    borderBottomLeftRadius: 20,
+    width: 3.5,
+    borderTopLeftRadius: 24,
+    borderBottomLeftRadius: 24,
   },
   content: {
     flex: 1,
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     gap: 10,
   },
   headerRow: {
@@ -240,8 +239,8 @@ const styles = StyleSheet.create({
   },
   categoryBadge: {
     borderWidth: 1,
-    borderRadius: 10,
-    paddingHorizontal: 8,
+    borderRadius: 12,
+    paddingHorizontal: 9,
     paddingVertical: 4,
   },
   categoryBadgeText: {
@@ -269,15 +268,7 @@ const styles = StyleSheet.create({
   preview: {
     fontSize: 14,
     lineHeight: 21,
-    color: Colors.textSecondary,
-  },
-  previewFade: {
-    position: 'absolute',
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: 28,
-    backgroundColor: 'rgba(8,8,8,0.65)',
+    color: 'rgba(255,255,255,0.60)',
   },
   tagsRow: {
     flexDirection: 'row',
@@ -286,16 +277,16 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   tag: {
-    paddingHorizontal: 8,
+    paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.10)',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderColor: 'rgba(130, 90, 255, 0.15)',
+    backgroundColor: 'rgba(130, 90, 255, 0.06)',
   },
   tagText: {
     fontSize: 11,
-    color: Colors.textTertiary,
+    color: 'rgba(255,255,255,0.50)',
     fontWeight: '600',
   },
   footerRow: {
@@ -314,12 +305,12 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   remixButton: {
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 999,
     borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.45)',
-    backgroundColor: 'rgba(245, 158, 11, 0.18)',
+    borderColor: 'rgba(245, 158, 11, 0.40)',
+    backgroundColor: 'rgba(245, 158, 11, 0.15)',
   },
   remixText: {
     fontSize: 12,
@@ -329,16 +320,16 @@ const styles = StyleSheet.create({
   inlineActions: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
+    gap: 18,
   },
   actionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
+    gap: 5,
   },
   actionText: {
     fontSize: 12,
-    color: Colors.textSecondary,
+    color: 'rgba(255,255,255,0.55)',
     fontWeight: '600',
   },
 });

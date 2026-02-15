@@ -40,14 +40,14 @@ function GlowButtonComponent({
     if (disabled) {
       return;
     }
-    scale.value = withSpring(0.96, { damping: 20, stiffness: 300 });
+    scale.value = withSpring(0.95, { damping: 18, stiffness: 280 });
   }, [disabled, scale]);
 
   const handlePressOut = useCallback(() => {
     if (disabled) {
       return;
     }
-    scale.value = withSpring(1, { damping: 20, stiffness: 300 });
+    scale.value = withSpring(1, { damping: 18, stiffness: 280 });
   }, [disabled, scale]);
 
   const handlePress = useCallback(() => {
@@ -102,7 +102,7 @@ function GlowButtonComponent({
         return ['#EF4444', '#B91C1C'] as const;
       case 'primary':
       default:
-        return ['#F59E0B', '#D97706'] as const;
+        return ['#FBBF24', '#F59E0B', '#D97706'] as const;
     }
   }, [variant]);
 
@@ -144,7 +144,7 @@ export const GlowButton = React.memo(GlowButtonComponent);
 
 const styles = StyleSheet.create({
   base: {
-    borderRadius: 16,
+    borderRadius: 20,
     overflow: 'hidden',
     borderWidth: 1,
     justifyContent: 'center',
@@ -152,22 +152,22 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   primaryContainer: {
-    borderColor: 'rgba(245, 158, 11, 0.55)',
-    shadowColor: '#F59E0B',
-    shadowOpacity: 0.4,
-    shadowRadius: 14,
+    borderColor: 'rgba(251, 191, 36, 0.50)',
+    shadowColor: '#FBBF24',
+    shadowOpacity: 0.45,
+    shadowRadius: 18,
     shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    elevation: 10,
   },
   secondaryContainer: {
-    backgroundColor: Colors.glass,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: 'rgba(130, 90, 255, 0.10)',
+    borderColor: 'rgba(130, 90, 255, 0.22)',
   },
   destructiveContainer: {
-    borderColor: 'rgba(239, 68, 68, 0.55)',
+    borderColor: 'rgba(239, 68, 68, 0.50)',
     shadowColor: '#EF4444',
-    shadowOpacity: 0.35,
-    shadowRadius: 14,
+    shadowOpacity: 0.40,
+    shadowRadius: 16,
     shadowOffset: { width: 0, height: 8 },
     elevation: 8,
   },
@@ -179,35 +179,35 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    paddingHorizontal: 18,
+    paddingHorizontal: 20,
     zIndex: 2,
   },
   text: {
     fontSize: 16,
     fontWeight: '700',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
   textPrimary: {
-    color: '#1F1200',
+    color: '#1A0E00',
   },
   textSecondary: {
     color: Colors.text,
   },
   textDestructive: {
-    color: '#fff7f7',
+    color: '#fff',
   },
   large: {
     minHeight: 56,
     width: '100%',
   },
   medium: {
-    minHeight: 48,
+    minHeight: 50,
   },
   small: {
-    minHeight: 38,
+    minHeight: 40,
   },
   disabled: {
-    opacity: 0.55,
+    opacity: 0.5,
   },
   fullWidth: {
     width: '100%',
