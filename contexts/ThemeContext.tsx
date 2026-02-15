@@ -27,48 +27,48 @@ export interface ThemeColors {
 }
 
 const lightColors: ThemeColors = {
-  bg: '#FAFAFA',
-  bgSecondary: '#F3F4F6',
-  bgTertiary: '#E5E7EB',
+  bg: '#FDFDFD', // Cleaner, brighter background
+  bgSecondary: '#F1F5F9', // Soft slate-gray for secondary backgrounds
+  bgTertiary: '#E2E8F0',
   card: '#FFFFFF',
-  cardBorder: 'rgba(0,0,0,0.03)',
-  text: '#111827',
-  textSecondary: '#6B7280',
-  textTertiary: '#9CA3AF',
+  cardBorder: 'transparent', // Cards defined by shadow now
+  text: '#1E293B', // Slate-800 for better readability
+  textSecondary: '#64748B', // Slate-500
+  textTertiary: '#94A3B8', // Slate-400
   textInverse: '#FFFFFF',
-  separator: 'rgba(0,0,0,0.04)',
+  separator: '#F1F5F9',
   inputBg: '#FFFFFF',
-  chipBg: '#F3F4F6',
-  tabBar: '#FFFFFF',
-  tabBarBorder: 'rgba(0,0,0,0.03)',
+  chipBg: '#F1F5F9',
+  tabBar: 'rgba(255, 255, 255, 0.9)', // More glass-like
+  tabBarBorder: 'rgba(0,0,0,0.02)',
   statusBar: 'dark',
-  gradientStart: '#FAFAFA',
-  gradientMid: '#FFF8EE',
-  gradientEnd: '#FEF5F0',
-  searchBg: '#FFFFFF',
-  overlay: 'rgba(0,0,0,0.4)',
+  gradientStart: '#FFFFFF', // Keeping it clean, subtle gradients
+  gradientMid: '#F8FAFC',
+  gradientEnd: '#F1F5F9',
+  searchBg: '#F8FAFC',
+  overlay: 'rgba(15, 23, 42, 0.3)', // Slate-900 with opacity
 };
 
 const darkColors: ThemeColors = {
-  bg: '#0F0F14',
-  bgSecondary: '#1A1A24',
-  bgTertiary: '#252530',
-  card: '#1A1A24',
-  cardBorder: 'rgba(255,255,255,0.06)',
-  text: '#F1F1F4',
-  textSecondary: '#9CA3B0',
-  textTertiary: '#6B7280',
-  textInverse: '#111827',
+  bg: '#0F172A', // Slate-900 main background
+  bgSecondary: '#1E293B', // Slate-800
+  bgTertiary: '#334155', // Slate-700
+  card: '#1E293B',
+  cardBorder: 'rgba(255,255,255,0.04)',
+  text: '#F8FAFC', // Slate-50
+  textSecondary: '#94A3B8', // Slate-400
+  textTertiary: '#64748B', // Slate-500
+  textInverse: '#0F172A',
   separator: 'rgba(255,255,255,0.06)',
-  inputBg: '#1A1A24',
-  chipBg: '#252530',
-  tabBar: '#161620',
-  tabBarBorder: 'rgba(255,255,255,0.06)',
+  inputBg: '#1E293B',
+  chipBg: '#334155',
+  tabBar: 'rgba(15, 23, 42, 0.9)',
+  tabBarBorder: 'rgba(255,255,255,0.04)',
   statusBar: 'light',
-  gradientStart: '#0F0F14',
-  gradientMid: '#14131A',
-  gradientEnd: '#181520',
-  searchBg: '#1A1A24',
+  gradientStart: '#0F172A',
+  gradientMid: '#162036',
+  gradientEnd: '#1E293B',
+  searchBg: '#1E293B',
   overlay: 'rgba(0,0,0,0.7)',
 };
 

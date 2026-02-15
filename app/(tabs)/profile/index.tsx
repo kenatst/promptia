@@ -29,6 +29,7 @@ import {
   Wand2,
   Info,
   Check,
+  Zap,
 } from 'lucide-react-native';
 
 import { useTheme } from '@/contexts/ThemeContext';
@@ -51,9 +52,10 @@ interface SettingsRowProps {
   danger?: boolean;
   isLast?: boolean;
   colors: any;
+  iconBg?: string;
 }
 
-function SettingsRow({ icon, label, sublabel, onPress, trailing, danger, isLast, colors }: SettingsRowProps) {
+function SettingsRow({ icon, label, sublabel, onPress, trailing, danger, isLast, colors, iconBg }: SettingsRowProps) {
   return (
     <Pressable
       onPress={() => {
@@ -69,7 +71,7 @@ function SettingsRow({ icon, label, sublabel, onPress, trailing, danger, isLast,
         !isLast && { borderBottomWidth: 1, borderBottomColor: colors.separator },
       ]}
     >
-      <View style={[styles.rowIcon, danger && { backgroundColor: 'rgba(239,68,68,0.1)' }, !danger && { backgroundColor: colors.bgSecondary }]}>
+      <View style={[styles.rowIcon, { backgroundColor: iconBg || colors.bgSecondary }, danger && { backgroundColor: '#FEE2E2' }]}>
         {icon}
       </View>
       <View style={styles.rowContent}>
@@ -87,7 +89,7 @@ function SettingsContent() {
   const { savedPrompts, clearAllData } = usePromptStore();
   const [showLanguageModal, setShowLanguageModal] = useState(false);
 
-  const geminiStatus = isGeminiConfigured() ? 'Configured' : 'Not configured';
+  const geminiStatus = isGeminiConfigured() ? 'Active' : 'Not configured';
 
   const openURL = useCallback(async (url: string) => {
     try {
@@ -137,33 +139,33 @@ function SettingsContent() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      <LinearGradient colors={[colors.gradientStart, colors.gradientMid]} style={StyleSheet.absoluteFill} />
-
       <ScrollView
-        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 12, paddingBottom: 140 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 20, paddingBottom: 140 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={[styles.pageTitle, { color: colors.text }]}>{t.settings.title}</Text>
-
-        <View style={[styles.appHeader, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-          <LinearGradient
-            colors={isDark ? ['#2D2545', '#1E1B2E'] : ['#1E1B2E', '#2D2545']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.appIconWrap}
-          >
-            <Wand2 size={28} color="#F59E0B" />
-          </LinearGradient>
-          <View>
-            <Text style={[styles.appName, { color: colors.text }]}>Promptia</Text>
-            <Text style={[styles.appVersion, { color: colors.textTertiary }]}>{t.settings.version} {APP_VERSION}</Text>
+        <View style={styles.header}>
+          <Text style={[styles.pageTitle, { color: colors.text }]}>{t.settings.title}</Text>
+          <View style={[styles.badge, { backgroundColor: colors.bgSecondary }]}>
+            <Text style={[styles.badgeText, { color: colors.textSecondary }]}>v{APP_VERSION}</Text>
           </View>
         </View>
 
+        <View style={[styles.profileCard, { backgroundColor: colors.card, shadowColor: colors.overlay }]}>
+          <View style={[styles.profileAvatar, { backgroundColor: colors.bgSecondary }]}>
+            <Text style={{ fontSize: 24 }}>👤</Text>
+          </View>
+          <View>
+            <Text style={[styles.profileName, { color: colors.text }]}>Local User</Text>
+            <Text style={[styles.profileHandle, { color: colors.textTertiary }]}>Promptia Free Tier</Text>
+          </View>
+        </View>
+
+
         <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{t.settings.appearance}</Text>
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <View style={[styles.section, { backgroundColor: colors.card, shadowColor: colors.overlay }]}>
           <SettingsRow
-            icon={<Moon size={18} color="#8B5CF6" />}
+            icon={<Moon size={20} color="#8B5CF6" />}
+            iconBg="#F3E8FF"
             label={t.settings.darkMode}
             sublabel={t.settings.darkModeSub}
             colors={colors}
@@ -171,13 +173,14 @@ function SettingsContent() {
               <Switch
                 value={isDark}
                 onValueChange={() => { toggleTheme(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                trackColor={{ false: '#E5E7EB', true: '#8B5CF6' }}
+                trackColor={{ false: '#E2E8F0', true: '#8B5CF6' }}
                 thumbColor="#FFFFFF"
               />
             }
           />
           <SettingsRow
-            icon={<Globe size={18} color="#3B82F6" />}
+            icon={<Globe size={20} color="#3B82F6" />}
+            iconBg="#DBEAFE"
             label={t.settings.language}
             sublabel={langLabels[language]}
             onPress={() => setShowLanguageModal(true)}
@@ -186,11 +189,12 @@ function SettingsContent() {
           />
         </View>
 
-        <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>AI</Text>
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>Gemini API</Text>
+        <View style={[styles.section, { backgroundColor: colors.card, shadowColor: colors.overlay }]}>
           <SettingsRow
-            icon={<Wand2 size={18} color="#F59E0B" />}
-            label="Gemini API"
+            icon={<Zap size={20} color="#F59E0B" />}
+            iconBg="#FEF3C7"
+            label="API Key"
             sublabel={geminiStatus}
             colors={colors}
             isLast
@@ -198,23 +202,26 @@ function SettingsContent() {
         </View>
 
         <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{t.settings.support}</Text>
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <View style={[styles.section, { backgroundColor: colors.card, shadowColor: colors.overlay }]}>
           <SettingsRow
-            icon={<Mail size={18} color="#14B8A6" />}
+            icon={<Mail size={20} color="#14B8A6" />}
+            iconBg="#CCFBF1"
             label={t.settings.contactSupport}
             sublabel={SUPPORT_EMAIL}
             onPress={handleContactSupport}
             colors={colors}
           />
           <SettingsRow
-            icon={<Star size={18} color="#F59E0B" />}
+            icon={<Star size={20} color="#F59E0B" />}
+            iconBg="#FEF3C7"
             label={t.settings.rateApp}
             sublabel={t.settings.rateAppSub}
             onPress={handleRateApp}
             colors={colors}
           />
           <SettingsRow
-            icon={<HelpCircle size={18} color="#06B6D4" />}
+            icon={<HelpCircle size={20} color="#06B6D4" />}
+            iconBg="#CFFAFE"
             label={t.settings.faq}
             onPress={() => openURL('https://example.com/help')}
             colors={colors}
@@ -223,16 +230,18 @@ function SettingsContent() {
         </View>
 
         <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{t.settings.legal}</Text>
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <View style={[styles.section, { backgroundColor: colors.card, shadowColor: colors.overlay }]}>
           <SettingsRow
-            icon={<Shield size={18} color="#10B981" />}
+            icon={<Shield size={20} color="#10B981" />}
+            iconBg="#D1FAE5"
             label={t.settings.privacyPolicy}
             onPress={() => openURL(PRIVACY_POLICY_URL)}
             trailing={<ExternalLink size={16} color={colors.textTertiary} />}
             colors={colors}
           />
           <SettingsRow
-            icon={<FileText size={18} color="#3B82F6" />}
+            icon={<FileText size={20} color="#3B82F6" />}
+            iconBg="#DBEAFE"
             label={t.settings.termsOfUse}
             onPress={() => openURL(TERMS_OF_USE_URL)}
             trailing={<ExternalLink size={16} color={colors.textTertiary} />}
@@ -242,9 +251,10 @@ function SettingsContent() {
         </View>
 
         <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{t.settings.data}</Text>
-        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+        <View style={[styles.section, { backgroundColor: colors.card, shadowColor: colors.overlay }]}>
           <SettingsRow
-            icon={<Info size={18} color={colors.textSecondary} />}
+            icon={<Info size={20} color={colors.textSecondary} />}
+            iconBg={colors.bgSecondary}
             label={t.settings.savedPrompts}
             sublabel={`${savedPrompts.length} ${t.settings.promptsStored}`}
             colors={colors}
@@ -252,7 +262,8 @@ function SettingsContent() {
           />
           {savedPrompts.length > 0 && (
             <SettingsRow
-              icon={<Trash2 size={18} color="#EF4444" />}
+              icon={<Trash2 size={20} color="#EF4444" />}
+              iconBg="#FEE2E2"
               label={t.settings.clearAll}
               sublabel={t.settings.clearAllSub}
               onPress={handleClearData}
@@ -264,7 +275,7 @@ function SettingsContent() {
         </View>
 
         <Text style={[styles.footerText, { color: colors.textTertiary }]}>
-          {t.settings.footer}
+          {t.settings.footer} • {APP_VERSION}
         </Text>
       </ScrollView>
 
@@ -304,44 +315,49 @@ export default function SettingsScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  scrollContent: { paddingHorizontal: 20 },
-  pageTitle: { fontSize: 32, fontWeight: '800' as const, letterSpacing: -0.8, marginBottom: 24 },
-  appHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 32,
-    padding: 20, borderRadius: 24, shadowColor: '#000', shadowOpacity: 0.04,
-    shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2, borderWidth: 1,
+  scrollContent: { paddingHorizontal: 24 },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
+  pageTitle: { fontSize: 34, fontWeight: '800', letterSpacing: -1 },
+  badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
+  badgeText: { fontSize: 13, fontWeight: '600' },
+
+  profileCard: {
+    flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 24, marginBottom: 32, gap: 16,
+    shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 24, elevation: 4,
   },
-  appIconWrap: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  appName: { fontSize: 20, fontWeight: '800' as const },
-  appVersion: { fontSize: 13, marginTop: 2 },
+  profileAvatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  profileName: { fontSize: 18, fontWeight: '700', marginBottom: 2 },
+  profileHandle: { fontSize: 14 },
+
   sectionTitle: {
-    fontSize: 13, fontWeight: '700' as const, textTransform: 'uppercase' as const,
-    letterSpacing: 0.8, marginBottom: 8, marginLeft: 4,
+    fontSize: 13, fontWeight: '700', textTransform: 'uppercase',
+    letterSpacing: 1, marginBottom: 12, marginLeft: 8,
   },
   section: {
-    borderRadius: 20, marginBottom: 24, shadowColor: '#000', shadowOpacity: 0.03,
-    shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2,
-    borderWidth: 1, overflow: 'hidden',
+    borderRadius: 24, marginBottom: 32,
+    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 3,
+    overflow: 'hidden',
   },
   row: {
-    flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, gap: 14,
+    flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 20, gap: 16,
   },
-  rowIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
-  rowContent: { flex: 1, gap: 1 },
-  rowLabel: { fontSize: 15, fontWeight: '600' as const },
-  rowSublabel: { fontSize: 12 },
-  footerText: { textAlign: 'center', fontSize: 12, lineHeight: 18, marginTop: 8, marginBottom: 20 },
+  rowIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  rowContent: { flex: 1, gap: 2 },
+  rowLabel: { fontSize: 16, fontWeight: '600', letterSpacing: -0.2 },
+  rowSublabel: { fontSize: 13 },
+  footerText: { textAlign: 'center', fontSize: 13, lineHeight: 20, marginTop: 8, marginBottom: 20 },
   modalOverlay: {
     flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30,
   },
   modalContent: {
-    width: '100%', borderRadius: 24, padding: 24,
-    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20, elevation: 10,
+    width: '100%', borderRadius: 28, padding: 24,
+    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 40, elevation: 10,
   },
-  modalTitle: { fontSize: 20, fontWeight: '800' as const, marginBottom: 12 },
+  modalTitle: { fontSize: 22, fontWeight: '800', marginBottom: 20, letterSpacing: -0.5 },
   langOption: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 14, paddingHorizontal: 16, borderRadius: 14, marginBottom: 4,
+    paddingVertical: 16, paddingHorizontal: 20, borderRadius: 16, marginBottom: 8,
   },
-  langText: { fontSize: 16, fontWeight: '500' as const },
+  langText: { fontSize: 16, fontWeight: '600' },
 });
+
