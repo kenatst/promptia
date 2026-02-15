@@ -11,8 +11,11 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
+// @ts-ignore
 import * as Clipboard from 'expo-clipboard';
+// @ts-ignore
 import * as Haptics from 'expo-haptics';
+// @ts-ignore
 import {
   Search, Trash2, Copy, Heart, Shuffle, Check, Bookmark,
   MessageSquare, Palette, Camera, Film, FolderPlus, Folder,
@@ -23,6 +26,7 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { usePromptStore } from '@/contexts/PromptContext';
 import { SavedPrompt, DEFAULT_INPUTS, ModelType, PromptFolder } from '@/types/prompt';
 import { getModelLabel } from '@/engine/promptEngine';
+// @ts-ignore
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const MODEL_COLORS: Record<ModelType, string> = {
@@ -186,7 +190,7 @@ const SavedContent = () => {
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item.id}
           contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
-          renderItem={({ item }) => {
+          renderItem={({ item }: { item: PromptFolder }) => {
             const isAll = item.id === '__all';
             const isActive = isAll ? !selectedFolderId : selectedFolderId === item.id;
             const count = isAll

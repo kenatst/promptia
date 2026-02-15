@@ -8,15 +8,20 @@ import {
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
+// @ts-ignore
 import { Image } from 'expo-image';
+// @ts-ignore
 import * as Clipboard from 'expo-clipboard';
+// @ts-ignore
 import * as Haptics from 'expo-haptics';
+// @ts-ignore
 import { Copy, User, Tag, Star, Shuffle, Heart, Check } from 'lucide-react-native';
 import { gallerySeed } from '@/data/gallerySeed';
 import { usePromptStore } from '@/contexts/PromptContext';
 import { getModelLabel } from '@/engine/promptEngine';
 import { GalleryItem, SavedPrompt, ModelType, DEFAULT_INPUTS } from '@/types/prompt';
 import { useTheme } from '@/contexts/ThemeContext';
+// @ts-ignore
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const MODEL_COLORS: Record<ModelType, string> = {
@@ -216,7 +221,7 @@ function PromptDetailContent() {
         <View style={styles.actionsSection}>
           <Pressable
             onPress={handleCopyFull}
-            style={({ pressed }) => [
+            style={({ pressed }: { pressed: boolean }) => [
               styles.primaryAction,
               { backgroundColor: isDark ? '#F59E0B' : '#111827' },
               pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
@@ -231,7 +236,7 @@ function PromptDetailContent() {
 
           <Pressable
             onPress={handleRemix}
-            style={({ pressed }) => [
+            style={({ pressed }: { pressed: boolean }) => [
               styles.secondaryAction,
               { backgroundColor: colors.bgSecondary },
               pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },

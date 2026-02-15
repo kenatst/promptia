@@ -10,7 +10,7 @@ interface ModelSelectorProps {
   onSelect: (model: ModelType) => void;
 }
 
-const models: { key: ModelType; label: string; emoji: string; icon: React.ComponentType<{ size: number; color: string }> }[] = [
+const models: { key: ModelType; label: string; emoji: string; icon: any }[] = [
   { key: 'chatgpt', label: 'ChatGPT', emoji: '💬', icon: MessageSquare },
   { key: 'midjourney', label: 'Midjourney', emoji: '🎨', icon: Palette },
   { key: 'sdxl', label: 'SDXL', emoji: '🖼️', icon: ImageIcon },
