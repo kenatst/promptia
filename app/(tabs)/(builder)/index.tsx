@@ -1,897 +1,417 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useCallback, useState, useRef, useEffect } from 'react';
 import {
-  Alert,
-  FlatList,
-  KeyboardAvoidingView,
-  Platform,
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
   View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  Platform,
+  Alert,
+  KeyboardAvoidingView,
+  TouchableOpacity,
+  Animated,
+  Dimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
-import { ChevronDown, ChevronUp, Sparkles } from 'lucide-react-native';
-import Animated, {
-  FadeInLeft,
-  FadeInRight,
-  FadeInUp,
-  FadeOut,
-  ZoomIn,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring,
-} from 'react-native-reanimated';
-
-import Colors from '@/constants/colors';
 import {
-  ASPECT_RATIO_OPTIONS,
-  CAMERA_MOVEMENT_OPTIONS,
-  COLOR_PALETTE_OPTIONS,
-  CREATION_CATEGORIES,
-  LANGUAGE_OPTIONS,
-  LENGTH_OPTIONS,
-  MOOD_OPTIONS,
-  OBJECTIVE_QUICK_TAGS,
-  OUTPUT_FORMAT_OPTIONS,
-  TONE_OPTIONS,
-  VIDEO_DURATION_OPTIONS,
-  VISUAL_QUALITY_OPTIONS,
-  getCategoryById,
-} from '@/data/gallerySeed';
-import { getModelLabel } from '@/engine/promptEngine';
-import { usePromptStore } from '@/store/promptStore';
-import { PromptCategory, WizardStep } from '@/types/prompt';
-import { sharePromptText } from '@/utils/sharePrompt';
-import { AnimatedChip } from '@/components/AnimatedChip';
+  ArrowRight,
+  ArrowLeft,
+  Sparkles,
+  Copy,
+  BookmarkPlus,
+  RotateCcw,
+  Check,
+  Zap,
+} from 'lucide-react-native';
 import { GlassCard } from '@/components/GlassCard';
-import { GlowButton } from '@/components/GlowButton';
-import { SectionBlock } from '@/components/SectionBlock';
+import { GlassButton } from '@/components/GlassButton';
+import { ChipGroup } from '@/components/ChipGroup';
 import { WizardProgress } from '@/components/WizardProgress';
+import { assemblePrompt } from '@/engine/promptEngine';
+import { usePromptStore } from '@/store/promptStore';
+import { CREATION_CATEGORIES, CreationCategory, OBJECTIVE_CHIPS, STYLE_CHIPS, TONE_OPTIONS, OUTPUT_FORMATS } from '@/data/gallerySeed';
+import { ModelType, ToneType, LengthType, PromptType } from '@/types/prompt';
+import Colors from '@/constants/colors';
 
-const STEP_LABELS = ['Type', 'Objective', 'Context', 'Fine-tune', 'Generate'];
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const STEP_LABELS = ['Create', 'Describe', 'Configure', 'Generate'];
 
-function wordsToTokens(value: string): number {
-  const words = value.trim().split(/\s+/).filter(Boolean).length;
-  return Math.round(words * 1.3);
-}
+const LENGTH_OPTIONS: { label: string; value: LengthType }[] = [
+  { label: '⚡ Concise', value: 'concise' },
+  { label: '📝 Medium', value: 'medium' },
+  { label: '📖 Detailed', value: 'detailed' },
+  { label: '📚 Exhaustive', value: 'exhaustive' },
+];
 
-function scoreColor(score: number): string {
-  if (score < 50) {
-    return '#EF4444';
-  }
-  if (score <= 75) {
-    return '#F59E0B';
-  }
-  return '#22C55E';
-}
-
-function CategoryCard({
-  categoryId,
-  selected,
-  onPress,
-}: {
-  categoryId: PromptCategory;
-  selected: boolean;
-  onPress: (category: PromptCategory) => void;
-}) {
-  const category = getCategoryById(categoryId);
-  const scale = useSharedValue(1);
-
-  useEffect(() => {
-    if (!selected) {
-      scale.value = withSpring(1, { damping: 15, stiffness: 200 });
-      return;
-    }
-
-    scale.value = withSpring(0.97, { damping: 15, stiffness: 200 }, () => {
-      scale.value = withSpring(1.03, { damping: 15, stiffness: 200 }, () => {
-        scale.value = withSpring(1, { damping: 15, stiffness: 200 });
-      });
-    });
-  }, [scale, selected]);
-
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: scale.value }],
-  }));
-
-  const handlePress = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    onPress(category.id);
-  }, [category.id, onPress]);
-
-  return (
-    <Animated.View style={[styles.categoryWrap, animatedStyle]}>
-      <Pressable
-        onPress={handlePress}
-        hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-        style={{ width: '100%' }}
-      >
-        <GlassCard
-          variant="interactive"
-          accentColor={selected ? category.accentColor : undefined}
-          style={[styles.categoryCard, selected && { borderColor: category.accentColor, borderWidth: 1.5 }]}
-        >
-          <View style={[styles.emojiCircle, { backgroundColor: `${category.accentColor}18`, borderColor: `${category.accentColor}35` }]}>
-            <Text style={styles.categoryEmoji}>{category.emoji}</Text>
-          </View>
-          <Text style={styles.categoryTitle}>{category.label}</Text>
-          <Text style={styles.categorySubtitle}>{category.subtitle}</Text>
-        </GlassCard>
-      </Pressable>
-    </Animated.View>
-  );
-}
+const MODEL_DETAILS: Record<ModelType, { emoji: string; label: string }> = {
+  chatgpt: { emoji: '💬', label: 'ChatGPT / LLM' },
+  midjourney: { emoji: '🎨', label: 'Midjourney' },
+  sdxl: { emoji: '🖼️', label: 'Stable Diffusion' },
+  video: { emoji: '🎬', label: 'Video AI' },
+};
 
 export default function BuilderScreen() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
+  const { currentInputs, setCurrentInputs, resetInputs, savePrompt } = usePromptStore();
+  const [step, setStep] = useState(0);
+  const [saved, setSaved] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const {
-    builder,
-    selectCategory,
-    updateGoal,
-    toggleQuickTag,
-    updateContext,
-    updateFineTune,
-    setBuilderStep,
-    generateCurrentPrompt,
-    setPromptVariant,
-    saveCurrentPrompt,
-    resetBuilder,
-  } = usePromptStore();
+  const fadeAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const hasCheckedRemixRef = useRef(false);
 
-  const [direction, setDirection] = useState<'forward' | 'back'>('forward');
-  const [advancedOpen, setAdvancedOpen] = useState(false);
-  const [showToast, setShowToast] = useState<string | null>(null);
-  const [hasSelectedCategory, setHasSelectedCategory] = useState(builder.step > 1 || builder.config.goal.trim().length > 0);
-
-  const selectedCategory = useMemo(() => getCategoryById(builder.config.category), [builder.config.category]);
-  const isTextCategory = selectedCategory.type === 'text';
-  const isImageCategory = selectedCategory.type === 'image';
-  const isVideoCategory = selectedCategory.type === 'video';
-
-  const tokenEstimate = useMemo(() => wordsToTokens(builder.config.goal), [builder.config.goal]);
-  const activePrompt = useMemo(() => {
-    if (!builder.result) {
-      return '';
-    }
-    return builder.promptVariant === 'full' ? builder.result.fullPrompt : builder.result.concisePrompt;
-  }, [builder.promptVariant, builder.result]);
-
-  const goToStep = useCallback(
-    (step: WizardStep) => {
-      setDirection(step > builder.step ? 'forward' : 'back');
-      setBuilderStep(step);
-    },
-    [builder.step, setBuilderStep]
-  );
-
-  const nextStep = useCallback(() => {
-    if (builder.step === 1) {
-      if (!hasSelectedCategory) {
-        return;
-      }
-      goToStep(2);
-      return;
-    }
-
-    if (builder.step === 2) {
-      if (builder.config.goal.trim().length === 0) {
-        Alert.alert('Goal required', 'Describe your goal to continue.');
-        return;
-      }
-      goToStep(3);
-      return;
-    }
-
-    if (builder.step === 3) {
-      goToStep(4);
-      return;
-    }
-
-    if (builder.step === 4) {
-      generateCurrentPrompt();
-      goToStep(5);
-    }
-  }, [builder.config.goal, builder.step, generateCurrentPrompt, goToStep, hasSelectedCategory]);
-
-  const prevStep = useCallback(() => {
-    if (builder.step > 1) {
-      goToStep((builder.step - 1) as WizardStep);
-    }
-  }, [builder.step, goToStep]);
-
-  const handleCategorySelect = useCallback(
-    (category: PromptCategory) => {
-      selectCategory(category);
-      setHasSelectedCategory(true);
-    },
-    [selectCategory]
-  );
-
-  const handleQuickTagToggle = useCallback(
-    (tag: string) => {
-      toggleQuickTag(tag, true);
-    },
-    [toggleQuickTag]
-  );
-
-  const handleCopyPrompt = useCallback(async () => {
-    if (!activePrompt) {
-      return;
-    }
-
-    await Clipboard.setStringAsync(activePrompt);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    setShowToast('Copied!');
-  }, [activePrompt]);
-
-  const handleSavePrompt = useCallback(() => {
-    const saved = saveCurrentPrompt();
-
-    if (!saved) {
-      Alert.alert('Cannot save', 'Please generate a prompt first.');
-      return;
-    }
-
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Saved to Library', 'Your prompt is now in Library.', [
-      { text: 'Close', style: 'cancel' },
-      {
-        text: 'View in Library',
-        onPress: () => router.push('/(tabs)/saved'),
-      },
-    ]);
-  }, [router, saveCurrentPrompt]);
-
-  const handleSharePrompt = useCallback(async () => {
-    if (!activePrompt) {
-      return;
-    }
-
-    await sharePromptText(activePrompt, 'Promptia Prompt');
-  }, [activePrompt]);
-
-  const handleRebuild = useCallback(() => {
-    resetBuilder();
-    setHasSelectedCategory(false);
-    setDirection('back');
-  }, [resetBuilder]);
-
-  const handleMissingTap = useCallback(
-    (stepToGoBack: 2 | 3 | 4) => {
-      goToStep(stepToGoBack);
-    },
-    [goToStep]
-  );
+  const result = useMemo(() => assemblePrompt(currentInputs), [currentInputs]);
+  const isVisual = currentInputs.model === 'midjourney' || currentInputs.model === 'sdxl' || currentInputs.model === 'video';
 
   useEffect(() => {
-    if (!showToast) {
-      return;
+    if (!hasCheckedRemixRef.current && currentInputs.objective) {
+      hasCheckedRemixRef.current = true;
+      const matchingCategory = CREATION_CATEGORIES.find(c => c.model === currentInputs.model);
+      if (matchingCategory) {
+        setSelectedCategory(matchingCategory.id);
+      }
+      setStep(1);
+      animateTransition('forward');
     }
+    hasCheckedRemixRef.current = true;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-    const timer = setTimeout(() => setShowToast(null), 1200);
-    return () => clearTimeout(timer);
-  }, [showToast]);
+  const animateTransition = useCallback((direction: 'forward' | 'back') => {
+    const offset = direction === 'forward' ? 40 : -40;
+    fadeAnim.setValue(0);
+    slideAnim.setValue(offset);
+    Animated.parallel([
+      Animated.timing(fadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, speed: 20, bounciness: 4 }),
+    ]).start();
+  }, [fadeAnim, slideAnim]);
 
-  const stepEntering = direction === 'forward' ? FadeInRight.duration(250) : FadeInLeft.duration(250);
+  const goNext = useCallback(() => {
+    if (step < 3) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+      setStep((s) => s + 1);
+      animateTransition('forward');
+    }
+  }, [step, animateTransition]);
 
-  const renderStep1 = useCallback(() => {
-    return (
-      <View style={styles.stepBody}>
-        <Text style={styles.heading}>✨ What are you creating?</Text>
-        <Text style={styles.subheading}>Pick a category to get started</Text>
+  const goBack = useCallback(() => {
+    if (step > 0) {
+      Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      setStep((s) => s - 1);
+      animateTransition('back');
+    }
+  }, [step, animateTransition]);
 
-        <FlatList
-          data={CREATION_CATEGORIES.map((item) => item.id)}
-          keyExtractor={(item) => item}
-          numColumns={2}
-          windowSize={5}
-          scrollEnabled={false}
-          contentContainerStyle={styles.categoryList}
-          columnWrapperStyle={styles.categoryRow}
-          renderItem={({ item }) => (
-            <CategoryCard
-              categoryId={item}
-              selected={selectedCategory.id === item && hasSelectedCategory}
-              onPress={handleCategorySelect}
-            />
-          )}
+  const handleCategorySelect = useCallback((category: CreationCategory) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    setSelectedCategory(category.id);
+    setCurrentInputs({
+      model: category.model,
+      objectiveChips: category.defaultChips,
+      tone: category.defaultTone,
+    });
+  }, [setCurrentInputs]);
+
+  const handleChipToggle = useCallback((chip: string) => {
+    const current = currentInputs.objectiveChips;
+    const updated = current.includes(chip)
+      ? current.filter((c) => c !== chip)
+      : [...current, chip];
+    setCurrentInputs({ objectiveChips: updated });
+  }, [currentInputs.objectiveChips, setCurrentInputs]);
+
+  const handleCopy = useCallback(async () => {
+    await Clipboard.setStringAsync(result.finalPrompt);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Alert.alert('Copied!', 'Prompt copied to clipboard');
+  }, [result.finalPrompt]);
+
+  const handleSave = useCallback(() => {
+    const typeMap: Record<ModelType, PromptType> = {
+      chatgpt: 'text',
+      midjourney: 'image',
+      sdxl: 'image',
+      video: 'video',
+    };
+    savePrompt({
+      title: currentInputs.objective || `Prompt ${Date.now()}`,
+      finalPrompt: result.finalPrompt,
+      templatePrompt: result.templatePrompt,
+      inputs: { ...currentInputs },
+      model: currentInputs.model,
+      type: typeMap[currentInputs.model],
+      tags: [...currentInputs.objectiveChips],
+      isFavorite: false,
+    });
+    setSaved(true);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    setTimeout(() => setSaved(false), 2000);
+  }, [currentInputs, result, savePrompt]);
+
+  const handleReset = useCallback(() => {
+    resetInputs();
+    setStep(0);
+    setSelectedCategory(null);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+  }, [resetInputs]);
+
+  const renderStep0 = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>What are you creating?</Text>
+      <Text style={styles.stepDesc}>Pick a category to get started</Text>
+
+      <View style={styles.categoryGrid}>
+        {CREATION_CATEGORIES.map((cat) => (
+          <CategoryCard
+            key={cat.id}
+            category={cat}
+            isActive={selectedCategory === cat.id}
+            onPress={() => handleCategorySelect(cat)}
+          />
+        ))}
+      </View>
+    </View>
+  );
+
+  const renderStep1 = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Describe your goal</Text>
+      <Text style={styles.stepDesc}>What should the AI help you with?</Text>
+
+      {selectedCategory && (
+        <View style={styles.selectedCategoryBadge}>
+          <Text style={styles.selectedCategoryEmoji}>
+            {CREATION_CATEGORIES.find(c => c.id === selectedCategory)?.emoji}
+          </Text>
+          <Text style={styles.selectedCategoryLabel}>
+            {CREATION_CATEGORIES.find(c => c.id === selectedCategory)?.label}
+          </Text>
+          <View style={styles.modelBadgeSmall}>
+            <Text style={styles.modelBadgeText}>{MODEL_DETAILS[currentInputs.model].label}</Text>
+          </View>
+        </View>
+      )}
+
+      <GlassCard>
+        <TextInput
+          style={styles.textArea}
+          placeholder={isVisual ? "Describe the scene or image you want..." : "What do you want the AI to do?"}
+          placeholderTextColor={Colors.textTertiary}
+          value={currentInputs.objective}
+          onChangeText={(text) => setCurrentInputs({ objective: text })}
+          multiline
+          textAlignVertical="top"
+          testID="objective-input"
+        />
+      </GlassCard>
+
+      <View style={styles.chipSection}>
+        <Text style={styles.fieldLabel}>Quick tags</Text>
+        <ChipGroup
+          chips={OBJECTIVE_CHIPS}
+          selected={currentInputs.objectiveChips}
+          onToggle={handleChipToggle}
+          scrollable={false}
         />
       </View>
-    );
-  }, [handleCategorySelect, hasSelectedCategory, selectedCategory.id]);
+    </View>
+  );
 
-  const renderStep2 = useCallback(() => {
-    return (
-      <View style={styles.stepBody}>
-        <Text style={styles.heading}>🎯 Describe your goal</Text>
-        <Text style={styles.subheading}>
-          {selectedCategory.emoji} {selectedCategory.label} · {getModelLabel(builder.config.targetModel ?? selectedCategory.recommendedModel)}
-        </Text>
+  const renderStep2 = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Fine-tune</Text>
+      <Text style={styles.stepDesc}>Adjust for the best result</Text>
 
-        {selectedCategory.id === 'custom' ? (
-          <GlassCard>
-            <Text style={styles.fieldLabel}>Custom category name</Text>
-            <TextInput
-              value={builder.config.context.customCategoryName}
-              onChangeText={(value) => updateContext({ customCategoryName: value })}
-              placeholder="e.g. Podcast Script"
-              placeholderTextColor={Colors.textTertiary}
-              style={styles.input}
-            />
-          </GlassCard>
-        ) : null}
-
-        <GlassCard>
-          <TextInput
-            value={builder.config.goal}
-            onChangeText={updateGoal}
-            placeholder="What do you want the AI to do?"
-            placeholderTextColor={Colors.textTertiary}
-            multiline
-            style={styles.textArea}
-            textAlignVertical="top"
-          />
-          <View style={styles.tokenBadge}>
-            <Text style={styles.tokenText}>{tokenEstimate} tokens</Text>
-          </View>
-        </GlassCard>
-
-        <View style={styles.chipsWrap}>
-          {OBJECTIVE_QUICK_TAGS.map((tag) => (
-            <AnimatedChip
-              key={tag}
-              label={tag}
-              selected={builder.config.quickTags.includes(tag)}
-              onPress={() => handleQuickTagToggle(tag)}
-              accentColor={selectedCategory.accentColor}
-            />
-          ))}
-        </View>
-      </View>
-    );
-  }, [
-    builder.config.context.customCategoryName,
-    builder.config.goal,
-    builder.config.quickTags,
-    builder.config.targetModel,
-    handleQuickTagToggle,
-    selectedCategory,
-    tokenEstimate,
-    updateContext,
-    updateGoal,
-  ]);
-
-  const renderStep3 = useCallback(() => {
-    return (
-      <View style={styles.stepBody}>
-        <Text style={styles.heading}>🧩 Add context</Text>
-        <Text style={styles.subheading}>The more context, the better the prompt</Text>
-
-        {isTextCategory ? (
-          <View style={styles.stack}>
-            <GlassCard>
-              <Text style={styles.fieldLabel}>🎭 Who is the AI?</Text>
-              <TextInput
-                value={builder.config.context.role}
-                onChangeText={(value) => updateContext({ role: value })}
-                placeholder="Senior growth marketer with 10y SaaS experience"
-                placeholderTextColor={Colors.textTertiary}
-                style={styles.input}
-              />
-            </GlassCard>
-
-            <GlassCard>
-              <Text style={styles.fieldLabel}>👤 Who is the user / audience?</Text>
-              <TextInput
-                value={builder.config.context.audience}
-                onChangeText={(value) => updateContext({ audience: value })}
-                placeholder="B2B CTOs, non-technical, skeptical"
-                placeholderTextColor={Colors.textTertiary}
-                style={styles.input}
-              />
-            </GlassCard>
-
-            <GlassCard>
-              <Text style={styles.fieldLabel}>🧠 Any background info?</Text>
-              <TextInput
-                value={builder.config.context.background}
-                onChangeText={(value) => updateContext({ background: value })}
-                placeholder="Our product is X, we need to achieve Y"
-                placeholderTextColor={Colors.textTertiary}
-                multiline
-                textAlignVertical="top"
-                style={styles.textAreaCompact}
-              />
-            </GlassCard>
-
-            <GlassCard>
-              <View style={styles.toggleRow}>
-                <Text style={styles.fieldLabel}>Add chain-of-thought guidance</Text>
-                <Switch
-                  value={Boolean(builder.config.context.addChainOfThought)}
-                  onValueChange={(value) => updateContext({ addChainOfThought: value })}
-                  trackColor={{ false: 'rgba(130, 90, 255, 0.25)', true: `${selectedCategory.accentColor}70` }}
-                  thumbColor={builder.config.context.addChainOfThought ? selectedCategory.accentColor : '#ccc'}
-                />
-              </View>
-            </GlassCard>
-          </View>
-        ) : null}
-
-        {isImageCategory ? (
-          <View style={styles.stack}>
-            <GlassCard>
-              <Text style={styles.fieldLabel}>Style artistique</Text>
-              <TextInput
-                value={builder.config.context.style}
-                onChangeText={(value) => updateContext({ style: value })}
-                placeholder="cinematic, neon noir, hyperrealistic"
-                placeholderTextColor={Colors.textTertiary}
-                style={styles.input}
-              />
-            </GlassCard>
-
-            <GlassCard>
-              <Text style={styles.fieldLabel}>Artiste / référence</Text>
-              <TextInput
-                value={builder.config.context.artistReference}
-                onChangeText={(value) => updateContext({ artistReference: value })}
-                placeholder="Greg Rutkowski, Moebius"
-                placeholderTextColor={Colors.textTertiary}
-                style={styles.input}
-              />
-            </GlassCard>
-
-            <View style={styles.stackSm}>
-              <Text style={styles.fieldLabel}>Palette de couleurs</Text>
-              <View style={styles.chipsWrap}>
-                {COLOR_PALETTE_OPTIONS.map((option) => {
-                  const selected = builder.config.context.colorPalettes?.includes(option) ?? false;
-                  return (
-                    <AnimatedChip
-                      key={option}
-                      label={option}
-                      selected={selected}
-                      onPress={() => {
-                        const current = builder.config.context.colorPalettes ?? [];
-                        const next = selected ? current.filter((item) => item !== option) : [...current, option];
-                        updateContext({ colorPalettes: next });
-                      }}
-                      accentColor={selectedCategory.accentColor}
-                    />
-                  );
-                })}
-              </View>
-            </View>
-
-            <View style={styles.stackSm}>
-              <Text style={styles.fieldLabel}>Mood</Text>
-              <View style={styles.chipsWrap}>
-                {MOOD_OPTIONS.map((option) => {
-                  const selected = builder.config.context.moods?.includes(option) ?? false;
-                  return (
-                    <AnimatedChip
-                      key={option}
-                      label={option}
-                      selected={selected}
-                      onPress={() => {
-                        const current = builder.config.context.moods ?? [];
-                        const next = selected ? current.filter((item) => item !== option) : [...current, option];
-                        updateContext({ moods: next });
-                      }}
-                      accentColor={selectedCategory.accentColor}
-                    />
-                  );
-                })}
-              </View>
-            </View>
-          </View>
-        ) : null}
-
-        {isVideoCategory ? (
-          <View style={styles.stack}>
-            <View style={styles.stackSm}>
-              <Text style={styles.fieldLabel}>Camera movement</Text>
-              <View style={styles.chipsWrap}>
-                {CAMERA_MOVEMENT_OPTIONS.map((option) => (
-                  <AnimatedChip
-                    key={option}
-                    label={option}
-                    selected={builder.config.context.cameraMovement === option}
-                    onPress={() => updateContext({ cameraMovement: option })}
-                    accentColor={selectedCategory.accentColor}
-                  />
-                ))}
-              </View>
-            </View>
-
-            <View style={styles.stackSm}>
-              <Text style={styles.fieldLabel}>Duration</Text>
-              <View style={styles.chipsWrap}>
-                {VIDEO_DURATION_OPTIONS.map((option) => (
-                  <AnimatedChip
-                    key={String(option)}
-                    label={`${option}s`}
-                    selected={builder.config.context.durationSeconds === option}
-                    onPress={() => updateContext({ durationSeconds: option })}
-                    accentColor={selectedCategory.accentColor}
-                  />
-                ))}
-              </View>
-            </View>
-
-            <GlassCard>
-              <Text style={styles.fieldLabel}>Scene background</Text>
-              <TextInput
-                value={builder.config.context.background}
-                onChangeText={(value) => updateContext({ background: value })}
-                placeholder="A rainy rooftop in Tokyo with reflective puddles"
-                placeholderTextColor={Colors.textTertiary}
-                style={styles.input}
-              />
-            </GlassCard>
-          </View>
-        ) : null}
-      </View>
-    );
-  }, [
-    builder.config.context.addChainOfThought,
-    builder.config.context.artistReference,
-    builder.config.context.audience,
-    builder.config.context.background,
-    builder.config.context.cameraMovement,
-    builder.config.context.colorPalettes,
-    builder.config.context.durationSeconds,
-    builder.config.context.moods,
-    builder.config.context.role,
-    builder.config.context.style,
-    isImageCategory,
-    isTextCategory,
-    isVideoCategory,
-    selectedCategory.accentColor,
-    updateContext,
-  ]);
-
-  const renderStep4 = useCallback(() => {
-    return (
-      <View style={styles.stepBody}>
-        <Text style={styles.heading}>⚙️ Fine-tune</Text>
-        <Text style={styles.subheading}>Adjust for the best result</Text>
-
-        {(isTextCategory || isVideoCategory) && (
-          <View style={styles.stackSm}>
+      {!isVisual && (
+        <>
+          <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Tone</Text>
-            <View style={styles.chipsWrap}>
-              {TONE_OPTIONS.map((tone) => (
-                <AnimatedChip
-                  key={tone}
-                  label={tone[0].toUpperCase() + tone.slice(1)}
-                  selected={builder.config.finetuneOptions.tone === tone}
-                  onPress={() => updateFineTune({ tone })}
-                  accentColor={selectedCategory.accentColor}
-                />
-              ))}
-            </View>
+            <ChipGroup
+              chips={TONE_OPTIONS.map((t) => t.label)}
+              selected={[currentInputs.tone.charAt(0).toUpperCase() + currentInputs.tone.slice(1)]}
+              onToggle={(t) => setCurrentInputs({ tone: t.toLowerCase() as ToneType })}
+              multiSelect={false}
+              accentColor={Colors.secondary}
+              accentDimColor={Colors.secondaryDim}
+            />
           </View>
-        )}
 
-        {(isTextCategory || isVideoCategory) && (
-          <View style={styles.stackSm}>
+          <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Length</Text>
-            <View style={styles.chipsWrap}>
-              {LENGTH_OPTIONS.map((option) => (
-                <AnimatedChip
-                  key={option.value}
-                  label={option.label}
-                  selected={builder.config.finetuneOptions.length === option.value}
-                  onPress={() => updateFineTune({ length: option.value })}
-                  accentColor={selectedCategory.accentColor}
-                />
-              ))}
-            </View>
+            <ChipGroup
+              chips={LENGTH_OPTIONS.map((l) => l.label)}
+              selected={LENGTH_OPTIONS.filter((l) => l.value === currentInputs.length).map((l) => l.label)}
+              onToggle={(l) => {
+                const found = LENGTH_OPTIONS.find((o) => o.label === l);
+                if (found) setCurrentInputs({ length: found.value });
+              }}
+              multiSelect={false}
+            />
           </View>
-        )}
 
-        {isTextCategory && (
-          <View style={styles.stackSm}>
+          <View style={styles.fieldGroup}>
             <Text style={styles.fieldLabel}>Output format</Text>
-            <View style={styles.chipsWrap}>
-              {OUTPUT_FORMAT_OPTIONS.map((option) => (
-                <AnimatedChip
-                  key={option}
-                  label={option[0].toUpperCase() + option.slice(1)}
-                  selected={builder.config.finetuneOptions.outputFormat === option}
-                  onPress={() => updateFineTune({ outputFormat: option })}
-                  accentColor={selectedCategory.accentColor}
-                />
-              ))}
-            </View>
+            <ChipGroup
+              chips={OUTPUT_FORMATS}
+              selected={[currentInputs.outputFormat.charAt(0).toUpperCase() + currentInputs.outputFormat.slice(1)]}
+              onToggle={(f) => setCurrentInputs({ outputFormat: f.toLowerCase() })}
+              multiSelect={false}
+              accentColor={Colors.tertiary}
+              accentDimColor={Colors.tertiaryDim}
+            />
           </View>
-        )}
 
-        {isTextCategory && (
-          <View style={styles.stackSm}>
-            <Text style={styles.fieldLabel}>Language</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.horizontalChips}>
-              {LANGUAGE_OPTIONS.map((option) => (
-                <AnimatedChip
-                  key={option}
-                  label={option}
-                  selected={builder.config.finetuneOptions.language === option}
-                  onPress={() => updateFineTune({ language: option })}
-                  accentColor={selectedCategory.accentColor}
-                />
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {(isImageCategory || isVideoCategory) && (
-          <View style={styles.stackSm}>
-            <Text style={styles.fieldLabel}>Aspect ratio</Text>
-            <View style={styles.chipsWrap}>
-              {ASPECT_RATIO_OPTIONS.map((option) => (
-                <AnimatedChip
-                  key={option}
-                  label={option}
-                  selected={builder.config.finetuneOptions.aspectRatio === option}
-                  onPress={() => updateFineTune({ aspectRatio: option })}
-                  accentColor={selectedCategory.accentColor}
-                />
-              ))}
-            </View>
-          </View>
-        )}
-
-        {(isImageCategory || isVideoCategory) && (
-          <View style={styles.stackSm}>
-            <Text style={styles.fieldLabel}>Quality</Text>
-            <View style={styles.chipsWrap}>
-              {VISUAL_QUALITY_OPTIONS.map((option) => (
-                <AnimatedChip
-                  key={option}
-                  label={option}
-                  selected={builder.config.finetuneOptions.quality === option}
-                  onPress={() => updateFineTune({ quality: option })}
-                  accentColor={selectedCategory.accentColor}
-                />
-              ))}
-            </View>
-          </View>
-        )}
-
-        {(isImageCategory || isVideoCategory) && (
           <GlassCard>
-            <Text style={styles.fieldLabel}>Negative prompt</Text>
+            <Text style={styles.innerLabel}>Audience</Text>
             <TextInput
-              value={builder.config.finetuneOptions.negativePrompt}
-              onChangeText={(value) => updateFineTune({ negativePrompt: value })}
-              placeholder="Elements to exclude..."
+              style={styles.inputField}
+              placeholder="e.g., developers, marketers, students..."
               placeholderTextColor={Colors.textTertiary}
+              value={currentInputs.audience}
+              onChangeText={(text) => setCurrentInputs({ audience: text })}
+            />
+            <View style={styles.innerSpacer} />
+            <Text style={styles.innerLabel}>Constraints</Text>
+            <TextInput
+              style={[styles.inputField, styles.multiline]}
+              placeholder="Any specific rules or limitations..."
+              placeholderTextColor={Colors.textTertiary}
+              value={currentInputs.constraints}
+              onChangeText={(text) => setCurrentInputs({ constraints: text })}
               multiline
               textAlignVertical="top"
-              style={styles.textAreaCompact}
             />
           </GlassCard>
-        )}
+        </>
+      )}
 
-        {isTextCategory && (
+      {isVisual && (
+        <>
+          <View style={styles.fieldGroup}>
+            <Text style={styles.fieldLabel}>Visual style</Text>
+            <ChipGroup
+              chips={STYLE_CHIPS}
+              selected={currentInputs.style ? [currentInputs.style] : []}
+              onToggle={(s) => setCurrentInputs({ style: currentInputs.style === s ? '' : s })}
+              multiSelect={false}
+              scrollable={false}
+              accentColor={Colors.secondary}
+              accentDimColor={Colors.secondaryDim}
+            />
+          </View>
+
           <GlassCard>
-            <Pressable
-              onPress={() => setAdvancedOpen((prev) => !prev)}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              style={styles.advancedHeader}
-            >
-              <Text style={styles.fieldLabel}>Advanced</Text>
-              {advancedOpen ? <ChevronUp size={16} color="rgba(130,90,255,0.6)" /> : <ChevronDown size={16} color="rgba(130,90,255,0.6)" />}
-            </Pressable>
+            <Text style={styles.innerLabel}>Lighting</Text>
+            <TextInput
+              style={styles.inputField}
+              placeholder="e.g., golden hour, studio, neon glow..."
+              placeholderTextColor={Colors.textTertiary}
+              value={currentInputs.lighting}
+              onChangeText={(text) => setCurrentInputs({ lighting: text })}
+            />
 
-            {advancedOpen ? (
-              <View style={styles.stackSm}>
+            {currentInputs.model === 'video' && (
+              <>
+                <View style={styles.innerSpacer} />
+                <Text style={styles.innerLabel}>Camera angle</Text>
                 <TextInput
-                  value={builder.config.finetuneOptions.audience}
-                  onChangeText={(value) => updateFineTune({ audience: value })}
-                  placeholder="Audience"
+                  style={styles.inputField}
+                  placeholder="e.g., aerial, close-up, tracking shot..."
                   placeholderTextColor={Colors.textTertiary}
-                  style={styles.input}
+                  value={currentInputs.cameraAngle}
+                  onChangeText={(text) => setCurrentInputs({ cameraAngle: text })}
                 />
-                <TextInput
-                  value={builder.config.finetuneOptions.constraints}
-                  onChangeText={(value) => updateFineTune({ constraints: value })}
-                  placeholder="Any specific rules or limitations..."
-                  placeholderTextColor={Colors.textTertiary}
-                  style={styles.textAreaCompact}
-                  multiline
-                  textAlignVertical="top"
-                />
+              </>
+            )}
 
-                <View style={styles.toggleRow}>
-                  <Text style={styles.fieldLabel}>Add examples</Text>
-                  <Switch
-                    value={Boolean(builder.config.finetuneOptions.addExamples)}
-                    onValueChange={(value) => updateFineTune({ addExamples: value })}
-                    trackColor={{ false: 'rgba(130,90,255,0.25)', true: `${selectedCategory.accentColor}70` }}
-                    thumbColor={builder.config.finetuneOptions.addExamples ? selectedCategory.accentColor : '#ccc'}
-                  />
-                </View>
-
-                {builder.config.finetuneOptions.addExamples ? (
-                  <View style={styles.stackSm}>
-                    <TextInput
-                      value={builder.config.finetuneOptions.examplePair?.input}
-                      onChangeText={(value) =>
-                        updateFineTune({
-                          examplePair: {
-                            input: value,
-                            output: builder.config.finetuneOptions.examplePair?.output ?? '',
-                          },
-                        })
-                      }
-                      placeholder="Example input"
-                      placeholderTextColor={Colors.textTertiary}
-                      style={styles.input}
-                    />
-                    <TextInput
-                      value={builder.config.finetuneOptions.examplePair?.output}
-                      onChangeText={(value) =>
-                        updateFineTune({
-                          examplePair: {
-                            input: builder.config.finetuneOptions.examplePair?.input ?? '',
-                            output: value,
-                          },
-                        })
-                      }
-                      placeholder="Example output"
-                      placeholderTextColor={Colors.textTertiary}
-                      style={styles.textAreaCompact}
-                      multiline
-                      textAlignVertical="top"
-                    />
-                  </View>
-                ) : null}
-              </View>
-            ) : null}
+            <View style={styles.innerSpacer} />
+            <Text style={styles.innerLabel}>Negative prompt</Text>
+            <TextInput
+              style={styles.inputField}
+              placeholder="What to avoid..."
+              placeholderTextColor={Colors.textTertiary}
+              value={currentInputs.negativePrompt}
+              onChangeText={(text) => setCurrentInputs({ negativePrompt: text })}
+            />
           </GlassCard>
-        )}
+        </>
+      )}
+    </View>
+  );
+
+  const renderStep3 = () => (
+    <View style={styles.stepContent}>
+      <View style={styles.resultHeader}>
+        <Text style={styles.stepTitle}>Ready</Text>
+        <View style={styles.resultBadge}>
+          <Sparkles size={14} color={Colors.accent} />
+          <Text style={styles.resultBadgeText}>God-tier</Text>
+        </View>
       </View>
-    );
-  }, [
-    advancedOpen,
-    builder.config.finetuneOptions,
-    isImageCategory,
-    isTextCategory,
-    isVideoCategory,
-    selectedCategory.accentColor,
-    updateFineTune,
-  ]);
 
-  const renderStep5 = useCallback(() => {
-    if (!builder.result) {
-      return (
-        <View style={styles.stepBody}>
-          <Text style={styles.heading}>Ready</Text>
-          <Text style={styles.subheading}>Generate your prompt first</Text>
-        </View>
-      );
-    }
+      <GlassCard accent>
+        <ScrollView style={styles.resultScroll} nestedScrollEnabled showsVerticalScrollIndicator={false}>
+          <Text style={styles.resultText} selectable>
+            {result.finalPrompt || 'Start by describing your objective...'}
+          </Text>
+        </ScrollView>
+      </GlassCard>
 
-    return (
-      <View style={styles.stepBody}>
-        <View style={styles.readyHeader}>
-          <View style={styles.readyTitleWrap}>
-            <Text style={styles.heading}>🚀 Ready</Text>
-            <View style={styles.godBadge}>
-              <Sparkles size={13} color={Colors.accent} />
-              <Text style={styles.godBadgeText}>God-tier</Text>
-            </View>
-          </View>
-
-          <Animated.View entering={ZoomIn.delay(400).springify()}>
-            <View style={[styles.scoreBadge, { borderColor: `${scoreColor(builder.result.qualityScore)}66`, backgroundColor: `${scoreColor(builder.result.qualityScore)}18` }]}>
-              <Text style={[styles.scoreText, { color: scoreColor(builder.result.qualityScore) }]}>{builder.result.qualityScore}</Text>
-            </View>
-          </Animated.View>
-        </View>
-
-        <View style={styles.toggleLine}>
-          <AnimatedChip
-            label="Full"
-            selected={builder.promptVariant === 'full'}
-            onPress={() => setPromptVariant('full')}
-            accentColor={selectedCategory.accentColor}
-          />
-          <AnimatedChip
-            label="Concise"
-            selected={builder.promptVariant === 'concise'}
-            onPress={() => setPromptVariant('concise')}
-            accentColor={selectedCategory.accentColor}
-          />
-        </View>
-
-        {builder.promptVariant === 'full' ? (
-          <View style={styles.stack}>
-            {builder.result.sections.map((section, index) => (
-              <Animated.View key={`${section.id}-${index}`} entering={FadeInUp.delay(index * 80).duration(250)}>
-                <SectionBlock section={section} onCopied={() => setShowToast('Copied!')} />
-              </Animated.View>
-            ))}
-          </View>
-        ) : (
-          <GlassCard>
-            <Text style={styles.conciseText}>{builder.result.concisePrompt}</Text>
-          </GlassCard>
-        )}
-
-        {builder.result.assumptions.length > 0 ? (
-          <GlassCard>
-            <Text style={styles.cardTitle}>Assumptions</Text>
-            {builder.result.assumptions.map((item) => (
-              <Text key={item} style={styles.metaItem}>
-                • {item}
-              </Text>
-            ))}
-          </GlassCard>
-        ) : null}
-
-        {builder.result.missingInfo.length > 0 ? (
-          <GlassCard>
-            <Text style={styles.cardTitle}>Consider adding</Text>
-            <View style={styles.chipsWrap}>
-              {builder.result.missingInfo.map((item) => (
-                <AnimatedChip
-                  key={item.id}
-                  label={item.label}
-                  selected={false}
-                  onPress={() => handleMissingTap(item.stepToGoBack)}
-                  accentColor={selectedCategory.accentColor}
-                />
-              ))}
-            </View>
-          </GlassCard>
-        ) : null}
-
-        <GlassCard>
-          <Text style={styles.cardTitle}>Improvement suggestions</Text>
-          {builder.result.improvementSuggestions.map((item) => (
-            <Text key={item} style={styles.metaItem}>
-              • {item}
-            </Text>
+      {result.metadata.assumptions.length > 0 && (
+        <View style={styles.metaSection}>
+          <Text style={styles.metaTitle}>💡 Assumptions</Text>
+          {result.metadata.assumptions.map((a, i) => (
+            <Text key={i} style={styles.metaItem}>{a}</Text>
           ))}
-        </GlassCard>
-      </View>
-    );
-  }, [
-    builder.promptVariant,
-    builder.result,
-    handleMissingTap,
-    selectedCategory.accentColor,
-    setPromptVariant,
-  ]);
+        </View>
+      )}
 
-  const renderCurrentStep = useMemo(() => {
-    switch (builder.step) {
-      case 1:
-        return renderStep1();
-      case 2:
-        return renderStep2();
-      case 3:
-        return renderStep3();
-      case 4:
-        return renderStep4();
-      case 5:
-      default:
-        return renderStep5();
-    }
-  }, [builder.step, renderStep1, renderStep2, renderStep3, renderStep4, renderStep5]);
+      {result.metadata.questions.length > 0 && (
+        <View style={styles.metaSection}>
+          <Text style={styles.metaTitle}>❓ Consider adding</Text>
+          {result.metadata.questions.map((q, i) => (
+            <Text key={i} style={styles.metaQuestion}>{q}</Text>
+          ))}
+        </View>
+      )}
+
+      <View style={styles.actionGrid}>
+        <GlassButton
+          label="Copy Prompt"
+          onPress={handleCopy}
+          variant="primary"
+          size="lg"
+          icon={<Copy size={18} color={Colors.textInverse} />}
+          fullWidth
+        />
+        <View style={styles.actionRow}>
+          <GlassButton
+            label={saved ? "Saved!" : "Save"}
+            onPress={handleSave}
+            variant="accent"
+            size="md"
+            icon={saved ? <Check size={16} color={Colors.accent} /> : <BookmarkPlus size={16} color={Colors.accent} />}
+            fullWidth
+          />
+          <GlassButton
+            label="Start over"
+            onPress={handleReset}
+            variant="ghost"
+            size="md"
+            icon={<RotateCcw size={16} color={Colors.textSecondary} />}
+            fullWidth
+          />
+        </View>
+      </View>
+    </View>
+  );
+
+  const steps = [renderStep0, renderStep1, renderStep2, renderStep3];
 
   return (
     <View style={styles.container}>
@@ -899,339 +419,375 @@ export default function BuilderScreen() {
         colors={[Colors.backgroundGradientStart, Colors.backgroundGradientMid, Colors.backgroundGradientEnd]}
         style={StyleSheet.absoluteFill}
       />
-      <LinearGradient
-        colors={[`${selectedCategory.accentColor}12`, Colors.atmospherePurple, 'rgba(11,10,26,0)']}
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        style={styles.atmosphereGlow}
-      />
 
-      <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={[styles.progressWrap, { paddingTop: insets.top + 8 }]}>
-          <WizardProgress
-            currentStep={builder.step}
-            totalSteps={5}
-            stepLabels={STEP_LABELS}
-            accentColor={selectedCategory.accentColor}
-          />
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}>
+        <View style={styles.logoRow}>
+          <View style={styles.logoIcon}>
+            <Zap size={16} color={Colors.accent} />
+          </View>
+          <Text style={styles.logoText}>PROMPTIA</Text>
         </View>
-
-        <ScrollView
-          style={styles.scroll}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: builder.step === 5 ? 190 : 120 }]}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+        <TouchableOpacity
+          onPress={handleReset}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          style={styles.resetBtn}
         >
-          <Animated.View key={`${builder.step}-${direction}`} entering={stepEntering} exiting={FadeOut.duration(180)}>
-            {renderCurrentStep}
+          <RotateCcw size={16} color={Colors.textTertiary} />
+        </TouchableOpacity>
+      </View>
+
+      <View style={styles.progressWrapper}>
+        <WizardProgress currentStep={step} totalSteps={4} stepLabels={STEP_LABELS} />
+      </View>
+
+      <KeyboardAvoidingView
+        style={styles.flex}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={100}
+      >
+        <ScrollView
+          style={styles.flex}
+          contentContainerStyle={[styles.scrollContent, { paddingBottom: 100 }]}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}>
+            {steps[step]()}
           </Animated.View>
         </ScrollView>
-
-        {builder.step < 5 ? (
-          <View style={[styles.navBar, { paddingBottom: insets.bottom + 12 }]}>
-            <View style={styles.navRow}>
-              {builder.step > 1 ? (
-                <GlowButton title="Back" variant="secondary" size="medium" onPress={prevStep} style={styles.navHalf} />
-              ) : (
-                <View style={styles.navHalf} />
-              )}
-              <GlowButton
-                title={builder.step === 4 ? '✨ Generate' : 'Next'}
-                size="medium"
-                onPress={nextStep}
-                style={styles.navHalf}
-              />
-            </View>
-          </View>
-        ) : (
-          <View style={[styles.actionBar, { paddingBottom: insets.bottom + 10 }]}>
-            <View style={styles.actionRow}>
-              <GlowButton title="Copy" variant="secondary" size="medium" onPress={handleCopyPrompt} style={styles.actionHalf} />
-              <GlowButton title="Save" variant="primary" size="medium" onPress={handleSavePrompt} style={styles.actionHalf} />
-            </View>
-            <View style={styles.actionRow}>
-              <GlowButton title="Share" variant="secondary" size="medium" onPress={handleSharePrompt} style={styles.actionHalf} />
-              <GlowButton title="Rebuild" variant="destructive" size="medium" onPress={handleRebuild} style={styles.actionHalf} />
-            </View>
-          </View>
-        )}
       </KeyboardAvoidingView>
 
-      {showToast ? (
-        <View style={[styles.toast, { bottom: insets.bottom + (builder.step === 5 ? 160 : 92) }]}>
-          <Text style={styles.toastText}>{showToast}</Text>
+      <LinearGradient
+        colors={['transparent', Colors.background]}
+        style={[styles.bottomGradient, { paddingBottom: Math.max(insets.bottom, 8) + 60 }]}
+        pointerEvents="box-none"
+      >
+        <View style={styles.bottomNav}>
+          {step > 0 ? (
+            <GlassButton
+              label="Back"
+              onPress={goBack}
+              variant="glass"
+              size="md"
+              icon={<ArrowLeft size={16} color={Colors.text} />}
+            />
+          ) : (
+            <View />
+          )}
+          {step < 3 ? (
+            <GlassButton
+              label={step === 0 && !selectedCategory ? 'Select a category' : 'Next'}
+              onPress={goNext}
+              variant="primary"
+              size="md"
+              disabled={step === 0 && !selectedCategory}
+              iconRight={<ArrowRight size={16} color={Colors.textInverse} />}
+            />
+          ) : null}
         </View>
-      ) : null}
+      </LinearGradient>
     </View>
   );
 }
 
+interface CategoryCardProps {
+  category: CreationCategory;
+  isActive: boolean;
+  onPress: () => void;
+}
+
+const CategoryCard = React.memo(function CategoryCard({ category, isActive, onPress }: CategoryCardProps) {
+  const scaleAnim = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = useCallback(() => {
+    Animated.spring(scaleAnim, { toValue: 0.95, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
+  }, [scaleAnim]);
+
+  const handlePressOut = useCallback(() => {
+    Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 4 }).start();
+  }, [scaleAnim]);
+
+  return (
+    <Animated.View style={[styles.categoryCardWrapper, { transform: [{ scale: scaleAnim }] }]}>
+      <TouchableOpacity
+        style={[
+          styles.categoryCard,
+          isActive && { borderColor: `${category.color}60`, backgroundColor: `${category.color}12` },
+        ]}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+        activeOpacity={0.8}
+      >
+        {isActive && (
+          <View style={[styles.categoryGlow, { backgroundColor: `${category.color}08` }]} />
+        )}
+        <Text style={styles.categoryEmoji}>{category.emoji}</Text>
+        <Text style={[styles.categoryLabel, isActive && { color: category.color }]} numberOfLines={1}>
+          {category.label}
+        </Text>
+        {isActive && (
+          <View style={[styles.categoryCheckDot, { backgroundColor: category.color }]} />
+        )}
+      </TouchableOpacity>
+    </Animated.View>
+  );
+});
+
 const styles = StyleSheet.create({
+  flex: {
+    flex: 1,
+  },
   container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
-  atmosphereGlow: {
-    position: 'absolute',
-    top: 0,
-    left: -100,
-    right: -100,
-    height: 350,
-  },
-  progressWrap: {
+  topBar: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     paddingHorizontal: 20,
-    paddingBottom: 10,
+    paddingBottom: 8,
   },
-  scroll: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 8,
-    gap: 16,
-  },
-  stepBody: {
-    gap: 16,
-  },
-  heading: {
-    fontSize: 30,
-    fontWeight: '800',
-    letterSpacing: -0.5,
-    color: '#fff',
-  },
-  subheading: {
-    fontSize: 14,
-    color: Colors.textTertiary,
-    marginTop: -4,
-  },
-  categoryList: {
-    gap: 12,
-  },
-  categoryRow: {
-    gap: 12,
-  },
-  categoryWrap: {
-    flex: 1,
-    maxWidth: '50%',
-  },
-  categoryCard: {
-    minHeight: 140,
-    justifyContent: 'center',
-    alignItems: 'flex-start',
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
     gap: 8,
   },
-  emojiCircle: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    borderWidth: 1,
+  logoIcon: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: Colors.accentDim,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: Colors.borderAccent,
+  },
+  logoText: {
+    fontSize: 16,
+    fontWeight: '900' as const,
+    color: Colors.text,
+    letterSpacing: 2,
+  },
+  resetBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 12,
+    backgroundColor: Colors.glass,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  progressWrapper: {
+    paddingHorizontal: 20,
+    paddingBottom: 8,
+  },
+  scrollContent: {
+    padding: 20,
+    paddingBottom: 20,
+  },
+  stepContent: {
+    gap: 20,
+  },
+  stepTitle: {
+    fontSize: 28,
+    fontWeight: '800' as const,
+    color: Colors.text,
+    letterSpacing: -0.5,
+  },
+  stepDesc: {
+    fontSize: 15,
+    color: Colors.textTertiary,
+    marginTop: -12,
+  },
+  categoryGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  categoryCardWrapper: {
+    width: (SCREEN_WIDTH - 50) / 2,
+  },
+  categoryCard: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    paddingHorizontal: 8,
+    borderRadius: 16,
+    backgroundColor: Colors.glass,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+    gap: 6,
+    overflow: 'hidden',
+    position: 'relative',
+  },
+  categoryGlow: {
+    ...StyleSheet.absoluteFillObject,
   },
   categoryEmoji: {
-    fontSize: 22,
+    fontSize: 26,
   },
-  categoryTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: Colors.text,
+  categoryLabel: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.textSecondary,
+    textAlign: 'center',
   },
-  categorySubtitle: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    lineHeight: 16,
+  categoryCheckDot: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
-  input: {
-    fontSize: 15,
-    color: Colors.text,
-    backgroundColor: 'rgba(130, 90, 255, 0.05)',
+  selectedCategoryBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: Colors.glass,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
     borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(130, 90, 255, 0.12)',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderColor: Colors.glassBorder,
+    alignSelf: 'flex-start',
+  },
+  selectedCategoryEmoji: {
+    fontSize: 18,
+  },
+  selectedCategoryLabel: {
+    fontSize: 14,
+    fontWeight: '700' as const,
+    color: Colors.text,
+  },
+  modelBadgeSmall: {
+    backgroundColor: Colors.accentDim,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: Colors.borderAccent,
+  },
+  modelBadgeText: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    color: Colors.accent,
   },
   textArea: {
-    minHeight: 140,
     fontSize: 16,
     color: Colors.text,
-    backgroundColor: 'rgba(130, 90, 255, 0.05)',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: 'rgba(130, 90, 255, 0.12)',
-    paddingHorizontal: 14,
-    paddingVertical: 14,
+    minHeight: 110,
+    lineHeight: 24,
   },
-  textAreaCompact: {
-    minHeight: 104,
-    fontSize: 15,
-    color: Colors.text,
-    backgroundColor: 'rgba(130, 90, 255, 0.05)',
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(130, 90, 255, 0.12)',
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-  },
-  tokenBadge: {
-    alignSelf: 'flex-end',
-    marginTop: 10,
-    backgroundColor: 'rgba(245, 158, 11, 0.15)',
-    borderRadius: 999,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: 'rgba(245, 158, 11, 0.30)',
-  },
-  tokenText: {
-    fontSize: 11,
-    color: Colors.accent,
-    fontWeight: '700',
+  chipSection: {
+    gap: 10,
   },
   fieldLabel: {
     fontSize: 13,
-    color: 'rgba(255,255,255,0.70)',
-    fontWeight: '600',
+    fontWeight: '700' as const,
+    color: Colors.textTertiary,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase' as const,
+  },
+  fieldGroup: {
+    gap: 10,
+  },
+  innerLabel: {
+    fontSize: 13,
+    fontWeight: '600' as const,
+    color: Colors.textSecondary,
     marginBottom: 8,
   },
-  chipsWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
+  innerSpacer: {
+    height: 16,
   },
-  horizontalChips: {
-    gap: 8,
-    paddingRight: 12,
-  },
-  stack: {
-    gap: 12,
-  },
-  stackSm: {
-    gap: 10,
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    gap: 12,
-  },
-  advancedHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  readyHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    gap: 8,
-  },
-  readyTitleWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  godBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+  inputField: {
+    backgroundColor: Colors.glass,
+    borderRadius: 12,
+    padding: 14,
+    fontSize: 15,
+    color: Colors.text,
     borderWidth: 1,
-    borderColor: 'rgba(245,158,11,0.40)',
-    backgroundColor: 'rgba(245,158,11,0.12)',
+    borderColor: Colors.glassBorder,
+  },
+  multiline: {
+    minHeight: 70,
+    textAlignVertical: 'top' as const,
+  },
+  resultHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  resultBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: Colors.accentDim,
     paddingHorizontal: 12,
     paddingVertical: 6,
-    borderRadius: 999,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: Colors.borderAccent,
   },
-  godBadgeText: {
+  resultBadgeText: {
     fontSize: 12,
+    fontWeight: '700' as const,
     color: Colors.accent,
-    fontWeight: '700',
   },
-  scoreBadge: {
-    minWidth: 54,
-    height: 36,
-    borderWidth: 1.5,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
+  resultScroll: {
+    maxHeight: 260,
   },
-  scoreText: {
-    fontSize: 17,
-    fontWeight: '800',
-  },
-  toggleLine: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  conciseText: {
-    color: Colors.textSecondary,
+  resultText: {
     fontSize: 14,
     lineHeight: 22,
-  },
-  cardTitle: {
-    fontSize: 14,
     color: Colors.text,
-    fontWeight: '700',
-    marginBottom: 8,
+    fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
+  },
+  metaSection: {
+    gap: 6,
+    backgroundColor: Colors.glass,
+    padding: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: Colors.glassBorder,
+  },
+  metaTitle: {
+    fontSize: 13,
+    fontWeight: '700' as const,
+    color: Colors.textSecondary,
   },
   metaItem: {
-    color: 'rgba(255,255,255,0.60)',
     fontSize: 13,
-    lineHeight: 20,
-    marginBottom: 4,
+    color: Colors.textTertiary,
+    paddingLeft: 8,
   },
-  navBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    backgroundColor: 'rgba(11, 10, 26, 0.92)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(130, 90, 255, 0.10)',
+  metaQuestion: {
+    fontSize: 13,
+    color: Colors.secondary,
+    paddingLeft: 8,
   },
-  navRow: {
-    flexDirection: 'row',
+  actionGrid: {
     gap: 10,
-  },
-  navHalf: {
-    flex: 1,
-  },
-  actionBar: {
-    position: 'absolute',
-    left: 0,
-    right: 0,
-    bottom: 0,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    gap: 10,
-    backgroundColor: 'rgba(11, 10, 26, 0.92)',
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(130, 90, 255, 0.10)',
   },
   actionRow: {
     flexDirection: 'row',
     gap: 10,
   },
-  actionHalf: {
-    flex: 1,
-  },
-  toast: {
+  bottomGradient: {
     position: 'absolute',
-    left: 20,
-    right: 20,
-    paddingVertical: 10,
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: 'rgba(130, 90, 255, 0.20)',
-    backgroundColor: 'rgba(16, 14, 36, 0.95)',
-    alignItems: 'center',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingTop: 30,
   },
-  toastText: {
-    color: Colors.text,
-    fontSize: 13,
-    fontWeight: '600',
+  bottomNav: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
   },
 });
