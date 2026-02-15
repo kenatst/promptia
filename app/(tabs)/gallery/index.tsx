@@ -8,9 +8,9 @@ import { Search, Bell, Heart, ChefHat, Filter } from 'lucide-react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import Colors from '@/constants/colors';
-import { gallerySeed, getCategoryById, CREATION_CATEGORIES } from '@/data/gallerySeed';
+import { gallerySeed, CREATION_CATEGORIES } from '@/data/gallerySeed';
 import { usePromptStore } from '@/store/promptStore';
-import { Prompt } from '@/types/prompt';
+import { GalleryItem } from '@/types/prompt';
 import { VisualCategory } from '@/components/VisualCategory';
 
 export default function GalleryScreen() {
@@ -18,21 +18,22 @@ export default function GalleryScreen() {
   const router = useRouter();
 
   const {
-    explore,
-    setExploreSearchQuery,
-    setExploreFilter,
+    searchQuery,
+    setSearchQuery,
   } = usePromptStore();
+
+  const [activeFilter, setActiveFilter] = React.useState('All');
 
   const filteredPrompts = useMemo(() => {
     let items = [...gallerySeed];
-    if (explore.filter !== 'All') {
-      const cat = CREATION_CATEGORIES.find(c => c.label === explore.filter);
+    if (activeFilter !== 'All') {
+      const cat = CREATION_CATEGORIES.find(c => c.label === activeFilter);
       if (cat) {
-        items = items.filter((p) => p.category === cat.id);
+        items = items.filter((p) => p.model === cat.model);
       }
     }
-    if (explore.searchQuery.trim()) {
-      const q = explore.searchQuery.toLowerCase();
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
       items = items.filter(
         (p) =>
           p.title.toLowerCase().includes(q) ||
@@ -40,14 +41,14 @@ export default function GalleryScreen() {
       );
     }
     return items;
-  }, [explore.filter, explore.searchQuery]);
+  }, [activeFilter, searchQuery]);
 
-  const handlePromptPress = useCallback((prompt: Prompt) => {
-    router.push(`/prompt/${prompt.id}`);
+  const handlePromptPress = useCallback((item: GalleryItem) => {
+    router.push(`/prompt/${item.id}`);
   }, [router]);
 
-  const renderRecipeCard = useCallback(({ item, index }: { item: Prompt; index: number }) => {
-    const category = getCategoryById(item.category);
+  const renderRecipeCard = useCallback(({ item, index }: { item: GalleryItem; index: number }) => {
+    const category = CREATION_CATEGORIES.find(c => c.model === item.model) || CREATION_CATEGORIES[0];
 
     // Light Mode Pastels
     const cardBg = index % 2 === 0 ? '#EDE9FE' : '#D1FAE5'; // Light Purple / Light Green
@@ -120,8 +121,8 @@ export default function GalleryScreen() {
               placeholder="Search prompts..."
               placeholderTextColor="#9CA3AF"
               style={styles.searchInput}
-              value={explore.searchQuery}
-              onChangeText={setExploreSearchQuery}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
             />
           </View>
           <Pressable style={styles.filterBtn}>
@@ -143,10 +144,10 @@ export default function GalleryScreen() {
               <VisualCategory
                 label={item.label}
                 emoji={item.emoji}
-                selected={explore.filter === item.label}
+                selected={activeFilter === item.label}
                 onPress={() => {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setExploreFilter(item.label);
+                  setActiveFilter(item.label);
                 }}
                 index={index}
               />

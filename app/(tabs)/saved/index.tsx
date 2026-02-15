@@ -8,7 +8,7 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 
 import Colors from '@/constants/colors';
 import { usePromptStore } from '@/store/promptStore';
-import { Prompt } from '@/types/prompt';
+import { SavedPrompt } from '@/types/prompt';
 import { PromptCard } from '@/components/PromptCard';
 import { VisualCategory } from '@/components/VisualCategory';
 // We use VisualCategory for filtering here too? Or pills? Let's use VisualCategory for consistency.
@@ -16,19 +16,21 @@ import { CREATION_CATEGORIES } from '@/data/gallerySeed';
 
 export default function SavedScreen() {
   const insets = useSafeAreaInsets();
-  const { savedPrompts, libraryFilter, librarySearchQuery, setLibraryFilter, setLibrarySearchQuery, removeSavedPrompt } =
-    usePromptStore();
+  const { savedPrompts, deletePrompt } = usePromptStore();
+
+  const [activeFilter, setActiveFilter] = React.useState('All');
+  const [localSearch, setLocalSearch] = React.useState('');
 
   const filteredPrompts = useMemo(() => {
     let items = savedPrompts;
-    if (libraryFilter !== 'All') {
-      const cat = CREATION_CATEGORIES.find(c => c.label === libraryFilter);
+    if (activeFilter !== 'All') {
+      const cat = CREATION_CATEGORIES.find(c => c.label === activeFilter);
       if (cat) {
-        items = items.filter((p) => p.category === cat.id);
+        items = items.filter((p) => p.model === cat.model);
       }
     }
-    if (librarySearchQuery.trim()) {
-      const q = librarySearchQuery.toLowerCase();
+    if (localSearch.trim()) {
+      const q = localSearch.toLowerCase();
       items = items.filter(
         (p) =>
           p.title.toLowerCase().includes(q) ||
@@ -36,20 +38,20 @@ export default function SavedScreen() {
       );
     }
     return items;
-  }, [savedPrompts, libraryFilter, librarySearchQuery]);
+  }, [savedPrompts, activeFilter, localSearch]);
 
-  const renderItem = ({ item, index }: { item: Prompt; index: number }) => (
+  const renderItem = ({ item, index }: { item: SavedPrompt; index: number }) => (
     <Animated.View entering={FadeInDown.delay(index * 50).springify()}>
       <Swipeable
         overshootRight={false}
         renderRightActions={() => (
-          <Pressable onPress={() => removeSavedPrompt(item.id)} style={styles.deleteSwipe}>
+          <Pressable onPress={() => deletePrompt(item.id)} style={styles.deleteSwipe}>
             <Trash2 size={20} color="#fff" />
           </Pressable>
         )}
       >
         <PromptCard
-          prompt={item}
+          prompt={item as any}
           variant="library"
           style={styles.card}
         />
@@ -81,8 +83,8 @@ export default function SavedScreen() {
             placeholder="Search your library..."
             placeholderTextColor="#9CA3AF"
             style={styles.searchInput}
-            value={librarySearchQuery}
-            onChangeText={setLibrarySearchQuery}
+            value={localSearch}
+            onChangeText={setLocalSearch}
           />
         </View>
       </View>
@@ -99,8 +101,8 @@ export default function SavedScreen() {
             <VisualCategory
               label={item.label}
               emoji={item.emoji}
-              selected={libraryFilter === item.label}
-              onPress={() => setLibraryFilter(item.label)}
+              selected={activeFilter === item.label}
+              onPress={() => setActiveFilter(item.label)}
               index={index}
             />
           )}

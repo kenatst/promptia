@@ -5,22 +5,21 @@ import { Copy, Edit2, Share2, Trash2, Heart, ChefHat } from 'lucide-react-native
 import { LinearGradient } from 'expo-linear-gradient';
 
 import Colors from '@/constants/colors';
-import { Prompt } from '@/types/prompt';
-import { getCategoryById } from '@/data/gallerySeed';
+import { CREATION_CATEGORIES } from '@/data/gallerySeed';
 import { AnimatedChip } from './AnimatedChip';
 
 interface PromptCardProps {
-    prompt: Prompt;
+    prompt: any;
     variant?: 'gallery' | 'library';
     style?: ViewStyle;
-    onPress?: (prompt: Prompt) => void;
-    onCopy?: (prompt: Prompt) => void;
-    onEdit?: (prompt: Prompt) => void;
-    onDelete?: (prompt: Prompt) => void;
-    onSave?: (prompt: Prompt) => void;
-    onShare?: (prompt: Prompt) => void;
-    onUseInBuilder?: (prompt: Prompt) => void;
-    onRemoveTag?: (prompt: Prompt, tag: string) => void;
+    onPress?: (prompt: any) => void;
+    onCopy?: (prompt: any) => void;
+    onEdit?: (prompt: any) => void;
+    onDelete?: (prompt: any) => void;
+    onSave?: (prompt: any) => void;
+    onShare?: (prompt: any) => void;
+    onUseInBuilder?: (prompt: any) => void;
+    onRemoveTag?: (prompt: any, tag: string) => void;
 }
 
 export function PromptCard({
@@ -36,11 +35,11 @@ export function PromptCard({
     onUseInBuilder,
     onRemoveTag,
 }: PromptCardProps) {
-    const category = getCategoryById(prompt.category);
+    const category = CREATION_CATEGORIES.find(c => c.id === prompt.category || c.model === prompt.model) || CREATION_CATEGORIES[0];
+    const accentColor = category.color || Colors.accent;
 
     // Light Mode: Pastel Backgrounds instead of Glass
-    // We alternate or use the prompt's accent color (but very pale)
-    const cardBgColor = variant === 'gallery' ? `${prompt.accentColor}15` : '#FFFFFF';
+    const cardBgColor = variant === 'gallery' ? `${accentColor}15` : '#FFFFFF';
 
     return (
         <Pressable
@@ -55,7 +54,7 @@ export function PromptCard({
             ]}
         >
             {/* 3D Bottom Lip/Border */}
-            <View style={[styles.bottomBorder, { backgroundColor: prompt.accentColor }]} />
+            <View style={[styles.bottomBorder, { backgroundColor: accentColor }]} />
 
             <View style={styles.content}>
                 {/* Header */}
@@ -63,7 +62,7 @@ export function PromptCard({
                     <View style={{ flex: 1 }}>
                         <View style={styles.catRow}>
                             <Text style={styles.emoji}>{category.emoji}</Text>
-                            <Text style={[styles.catName, { color: prompt.accentColor }]}>{category.label}</Text>
+                            <Text style={[styles.catName, { color: accentColor }]}>{category.label}</Text>
                         </View>
                         <Text style={styles.title} numberOfLines={2}>{prompt.title}</Text>
                     </View>
@@ -75,7 +74,7 @@ export function PromptCard({
                         style={styles.iconBtn}
                     >
                         {variant === 'gallery' ? (
-                            <Heart size={20} color={prompt.accentColor} />
+                            <Heart size={20} color={accentColor} />
                         ) : (
                             <Edit2 size={18} color="#4B5563" />
                         )}
@@ -84,12 +83,12 @@ export function PromptCard({
 
                 {/* Preview Text */}
                 <Text style={styles.preview} numberOfLines={3}>
-                    {prompt.concisePrompt || prompt.fullPrompt}
+                    {prompt.concisePrompt || prompt.fullPrompt || prompt.prompt}
                 </Text>
 
                 {/* Tags */}
                 <View style={styles.tagsRow}>
-                    {prompt.tags.slice(0, 3).map(tag => (
+                    {prompt.tags?.slice(0, 3).map((tag: string) => (
                         <View key={tag} style={styles.miniTag}>
                             <Text style={styles.miniTagText}>#{tag}</Text>
                         </View>

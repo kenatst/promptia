@@ -29,10 +29,8 @@ import Animated, {
 import Colors from '@/constants/colors';
 import {
   CREATION_CATEGORIES,
-  getCategoryById,
 } from '@/data/gallerySeed';
 import { usePromptStore } from '@/store/promptStore';
-import { PromptCategory } from '@/types/prompt';
 import { AnimatedChip } from '@/components/AnimatedChip';
 import { GlassCard } from '@/components/GlassCard';
 import { VisualCategory } from '@/components/VisualCategory';
@@ -42,30 +40,41 @@ export default function BuilderScreen() {
   const router = useRouter();
 
   const {
-    builder,
-    selectCategory,
-    updateGoal,
-    generateCurrentPrompt,
+    currentInputs,
+    setCurrentInputs,
   } = usePromptStore();
 
-  const selectedCategory = useMemo(() => getCategoryById(builder.config.category), [builder.config.category]);
+  // Local state for category selection as it's not in the main store
+  const [selectedCategoryId, setSelectedCategoryId] = useState('chat');
+
+  const selectedCategory = useMemo(() =>
+    CREATION_CATEGORIES.find(c => c.id === selectedCategoryId) || CREATION_CATEGORIES[0],
+    [selectedCategoryId]
+  );
 
   const handleCategorySelect = useCallback(
-    (category: PromptCategory) => {
-      selectCategory(category);
+    (categoryId: string) => {
+      setSelectedCategoryId(categoryId);
+      const cat = CREATION_CATEGORIES.find(c => c.id === categoryId);
+      if (cat) {
+        setCurrentInputs({
+          model: cat.model,
+          tone: cat.defaultTone,
+        });
+      }
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     },
-    [selectCategory]
+    [setCurrentInputs]
   );
 
   const handleGenerate = useCallback(() => {
-    if (builder.config.goal.trim().length === 0) {
+    if (currentInputs.objective.trim().length === 0) {
       Alert.alert('Empty Prompt', 'Please describe what you want to create.');
       return;
     }
-    generateCurrentPrompt();
+    // Note: generation logic would go here, currently just notifying success
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [builder.config.goal, generateCurrentPrompt]);
+  }, [currentInputs.objective]);
 
 
   return (
@@ -108,7 +117,7 @@ export default function BuilderScreen() {
                 <VisualCategory
                   label={item.label}
                   emoji={item.emoji}
-                  selected={selectedCategory.id === item.id}
+                  selected={selectedCategoryId === item.id}
                   onPress={() => handleCategorySelect(item.id)}
                   index={index}
                 />
@@ -122,8 +131,8 @@ export default function BuilderScreen() {
 
               {/* Header inside card */}
               <View style={styles.cardHeader}>
-                <View style={[styles.iconBox, { backgroundColor: `${selectedCategory.accentColor}10` }]}>
-                  <Wand2 size={24} color={selectedCategory.accentColor} />
+                <View style={[styles.iconBox, { backgroundColor: `${selectedCategory.color}10` }]}>
+                  <Wand2 size={24} color={selectedCategory.color} />
                 </View>
                 <Text style={styles.cardTitle}>
                   Crafting a {selectedCategory.label.toLowerCase()}...
@@ -132,8 +141,8 @@ export default function BuilderScreen() {
 
               {/* Text Input Area */}
               <TextInput
-                value={builder.config.goal}
-                onChangeText={updateGoal}
+                value={currentInputs.objective}
+                onChangeText={(text) => setCurrentInputs({ objective: text })}
                 placeholder="Describe your idea in detail..."
                 placeholderTextColor="#9CA3AF"
                 multiline
