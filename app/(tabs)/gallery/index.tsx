@@ -1,669 +1,341 @@
-import React, { useState, useMemo, useCallback, useRef } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TouchableOpacity,
-  Animated,
-  TextInput,
-  ScrollView,
-  Dimensions,
-} from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import React, { useCallback, useMemo } from 'react';
+import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image } from 'expo-image';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Heart, Shuffle, Sparkles, Search, X, TrendingUp } from 'lucide-react-native';
-import { gallerySeed, GALLERY_FILTERS } from '@/data/gallerySeed';
-import { usePromptStore } from '@/store/promptStore';
-import { GalleryItem, ModelType, DEFAULT_INPUTS } from '@/types/prompt';
+import { Search, Bell, Heart, ChefHat, Filter } from 'lucide-react-native';
+import Animated, { FadeInDown } from 'react-native-reanimated';
+
 import Colors from '@/constants/colors';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const FEATURED_CARD_WIDTH = SCREEN_WIDTH * 0.78;
-
-const MODEL_COLORS: Record<ModelType, string> = {
-  chatgpt: Colors.accent,
-  midjourney: Colors.secondary,
-  sdxl: Colors.cyan,
-  video: Colors.pink,
-};
-
-const MODEL_LABELS: Record<ModelType, string> = {
-  chatgpt: 'LLM',
-  midjourney: 'MJ',
-  sdxl: 'SDXL',
-  video: 'VIDEO',
-};
-
-const FILTER_EMOJIS: Record<string, string> = {
-  'All': '✨',
-  'Text': '✍️',
-  'Image': '🎨',
-  'Video': '🎬',
-  'Trending': '🔥',
-  'Editor Picks': '⭐',
-};
+import { gallerySeed, getCategoryById, CREATION_CATEGORIES } from '@/data/gallerySeed';
+import { usePromptStore } from '@/store/promptStore';
+import { Prompt } from '@/types/prompt';
+import { VisualCategory } from '@/components/VisualCategory';
 
 export default function GalleryScreen() {
   const insets = useSafeAreaInsets();
-  const [activeFilter, setActiveFilter] = useState('All');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [searchFocused, setSearchFocused] = useState(false);
   const router = useRouter();
-  const { setCurrentInputs } = usePromptStore();
 
-  const featuredItems = useMemo(() => gallerySeed.filter((i) => i.isEditorPick), []);
+  const {
+    explore,
+    setExploreSearchQuery,
+    setExploreFilter,
+  } = usePromptStore();
 
-  const filteredItems = useMemo(() => {
-    let items: GalleryItem[];
-    switch (activeFilter) {
-      case 'Text':
-        items = gallerySeed.filter((i) => i.type === 'text');
-        break;
-      case 'Image':
-        items = gallerySeed.filter((i) => i.type === 'image');
-        break;
-      case 'Video':
-        items = gallerySeed.filter((i) => i.type === 'video');
-        break;
-      case 'Trending':
-        items = [...gallerySeed].sort((a, b) => b.likes - a.likes);
-        break;
-      case 'Editor Picks':
-        items = gallerySeed.filter((i) => i.isEditorPick);
-        break;
-      default:
-        items = gallerySeed;
+  const filteredPrompts = useMemo(() => {
+    let items = [...gallerySeed];
+    if (explore.filter !== 'All') {
+      const cat = CREATION_CATEGORIES.find(c => c.label === explore.filter);
+      if (cat) {
+        items = items.filter((p) => p.category === cat.id);
+      }
     }
-
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
+    if (explore.searchQuery.trim()) {
+      const q = explore.searchQuery.toLowerCase();
       items = items.filter(
-        (i) => i.title.toLowerCase().includes(q) || i.tags.some((t) => t.toLowerCase().includes(q))
+        (p) =>
+          p.title.toLowerCase().includes(q) ||
+          p.tags.some((tag) => tag.toLowerCase().includes(q))
       );
     }
-
     return items;
-  }, [activeFilter, searchQuery]);
+  }, [explore.filter, explore.searchQuery]);
 
-  const handleRemix = useCallback((item: GalleryItem) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setCurrentInputs({
-      ...DEFAULT_INPUTS,
-      objective: item.title,
-      model: item.model,
-      objectiveChips: item.tags.slice(0, 3),
-      style: item.style,
-    });
-    router.push('/(tabs)/(builder)');
-  }, [setCurrentInputs, router]);
-
-  const handleDetail = useCallback((item: GalleryItem) => {
-    router.push(`/prompt/${item.id}`);
+  const handlePromptPress = useCallback((prompt: Prompt) => {
+    router.push(`/prompt/${prompt.id}`);
   }, [router]);
 
-  const renderItem = useCallback(({ item }: { item: GalleryItem }) => (
-    <GalleryCard item={item} onRemix={handleRemix} onPress={handleDetail} />
-  ), [handleRemix, handleDetail]);
+  const renderRecipeCard = useCallback(({ item, index }: { item: Prompt; index: number }) => {
+    const category = getCategoryById(item.category);
 
-  const keyExtractor = useCallback((item: GalleryItem) => item.id, []);
+    // Light Mode Pastels
+    const cardBg = index % 2 === 0 ? '#EDE9FE' : '#D1FAE5'; // Light Purple / Light Green
 
-  const renderHeader = () => (
-    <View style={styles.listHeader}>
-      <View style={styles.featuredSection}>
-        <View style={styles.sectionRow}>
-          <Sparkles size={16} color={Colors.accent} />
-          <Text style={styles.sectionTitle}>Featured</Text>
-        </View>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.featuredScroll}
-          decelerationRate="fast"
-          snapToInterval={FEATURED_CARD_WIDTH + 12}
-        >
-          {featuredItems.map((item) => (
-            <FeaturedCard
-              key={item.id}
-              item={item}
-              onPress={() => handleDetail(item)}
-              onRemix={() => handleRemix(item)}
+    return (
+      <Animated.View entering={FadeInDown.delay(index * 100).springify()} style={styles.cardWrapper}>
+        <Pressable onPress={() => handlePromptPress(item)}>
+          {/* The "Aegean Breeze" Card Style - Light Mode */}
+          <View style={[styles.recipeCard, { backgroundColor: cardBg }]}>
+            {/* Subtle Inner Glow */}
+            <LinearGradient
+              colors={['rgba(255,255,255,0.6)', 'transparent']}
+              style={StyleSheet.absoluteFill}
             />
-          ))}
-        </ScrollView>
-      </View>
 
-      <View style={styles.filterSection}>
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          contentContainerStyle={styles.filterScroll}
-        >
-          {GALLERY_FILTERS.map((filter) => (
-            <TouchableOpacity
-              key={filter}
-              style={[styles.filterChip, activeFilter === filter && styles.filterChipActive]}
-              onPress={() => {
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                setActiveFilter(filter);
-              }}
-              activeOpacity={0.7}
-            >
-              <Text style={styles.filterEmoji}>{FILTER_EMOJIS[filter] ?? '✨'}</Text>
-              <Text style={[styles.filterText, activeFilter === filter && styles.filterTextActive]}>
-                {filter}
-              </Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
-      </View>
+            {/* Content Overlay */}
+            <View style={styles.cardContent}>
+              <View style={styles.cardHeader}>
+                <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
+                <View style={styles.heartBtn}>
+                  <Heart size={16} color="#000" />
+                </View>
+              </View>
 
-      <View style={styles.allPromptsRow}>
-        <TrendingUp size={14} color={Colors.textTertiary} />
-        <Text style={styles.allPromptsLabel}>All Prompts</Text>
-        <Text style={styles.allPromptsCount}>{filteredItems.length}</Text>
-      </View>
-    </View>
-  );
+              <View style={styles.cardFooter}>
+                <Text style={styles.cardMeta}>⏱️ 20 min • {category.label}</Text>
+                <View style={styles.cookBtn}>
+                  <ChefHat size={16} color="#FFF" />
+                </View>
+              </View>
+            </View>
+
+            {/* Floating Image (Emoji/Icon) */}
+            <View style={styles.floatingIcon}>
+              <Text style={{ fontSize: 48 }}>{category.emoji}</Text>
+            </View>
+          </View>
+        </Pressable>
+      </Animated.View>
+    );
+  }, [handlePromptPress]);
 
   return (
     <View style={styles.container}>
-      <LinearGradient
-        colors={[Colors.backgroundGradientStart, Colors.backgroundGradientMid, Colors.backgroundGradientEnd]}
-        style={StyleSheet.absoluteFill}
-      />
-
-      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Text style={styles.headerTitle}>Explore</Text>
+      {/* Light Cream Background */}
+      <View style={StyleSheet.absoluteFill}>
+        <LinearGradient
+          colors={['#FAFAFA', '#FFFBF2']}
+          style={StyleSheet.absoluteFill}
+        />
       </View>
 
-      <View style={styles.searchRow}>
-        <View style={[styles.searchBar, searchFocused && styles.searchBarFocused]}>
-          <Search size={18} color={searchFocused ? Colors.accent : Colors.textTertiary} />
-          <TextInput
-            style={styles.searchInput}
-            placeholder="Search prompts, tags..."
-            placeholderTextColor={Colors.textTertiary}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onFocus={() => setSearchFocused(true)}
-            onBlur={() => setSearchFocused(false)}
-          />
-          {searchQuery.length > 0 && (
-            <TouchableOpacity onPress={() => setSearchQuery('')}>
-              <X size={16} color={Colors.textTertiary} />
-            </TouchableOpacity>
-          )}
+      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <View>
+          <Text style={styles.greeting}>Hello,</Text>
+          <Text style={styles.username}>Prompt Creator</Text>
+        </View>
+        <Pressable style={styles.bellBtn}>
+          <Bell size={20} color="#111827" />
+          <View style={styles.dot} />
+        </Pressable>
+      </View>
+
+      <View style={styles.searchSection}>
+        <Text style={styles.sectionTitle}>Explore New Prompts</Text>
+        <View style={styles.searchRow}>
+          <View style={styles.searchBar}>
+            <Search size={20} color="#9CA3AF" />
+            <TextInput
+              placeholder="Search prompts..."
+              placeholderTextColor="#9CA3AF"
+              style={styles.searchInput}
+              value={explore.searchQuery}
+              onChangeText={setExploreSearchQuery}
+            />
+          </View>
+          <Pressable style={styles.filterBtn}>
+            <Filter size={20} color="#FFF" />
+          </Pressable>
         </View>
       </View>
 
-      <FlatList
-        data={filteredItems}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 90 }]}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={renderHeader}
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={styles.emptyEmoji}>🔍</Text>
-            <Text style={styles.emptyTitle}>No prompts found</Text>
-            <Text style={styles.emptyDesc}>Try a different search or filter</Text>
-          </View>
-        }
-      />
+      <ScrollView contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+        {/* Categories Circles */}
+        <View style={styles.categoriesRow}>
+          <FlatList
+            data={CREATION_CATEGORIES}
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.categoryList}
+            renderItem={({ item, index }) => (
+              <VisualCategory
+                label={item.label}
+                emoji={item.emoji}
+                selected={explore.filter === item.label}
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setExploreFilter(item.label);
+                }}
+                index={index}
+              />
+            )}
+          />
+        </View>
+
+        {/* Recipe Cards List */}
+        <View style={styles.cardsList}>
+          {filteredPrompts.map((item, index) => (
+            <View key={item.id}>
+              {renderRecipeCard({ item, index })}
+            </View>
+          ))}
+        </View>
+
+      </ScrollView>
     </View>
   );
 }
-
-interface FeaturedCardProps {
-  item: GalleryItem;
-  onPress: () => void;
-  onRemix: () => void;
-}
-
-const FeaturedCard = React.memo(function FeaturedCard({ item, onPress, onRemix }: FeaturedCardProps) {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const modelColor = MODEL_COLORS[item.model];
-
-  return (
-    <Animated.View style={[styles.featuredCardWrapper, { transform: [{ scale: scaleAnim }] }]}>
-      <TouchableOpacity
-        onPress={onPress}
-        onPressIn={() => Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, speed: 50, bounciness: 4 }).start()}
-        onPressOut={() => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 4 }).start()}
-        activeOpacity={0.95}
-      >
-        <View style={styles.featuredCard}>
-          <Image
-            source={{ uri: item.thumbnail }}
-            style={styles.featuredImage}
-            contentFit="cover"
-            transition={300}
-          />
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.4)', 'rgba(0,0,0,0.85)']}
-            style={styles.featuredOverlay}
-          />
-          <View style={styles.featuredBadge}>
-            <Sparkles size={10} color="#FFD700" />
-            <Text style={styles.featuredBadgeText}>Editor Pick</Text>
-          </View>
-          <View style={styles.featuredInfo}>
-            <View style={[styles.featuredModelBadge, { backgroundColor: `${modelColor}30`, borderColor: `${modelColor}50` }]}>
-              <Text style={[styles.featuredModelText, { color: modelColor }]}>{MODEL_LABELS[item.model]}</Text>
-            </View>
-            <Text style={styles.featuredTitle} numberOfLines={2}>{item.title}</Text>
-            <View style={styles.featuredFooter}>
-              <View style={styles.featuredLikes}>
-                <Heart size={12} color={Colors.pink} fill={Colors.pink} />
-                <Text style={styles.featuredLikesText}>{item.likes.toLocaleString()}</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.featuredRemix}
-                onPress={(e) => { e.stopPropagation?.(); onRemix(); }}
-                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-              >
-                <Shuffle size={12} color={Colors.accent} />
-                <Text style={styles.featuredRemixText}>Remix</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-});
-
-interface GalleryCardProps {
-  item: GalleryItem;
-  onRemix: (item: GalleryItem) => void;
-  onPress: (item: GalleryItem) => void;
-}
-
-const GalleryCard = React.memo(function GalleryCard({ item, onRemix, onPress }: GalleryCardProps) {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const modelColor = MODEL_COLORS[item.model];
-
-  return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-      <TouchableOpacity
-        onPress={() => onPress(item)}
-        onPressIn={() => Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, speed: 50, bounciness: 4 }).start()}
-        onPressOut={() => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 4 }).start()}
-        activeOpacity={0.9}
-      >
-        <View style={styles.card}>
-          <Image
-            source={{ uri: item.thumbnail }}
-            style={styles.thumbnail}
-            contentFit="cover"
-            transition={300}
-          />
-          <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.7)', 'rgba(0,0,0,0.9)']}
-            locations={[0.3, 0.7, 1]}
-            style={styles.cardGradient}
-          />
-          <View style={styles.cardContent}>
-            <View style={styles.cardTopRow}>
-              <View style={[styles.modelBadge, { backgroundColor: `${modelColor}25`, borderColor: `${modelColor}40` }]}>
-                <Text style={[styles.modelText, { color: modelColor }]}>{MODEL_LABELS[item.model]}</Text>
-              </View>
-              <View style={styles.likesRow}>
-                <Heart size={12} color={Colors.pink} fill={Colors.pink} />
-                <Text style={styles.likesText}>{item.likes.toLocaleString()}</Text>
-              </View>
-            </View>
-            <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-            <Text style={styles.cardPrompt} numberOfLines={2}>{item.prompt}</Text>
-            <View style={styles.cardFooter}>
-              <View style={styles.tagRow}>
-                {item.tags.slice(0, 3).map((tag) => (
-                  <View key={tag} style={styles.tag}>
-                    <Text style={styles.tagText}>{tag}</Text>
-                  </View>
-                ))}
-              </View>
-              <TouchableOpacity
-                style={styles.remixBtn}
-                onPress={() => onRemix(item)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Shuffle size={13} color={Colors.accent} />
-                <Text style={styles.remixText}>Remix</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-});
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#FAFAFA',
   },
   header: {
-    paddingHorizontal: 20,
-    paddingBottom: 4,
+    paddingHorizontal: 24,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
   },
-  headerTitle: {
-    fontSize: 34,
-    fontWeight: '900' as const,
-    color: Colors.text,
-    letterSpacing: -0.5,
+  greeting: {
+    fontSize: 16,
+    color: '#6B7280',
+  },
+  username: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#111827',
+  },
+  bellBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#FFFFFF',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
+  },
+  dot: {
+    position: 'absolute',
+    top: 10,
+    right: 12,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#EF4444',
+  },
+  searchSection: {
+    paddingHorizontal: 24,
+    marginBottom: 24,
+  },
+  sectionTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#111827',
+    marginBottom: 16,
   },
   searchRow: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
+    flexDirection: 'row',
+    gap: 12,
   },
   searchBar: {
+    flex: 1,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#FFFFFF',
     flexDirection: 'row',
     alignItems: 'center',
+    paddingHorizontal: 16,
     gap: 10,
-    backgroundColor: Colors.glass,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
     borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  searchBarFocused: {
-    borderColor: Colors.accentGlow,
-    backgroundColor: Colors.glassMedium,
+    borderColor: 'rgba(0,0,0,0.02)',
   },
   searchInput: {
     flex: 1,
-    fontSize: 15,
-    color: Colors.text,
+    color: '#111827',
+    fontSize: 16,
   },
-  listContent: {
-    paddingHorizontal: 20,
+  filterBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#111827', // Black Filter Btn
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOpacity: 0.2,
+    shadowRadius: 10,
+    elevation: 5,
   },
-  listHeader: {
+  categoriesRow: {
+    marginBottom: 30,
+  },
+  categoryList: {
+    paddingHorizontal: 24,
+    gap: 16,
+  },
+  cardsList: {
+    paddingHorizontal: 24,
     gap: 20,
-    marginBottom: 16,
   },
-  featuredSection: {
-    gap: 12,
+  cardWrapper: {
+    marginBottom: 8,
   },
-  sectionRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  sectionTitle: {
-    fontSize: 17,
-    fontWeight: '800' as const,
-    color: Colors.text,
-    letterSpacing: -0.2,
-  },
-  featuredScroll: {
-    gap: 12,
-    paddingRight: 20,
-  },
-  featuredCardWrapper: {
-    width: FEATURED_CARD_WIDTH,
-  },
-  featuredCard: {
-    height: 200,
-    borderRadius: 20,
-    overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  featuredImage: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  featuredOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  featuredBadge: {
-    position: 'absolute',
-    top: 12,
-    left: 12,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,215,0,0.3)',
-  },
-  featuredBadgeText: {
-    fontSize: 10,
-    fontWeight: '700' as const,
-    color: '#FFD700',
-  },
-  featuredInfo: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 14,
-    gap: 6,
-  },
-  featuredModelBadge: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  featuredModelText: {
-    fontSize: 10,
-    fontWeight: '800' as const,
-    letterSpacing: 0.5,
-  },
-  featuredTitle: {
-    fontSize: 17,
-    fontWeight: '800' as const,
-    color: Colors.white,
-    letterSpacing: -0.2,
-  },
-  featuredFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  featuredLikes: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  featuredLikesText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-    fontWeight: '600' as const,
-  },
-  featuredRemix: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,159,10,0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,159,10,0.3)',
-  },
-  featuredRemixText: {
-    fontSize: 11,
-    fontWeight: '700' as const,
-    color: Colors.accent,
-  },
-  filterSection: {},
-  filterScroll: {
-    gap: 8,
-  },
-  filterChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
+  recipeCard: {
+    height: 180,
     borderRadius: 24,
-    backgroundColor: Colors.glass,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  filterChipActive: {
-    backgroundColor: Colors.accentDim,
-    borderColor: `${Colors.accent}50`,
-  },
-  filterEmoji: {
-    fontSize: 13,
-  },
-  filterText: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: Colors.textSecondary,
-  },
-  filterTextActive: {
-    color: Colors.accent,
-  },
-  allPromptsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  allPromptsLabel: {
-    fontSize: 15,
-    fontWeight: '700' as const,
-    color: Colors.textSecondary,
-    flex: 1,
-  },
-  allPromptsCount: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: Colors.textTertiary,
-  },
-  separator: {
-    height: 14,
-  },
-  card: {
-    height: 260,
-    borderRadius: 20,
+    padding: 20,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    position: 'relative',
-  },
-  thumbnail: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: Colors.glass,
-  },
-  cardGradient: {
-    ...StyleSheet.absoluteFillObject,
+    justifyContent: 'space-between',
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 5 },
+    elevation: 5,
   },
   cardContent: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 16,
-    gap: 6,
-  },
-  cardTopRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flex: 1,
     justifyContent: 'space-between',
+    zIndex: 2,
   },
-  modelBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  modelText: {
-    fontSize: 10,
-    fontWeight: '800' as const,
-    letterSpacing: 0.5,
-  },
-  likesRow: {
+  cardHeader: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  likesText: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.7)',
-    fontWeight: '600' as const,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   cardTitle: {
-    fontSize: 18,
-    fontWeight: '800' as const,
-    color: Colors.white,
-    letterSpacing: -0.2,
+    fontSize: 24,
+    fontWeight: '800',
+    color: '#1F2937',
+    width: '75%',
+    lineHeight: 28,
   },
-  cardPrompt: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.6)',
-    lineHeight: 17,
+  heartBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FFF',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
+    alignItems: 'flex-end',
+    marginTop: 20,
+  },
+  cardMeta: {
+    fontSize: 13,
+    color: '#4B5563',
+    fontWeight: '600',
+  },
+  cookBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 14,
+    backgroundColor: '#111827', // Black
     alignItems: 'center',
-    marginTop: 2,
+    justifyContent: 'center',
   },
-  tagRow: {
-    flexDirection: 'row',
-    gap: 5,
-    flex: 1,
-    flexWrap: 'wrap',
-  },
-  tag: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    paddingHorizontal: 7,
-    paddingVertical: 3,
-    borderRadius: 6,
-  },
-  tagText: {
-    fontSize: 10,
-    color: 'rgba(255,255,255,0.7)',
-    fontWeight: '600' as const,
-  },
-  remixBtn: {
-    flexDirection: 'row',
+  floatingIcon: {
+    position: 'absolute',
+    bottom: -10,
+    right: -10,
+    width: 100,
+    height: 100,
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255,159,10,0.2)',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(255,159,10,0.3)',
-  },
-  remixText: {
-    fontSize: 12,
-    fontWeight: '700' as const,
-    color: Colors.accent,
-  },
-  emptyState: {
-    alignItems: 'center',
-    paddingTop: 60,
-    gap: 8,
-  },
-  emptyEmoji: {
-    fontSize: 48,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-    color: Colors.text,
-  },
-  emptyDesc: {
-    fontSize: 14,
-    color: Colors.textTertiary,
-  },
+    justifyContent: 'center',
+    opacity: 0.8,
+    zIndex: 1,
+  }
 });

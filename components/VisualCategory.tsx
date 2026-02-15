@@ -2,14 +2,14 @@ import React, { useEffect } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
-// Reference Colors
+// New Vibrant Pastel Colors for Light Mode
 const CIRCLE_COLORS = [
-    '#D1FAE5', // Green
-    '#FFEDD5', // Orange
-    '#FEF3C7', // Yellow
-    '#EDE9FE', // Purple
-    '#FCE7F3', // Pink
-    '#DBEAFE', // Blue
+    '#D1FAE5', // Mint (Green)
+    '#FFEDD5', // Peach (Orange)
+    '#FEF3C7', // Cream (Yellow)
+    '#EDE9FE', // Lavender (Purple)
+    '#FCE7F3', // Rose (Pink)
+    '#DBEAFE', // Sky (Blue)
 ];
 
 interface VisualCategoryProps {
@@ -55,33 +55,35 @@ const styles = StyleSheet.create({
         borderRadius: 32,
         alignItems: 'center',
         justifyContent: 'center',
-        // 3D Shadow for the "pop"
+        // Stronger Shadow for Light Mode Pop
         shadowColor: '#000',
-        shadowOpacity: 0.15,
-        shadowRadius: 8,
-        shadowOffset: { width: 0, height: 4 },
-        elevation: 8,
+        shadowOpacity: 0.1,
+        shadowRadius: 10,
+        shadowOffset: { width: 0, height: 5 },
+        elevation: 5,
+        borderWidth: 1,
+        borderColor: 'rgba(0,0,0,0.03)',
     },
     emoji: {
         fontSize: 28,
     },
     label: {
         fontSize: 12,
-        color: 'rgba(255,255,255,0.6)',
+        color: '#6B7280', // Grey for unselected
         textAlign: 'center',
         fontWeight: '500',
     },
     labelSelected: {
-        color: '#FFF',
+        color: '#111827', // Black for selected
         fontWeight: '700',
     },
     ring: {
         position: 'absolute',
-        width: 70,
-        height: 70,
-        borderRadius: 35,
+        width: 68,
+        height: 68,
+        borderRadius: 34,
         borderWidth: 2,
-        borderColor: '#FFF',
-        opacity: 0.5,
+        borderColor: '#111827', // Dark Ring for selection
+        opacity: 0.1,
     }
 });

@@ -1,56 +1,97 @@
-import React from 'react';
-import { View, StyleSheet, ViewStyle } from 'react-native';
+import React, { ReactNode } from 'react';
+import { StyleSheet, View, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+
 import Colors from '@/constants/colors';
 
 interface GlassCardProps {
-  children: React.ReactNode;
-  style?: ViewStyle;
-  noPadding?: boolean;
-  accent?: boolean;
+  children: ReactNode;
+  style?: ViewStyle | ViewStyle[];
+  variant?: 'glass' | 'solid-gradient' | 'input-container' | '3d-light';
   accentColor?: string;
-  variant?: 'default' | 'elevated' | 'highlighted';
+  noPadding?: boolean;
 }
 
-function GlassCardComponent({ children, style, noPadding, accent, accentColor, variant = 'default' }: GlassCardProps) {
-  const borderColor = accent
-    ? (accentColor ? `${accentColor}40` : Colors.borderAccent)
-    : variant === 'highlighted' ? Colors.glassBorderLight : Colors.glassBorder;
+export function GlassCard({
+  children,
+  style,
+  variant = '3d-light', // Default to new light style
+  accentColor,
+  noPadding = false,
+}: GlassCardProps) {
 
-  const bgColors: [string, string] = accent
-    ? [`${accentColor || Colors.accent}10`, 'rgba(255,255,255,0.02)']
-    : variant === 'elevated'
-      ? [Colors.cardGradientStart, 'rgba(255,255,255,0.03)']
-      : variant === 'highlighted'
-        ? ['rgba(255,255,255,0.08)', 'rgba(255,255,255,0.04)']
-        : [Colors.cardGradientStart, Colors.cardGradientEnd];
+  if (variant === 'input-container') {
+    // The "Crafting a recipe" massive card - Light Mode
+    return (
+      <View style={[styles.inputContainer, style]}>
+        <LinearGradient
+          colors={['#FFFFFF', '#FFFBF2']}
+          start={{ x: 0.5, y: 0 }}
+          end={{ x: 0.5, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+        <View style={[styles.content, noPadding && styles.noPadding]}>
+          {children}
+        </View>
+      </View>
+    );
+  }
 
+  if (variant === 'solid-gradient') {
+    return (
+      <View style={[styles.solidCard, style, Boolean(accentColor) && { backgroundColor: accentColor }]}>
+        <View style={[styles.content, noPadding && styles.noPadding]}>
+          {children}
+        </View>
+      </View>
+    )
+  }
+
+  // Default "3D Light" Card
   return (
-    <View style={[styles.wrapper, { borderColor }, style]}>
-      <LinearGradient
-        colors={bgColors}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={[styles.gradient, !noPadding && styles.padding]}
-      >
+    <View style={[styles.lightCard, style]}>
+      <View style={[styles.content, noPadding && styles.noPadding]}>
         {children}
-      </LinearGradient>
+      </View>
     </View>
   );
 }
 
-export const GlassCard = React.memo(GlassCardComponent);
-
 const styles = StyleSheet.create({
-  wrapper: {
-    borderRadius: 20,
+  inputContainer: {
+    borderRadius: 32,
     overflow: 'hidden',
+    backgroundColor: '#FFF',
+    // Strong Soft Shadow for 3D effect
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 8,
     borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.02)',
   },
-  gradient: {
-    width: '100%',
+  solidCard: {
+    borderRadius: 24,
+    overflow: 'hidden',
+    backgroundColor: '#F3E8FF',
   },
-  padding: {
-    padding: 18,
+  lightCard: {
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    // Clean Pop Shadow
+    shadowColor: '#000',
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.03)',
+  },
+  content: {
+    padding: 20,
+  },
+  noPadding: {
+    padding: 0,
   },
 });
