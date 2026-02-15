@@ -13,7 +13,6 @@ import {
   View,
   ActivityIndicator,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
@@ -47,6 +46,7 @@ import {
   AlertTriangle,
   HelpCircle,
   Info,
+  Sparkles,
 } from 'lucide-react-native';
 
 import { useTheme } from '@/contexts/ThemeContext';
@@ -309,7 +309,7 @@ function BuilderContent() {
           placeholder={t.create.describeIdea}
           placeholderTextColor={colors.textTertiary}
           multiline
-          style={[styles.mainInput, { color: colors.text }]}
+          style={[styles.mainInput, { color: colors.text, backgroundColor: colors.inputBg, borderColor: isDark ? 'transparent' : 'rgba(0,0,0,0.05)', borderWidth: 1 }]}
           textAlignVertical="top"
           testID="builder-objective-input"
         />
@@ -320,21 +320,18 @@ function BuilderContent() {
           style={({ pressed }) => [styles.generateBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
           testID="builder-generate-btn"
         >
-          <LinearGradient
-            colors={[accentColor, isDark ? '#1A1A24' : '#111827']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.generateGradient}
+          <View
+            style={[styles.generateGradient, { backgroundColor: isDark ? '#F1F5F9' : '#0F172A' }]}
           >
             {isGenerating ? (
-              <ActivityIndicator color="#FFF" size="small" />
+              <ActivityIndicator color={isDark ? '#000' : '#FFF'} size="small" />
             ) : (
-              <Wand2 size={18} color="#FFF" />
+              <Wand2 size={18} color={isDark ? '#000' : '#FFF'} />
             )}
-            <Text style={styles.generateBtnText}>
+            <Text style={[styles.generateBtnText, { color: isDark ? '#000' : '#FFF' }]}>
               {isGenerating ? 'Generating...' : t.create.generatePrompt}
             </Text>
-          </LinearGradient>
+          </View>
         </Pressable>
       </View>
 
@@ -378,14 +375,14 @@ function BuilderContent() {
       <Text style={[styles.stepTitle, { color: colors.text }]}>{t.create.describePrompt}</Text>
       <Text style={[styles.stepSubtitle, { color: colors.textTertiary }]}>{t.create.beSpecific}</Text>
 
-      <View style={[styles.wizardInputCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+      <View style={[styles.wizardInputCard, { backgroundColor: 'transparent' }]}>
         <TextInput
           value={currentInputs.objective}
           onChangeText={(text) => setCurrentInputs({ objective: text })}
           placeholder={t.create.whatAchieve}
           placeholderTextColor={colors.textTertiary}
           multiline
-          style={[styles.wizardInput, { color: colors.text }]}
+          style={[styles.wizardInput, { color: colors.text, backgroundColor: colors.inputBg, borderColor: colors.cardBorder, borderWidth: 1 }]}
           textAlignVertical="top"
         />
       </View>
@@ -393,13 +390,13 @@ function BuilderContent() {
       {isImageOrVideo && (
         <>
           <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.style}</Text>
-          <View style={[styles.fieldCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <View style={[styles.fieldCard, { backgroundColor: 'transparent' }]}>
             <TextInput
               value={currentInputs.style || ''}
               onChangeText={(text) => setCurrentInputs({ style: text })}
               placeholder="e.g. Photorealistic, Anime, Oil Painting..."
               placeholderTextColor={colors.textTertiary}
-              style={[styles.fieldInput, { color: colors.text }]}
+              style={[styles.fieldInput, { color: colors.text, backgroundColor: colors.inputBg, borderColor: colors.cardBorder, borderWidth: 1 }]}
             />
           </View>
         </>
@@ -473,60 +470,60 @@ function BuilderContent() {
       {isImageOrVideo && (
         <>
           <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.lighting}</Text>
-          <View style={[styles.fieldCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <View style={[styles.fieldCard, { backgroundColor: 'transparent' }]}>
             <TextInput
               value={currentInputs.lighting || ''}
               onChangeText={(text) => setCurrentInputs({ lighting: text })}
               placeholder="e.g. Golden hour, Studio, Neon..."
               placeholderTextColor={colors.textTertiary}
-              style={[styles.fieldInput, { color: colors.text }]}
+              style={[styles.fieldInput, { color: colors.text, backgroundColor: colors.inputBg, borderColor: colors.cardBorder, borderWidth: 1 }]}
             />
           </View>
 
           <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.cameraAngle}</Text>
-          <View style={[styles.fieldCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <View style={[styles.fieldCard, { backgroundColor: 'transparent' }]}>
             <TextInput
               value={currentInputs.cameraAngle || ''}
               onChangeText={(text) => setCurrentInputs({ cameraAngle: text })}
               placeholder="e.g. Close-up, Wide angle, Bird's eye..."
               placeholderTextColor={colors.textTertiary}
-              style={[styles.fieldInput, { color: colors.text }]}
+              style={[styles.fieldInput, { color: colors.text, backgroundColor: colors.inputBg, borderColor: colors.cardBorder, borderWidth: 1 }]}
             />
           </View>
 
           <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.negativePrompt}</Text>
-          <View style={[styles.fieldCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <View style={[styles.fieldCard, { backgroundColor: 'transparent' }]}>
             <TextInput
               value={currentInputs.negativePrompt || ''}
               onChangeText={(text) => setCurrentInputs({ negativePrompt: text })}
               placeholder="What to exclude..."
               placeholderTextColor={colors.textTertiary}
-              style={[styles.fieldInput, { color: colors.text }]}
+              style={[styles.fieldInput, { color: colors.text, backgroundColor: colors.inputBg, borderColor: colors.cardBorder, borderWidth: 1 }]}
             />
           </View>
         </>
       )}
 
       <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.audience}</Text>
-      <View style={[styles.fieldCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+      <View style={[styles.fieldCard, { backgroundColor: 'transparent' }]}>
         <TextInput
           value={currentInputs.audience}
           onChangeText={(text) => setCurrentInputs({ audience: text })}
           placeholder={t.create.whoIsFor}
           placeholderTextColor={colors.textTertiary}
-          style={[styles.fieldInput, { color: colors.text }]}
+          style={[styles.fieldInput, { color: colors.text, backgroundColor: colors.inputBg, borderColor: colors.cardBorder, borderWidth: 1 }]}
         />
       </View>
 
       <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.constraints}</Text>
-      <View style={[styles.fieldCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+      <View style={[styles.fieldCard, { backgroundColor: 'transparent' }]}>
         <TextInput
           value={currentInputs.constraints}
           onChangeText={(text) => setCurrentInputs({ constraints: text })}
           placeholder={t.create.anyRules}
           placeholderTextColor={colors.textTertiary}
           multiline
-          style={[styles.fieldInput, { color: colors.text, minHeight: 60 }]}
+          style={[styles.fieldInput, { color: colors.text, minHeight: 60, backgroundColor: colors.inputBg, borderColor: colors.cardBorder, borderWidth: 1 }]}
           textAlignVertical="top"
         />
       </View>
@@ -634,23 +631,20 @@ function BuilderContent() {
             disabled={isGenerating}
             style={[styles.wizardNavNext, wizardStep === 0 ? { flex: 1 } : {}]}
           >
-            <LinearGradient
-              colors={[accentColor, isDark ? '#1A1A24' : '#111827']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={styles.wizardNavNextGradient}
+            <View
+              style={[styles.wizardNavNextGradient, { backgroundColor: isDark ? '#F1F5F9' : '#0F172A' }]}
             >
               {isGenerating ? (
-                <ActivityIndicator color="#FFF" size="small" />
+                <ActivityIndicator color={isDark ? '#000' : '#FFF'} size="small" />
               ) : (
                 <>
-                  <Text style={styles.wizardNavNextText}>
+                  <Text style={[styles.wizardNavNextText, { color: isDark ? '#000' : '#FFF' }]}>
                     {wizardStep === 2 ? t.create.generate : t.create.next}
                   </Text>
-                  {wizardStep === 2 ? <Wand2 size={18} color="#FFF" /> : <ChevronRight size={18} color="#FFF" />}
+                  {wizardStep === 2 ? <Wand2 size={18} color={isDark ? '#000' : '#FFF'} /> : <ChevronRight size={18} color={isDark ? '#000' : '#FFF'} />}
                 </>
               )}
-            </LinearGradient>
+            </View>
           </Pressable>
         )}
       </View>
@@ -659,8 +653,6 @@ function BuilderContent() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      <LinearGradient colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]} style={StyleSheet.absoluteFill} />
-
       <KeyboardAvoidingView style={styles.flex1} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
           contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 16, paddingBottom: 140 }]}

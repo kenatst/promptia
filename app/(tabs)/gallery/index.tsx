@@ -1,11 +1,10 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { Image } from 'expo-image';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
-import { Search, Heart, ArrowRight, Type, ImageIcon, Film, Star } from 'lucide-react-native';
+import { Search, Heart, ArrowRight, Type, ImageIcon, Film, Star, Sparkles } from 'lucide-react-native';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { gallerySeed } from '@/data/gallerySeed';
@@ -22,11 +21,11 @@ function GalleryContent() {
   const [activeFilter, setActiveFilter] = useState('All');
 
   const FILTER_ITEMS = useMemo(() => [
-    { key: 'All', label: t.discover.all, icon: <Star size={14} color={activeFilter === 'All' ? '#FFF' : colors.textSecondary} /> },
+    { key: 'All', label: t.discover.all, icon: <Sparkles size={14} color={activeFilter === 'All' ? '#FFF' : colors.textSecondary} /> },
     { key: 'Text', label: t.discover.text, icon: <Type size={14} color={activeFilter === 'Text' ? '#FFF' : colors.textSecondary} /> },
     { key: 'Image', label: t.discover.image, icon: <ImageIcon size={14} color={activeFilter === 'Image' ? '#FFF' : colors.textSecondary} /> },
     { key: 'Video', label: t.discover.video, icon: <Film size={14} color={activeFilter === 'Video' ? '#FFF' : colors.textSecondary} /> },
-    { key: 'Editor Picks', label: t.discover.editorPicks, icon: <Star size={14} color={activeFilter === 'Editor Picks' ? '#FFF' : '#D97706'} /> },
+    { key: 'Editor Picks', label: t.discover.editorPicks, icon: <Star size={14} color={activeFilter === 'Editor Picks' ? '#FFF' : '#F59E0B'} /> },
   ], [t, activeFilter, colors]);
 
   const filteredPrompts = useMemo(() => {
@@ -50,121 +49,125 @@ function GalleryContent() {
     router.push(`/prompt/${item.id}` as any);
   }, [router]);
 
-  const cardColors = isDark
-    ? ['#1E1B2E', '#1B2E24', '#2E2B1B', '#2E1B28', '#1B232E', '#2E251B']
-    : ['#EDE9FE', '#D1FAE5', '#FEF3C7', '#FCE7F3', '#DBEAFE', '#FFEDD5'];
-
-  const renderCard = useCallback(({ item, index }: { item: GalleryItem; index: number }) => {
-    const cardBg = cardColors[index % cardColors.length];
+  const renderCard = useCallback(({ item }: { item: GalleryItem }) => {
     const hasThumb = Boolean(item.thumbnail);
+
+    // Vibrant accent colors for badges based on model
+    const accentColor = item.type === 'image' ? '#8B5CF6' : item.type === 'video' ? '#EC4899' : '#3B82F6';
 
     return (
       <Pressable
         onPress={() => handlePromptPress(item)}
         style={({ pressed }) => [
           styles.card,
-          { backgroundColor: cardBg, transform: [{ scale: pressed ? 0.97 : 1 }] },
+          { backgroundColor: colors.card, borderColor: colors.cardBorder },
+          pressed && { transform: [{ scale: 0.98 }] },
         ]}
-        testID={`gallery-card-${item.id}`}
       >
         {hasThumb && (
           <View style={styles.cardImageWrap}>
             <Image source={{ uri: item.thumbnail }} style={styles.cardImage} contentFit="cover" transition={200} />
-            <LinearGradient colors={['transparent', `${cardBg}CC`, cardBg]} style={styles.cardImageGradient} />
+            <View style={styles.cardOverlay} />
+            <View style={[styles.typeBadge, { backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }]}>
+              {item.type === 'video' ? <Film size={12} color="#FFF" /> : <ImageIcon size={12} color="#FFF" />}
+              <Text style={styles.typeBadgeText}>{getModelLabel(item.model)}</Text>
+            </View>
           </View>
         )}
 
         <View style={[styles.cardContent, !hasThumb && { paddingTop: 20 }]}>
-          <View style={styles.cardTopRow}>
-            <View style={styles.modelPill}>
-              <Text style={[styles.modelPillText, isDark && { color: '#D1D5DB' }]}>{getModelLabel(item.model)}</Text>
+          {!hasThumb && (
+            <View style={[styles.textIconBadge, { backgroundColor: `${accentColor}15` }]}>
+              <Type size={16} color={accentColor} />
+              <Text style={[styles.textIconLabel, { color: accentColor }]}>{getModelLabel(item.model)}</Text>
             </View>
-            {item.isEditorPick && (
-              <View style={styles.pickPill}>
-                <Star size={10} color="#D97706" />
-                <Text style={styles.pickPillText}>{t.discover.pick}</Text>
-              </View>
-            )}
-          </View>
+          )}
 
-          <Text style={[styles.cardTitle, isDark && { color: '#F1F1F4' }]} numberOfLines={2}>{item.title}</Text>
+          <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
+
+          <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={2}>
+            {item.description || item.prompt.slice(0, 80)}...
+          </Text>
 
           <View style={styles.cardFooter}>
-            <View style={styles.cardMeta}>
-              <Text style={[styles.cardAuthor, isDark && { color: '#9CA3B0' }]}>{item.author}</Text>
-              <View style={styles.likesRow}>
-                <Heart size={12} color={isDark ? '#9CA3B0' : '#9CA3AF'} />
-                <Text style={[styles.likesText, isDark && { color: '#9CA3B0' }]}>{item.likes.toLocaleString()}</Text>
+            <View style={styles.authorRow}>
+              <View style={[styles.avatarPlaceholder, { backgroundColor: colors.bgTertiary }]}>
+                <Text style={[styles.avatarText, { color: colors.textSecondary }]}>{item.author[0]}</Text>
               </View>
+              <Text style={[styles.cardAuthor, { color: colors.textSecondary }]}>{item.author}</Text>
             </View>
-            <View style={[styles.cardArrow, isDark && { backgroundColor: '#F1F1F4' }]}>
-              <ArrowRight size={16} color={isDark ? '#0F0F14' : '#FFF'} />
+
+            <View style={styles.likesRow}>
+              <Heart size={14} color={colors.textTertiary} />
+              <Text style={[styles.likesText, { color: colors.textTertiary }]}>{item.likes}</Text>
             </View>
           </View>
         </View>
       </Pressable>
     );
-  }, [handlePromptPress, isDark, cardColors, t]);
+  }, [handlePromptPress, colors]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      <View style={StyleSheet.absoluteFill}>
-        <LinearGradient colors={[colors.gradientStart, colors.gradientMid]} style={StyleSheet.absoluteFill} />
-      </View>
-
-      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <View>
-          <Text style={[styles.greeting, { color: colors.textTertiary }]}>{t.discover.title}</Text>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{t.discover.subtitle}</Text>
+      <View style={[styles.stickyHeader, { paddingTop: insets.top, backgroundColor: colors.bg }]}>
+        <View style={styles.headerTop}>
+          <View>
+            <Text style={[styles.greeting, { color: colors.textTertiary }]}>{t.discover.title}</Text>
+            <Text style={[styles.headerTitle, { color: colors.text }]}>{t.discover.subtitle}</Text>
+          </View>
+          <Pressable style={[styles.profileBtn, { backgroundColor: colors.bgTertiary }]}>
+            <Text>👤</Text>
+          </Pressable>
         </View>
-      </View>
 
-      <View style={styles.searchSection}>
-        <View style={[styles.searchBar, { backgroundColor: colors.searchBg, borderColor: colors.cardBorder }]}>
-          <Search size={18} color={colors.textTertiary} />
-          <TextInput
-            placeholder={t.discover.searchPlaceholder}
-            placeholderTextColor={colors.textTertiary}
-            style={[styles.searchInput, { color: colors.text }]}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            testID="gallery-search-input"
-          />
+        <View style={styles.searchRow}>
+          <View style={[styles.searchBar, { backgroundColor: colors.searchBg, borderColor: colors.cardBorder }]}>
+            <Search size={18} color={colors.textTertiary} />
+            <TextInput
+              placeholder={t.discover.searchPlaceholder}
+              placeholderTextColor={colors.textTertiary}
+              style={[styles.searchInput, { color: colors.text }]}
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+            />
+          </View>
         </View>
-      </View>
 
-      <View style={styles.filtersRow}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersContent}>
-          {FILTER_ITEMS.map((filter) => {
-            const isActive = activeFilter === filter.key;
-            return (
-              <Pressable
-                key={filter.key}
-                onPress={() => { setActiveFilter(filter.key); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                style={[styles.filterPill, { backgroundColor: colors.chipBg }, isActive && styles.filterPillActive]}
-              >
-                {filter.icon}
-                <Text style={[styles.filterText, { color: colors.textSecondary }, isActive && styles.filterTextActive]}>
-                  {filter.label}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </ScrollView>
+        <View style={styles.filtersSection}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersContent}>
+            {FILTER_ITEMS.map((filter) => {
+              const isActive = activeFilter === filter.key;
+              return (
+                <Pressable
+                  key={filter.key}
+                  onPress={() => { setActiveFilter(filter.key); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                  style={[
+                    styles.filterPill,
+                    { backgroundColor: isActive ? '#0F172A' : colors.chipBg },
+                    isActive && isDark && { backgroundColor: '#F8FAFC' }
+                  ]}
+                >
+                  {filter.icon}
+                  <Text style={[
+                    styles.filterText,
+                    { color: isActive ? '#FFF' : colors.textSecondary },
+                    isActive && isDark && { color: '#0F172A' }
+                  ]}>
+                    {filter.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </ScrollView>
+        </View>
       </View>
 
       <FlatList
         data={filteredPrompts}
         keyExtractor={(item) => item.id}
         renderItem={renderCard}
-        contentContainerStyle={styles.listContent}
+        contentContainerStyle={[styles.listContent]}
         showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>{t.discover.noPrompts}</Text>
-            <Text style={[styles.emptySubtitle, { color: colors.textTertiary }]}>{t.discover.adjustSearch}</Text>
-          </View>
-        }
       />
     </View>
   );
@@ -180,55 +183,59 @@ export default function GalleryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { paddingHorizontal: 20, marginBottom: 20 },
-  greeting: { fontSize: 14, fontWeight: '500' as const },
-  headerTitle: { fontSize: 28, fontWeight: '800' as const, letterSpacing: -0.5 },
-  searchSection: { paddingHorizontal: 20, marginBottom: 16 },
+  stickyHeader: { paddingBottom: 16, zIndex: 10 },
+  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 16 },
+  greeting: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
+  headerTitle: { fontSize: 28, fontWeight: '800', letterSpacing: -0.5 },
+  profileBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+
+  searchRow: { paddingHorizontal: 20, marginBottom: 16 },
   searchBar: {
-    height: 48, borderRadius: 24, flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, gap: 10, shadowColor: '#000', shadowOpacity: 0.04,
-    shadowRadius: 8, elevation: 2, borderWidth: 1,
+    height: 48, borderRadius: 16, flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, gap: 10, borderWidth: 1,
   },
-  searchInput: { flex: 1, fontSize: 15 },
-  filtersRow: { marginBottom: 16 },
+  searchInput: { flex: 1, fontSize: 15, fontWeight: '500' },
+
+  filtersSection: {},
   filtersContent: { paddingHorizontal: 20, gap: 8 },
   filterPill: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20,
-    borderWidth: 1.5, borderColor: 'transparent',
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24,
   },
-  filterPillActive: { backgroundColor: '#111827', borderColor: '#111827' },
-  filterText: { fontSize: 13, fontWeight: '600' as const },
-  filterTextActive: { color: '#FFFFFF' },
-  listContent: { paddingHorizontal: 20, paddingBottom: 120, gap: 16 },
+  filterText: { fontSize: 13, fontWeight: '600' },
+
+  listContent: { paddingHorizontal: 20, paddingBottom: 100, gap: 20 },
+
   card: {
-    borderRadius: 20, overflow: 'hidden',
-    shadowColor: '#000', shadowOpacity: 0.06, shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 }, elevation: 4,
+    borderRadius: 24, overflow: 'hidden', borderWidth: 1,
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 15,
+    shadowOffset: { width: 0, height: 8 }, elevation: 3,
   },
-  cardImageWrap: { height: 120, position: 'relative' },
+  cardImageWrap: { height: 180, position: 'relative' },
   cardImage: { width: '100%', height: '100%' },
-  cardImageGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 60 },
-  cardContent: { padding: 16, paddingTop: 0 },
-  cardTopRow: { flexDirection: 'row', gap: 6, marginBottom: 8 },
-  modelPill: { backgroundColor: 'rgba(0,0,0,0.06)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  modelPillText: { fontSize: 11, fontWeight: '600' as const, color: '#4B5563' },
-  pickPill: {
-    backgroundColor: 'rgba(217,119,6,0.1)', paddingHorizontal: 8, paddingVertical: 4,
-    borderRadius: 8, flexDirection: 'row', alignItems: 'center', gap: 4,
+  cardOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.05)' },
+  typeBadge: {
+    position: 'absolute', top: 12, left: 12, flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, overflow: 'hidden'
   },
-  pickPillText: { fontSize: 11, fontWeight: '700' as const, color: '#D97706' },
-  cardTitle: { fontSize: 20, fontWeight: '800' as const, color: '#1F2937', lineHeight: 26, marginBottom: 12 },
+  typeBadgeText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
+
+  cardContent: { padding: 20 },
+  textIconBadge: {
+    alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, marginBottom: 12
+  },
+  textIconLabel: { fontSize: 11, fontWeight: '700' },
+
+  cardTitle: { fontSize: 18, fontWeight: '700', lineHeight: 24, marginBottom: 6 },
+  cardDesc: { fontSize: 14, lineHeight: 20, marginBottom: 16 },
+
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  cardAuthor: { fontSize: 13, color: '#6B7280', fontWeight: '600' as const },
+  authorRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  avatarPlaceholder: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  avatarText: { fontSize: 10, fontWeight: '700' },
+  cardAuthor: { fontSize: 13, fontWeight: '600' },
+
   likesRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  likesText: { fontSize: 12, color: '#9CA3AF', fontWeight: '500' as const },
-  cardArrow: {
-    width: 36, height: 36, borderRadius: 18, backgroundColor: '#111827',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  emptyState: { alignItems: 'center', marginTop: 60, gap: 8 },
-  emptyTitle: { fontSize: 16, fontWeight: '700' as const },
-  emptySubtitle: { fontSize: 14 },
+  likesText: { fontSize: 12, fontWeight: '600' },
 });

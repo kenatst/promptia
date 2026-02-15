@@ -27,49 +27,49 @@ export interface ThemeColors {
 }
 
 const lightColors: ThemeColors = {
-  bg: '#FDFDFD', // Cleaner, brighter background
-  bgSecondary: '#F1F5F9', // Soft slate-gray for secondary backgrounds
-  bgTertiary: '#E2E8F0',
+  bg: '#FFFFFF', // Pure white for that clean benchmark look
+  bgSecondary: '#F8F9FA', // Very subtle gray for contrast
+  bgTertiary: '#F1F5F9',
   card: '#FFFFFF',
-  cardBorder: 'transparent', // Cards defined by shadow now
-  text: '#1E293B', // Slate-800 for better readability
+  cardBorder: 'rgba(0,0,0,0.04)', // Subtle border for depth
+  text: '#0F172A', // Deep slate for primary text
   textSecondary: '#64748B', // Slate-500
   textTertiary: '#94A3B8', // Slate-400
   textInverse: '#FFFFFF',
   separator: '#F1F5F9',
-  inputBg: '#FFFFFF',
-  chipBg: '#F1F5F9',
-  tabBar: 'rgba(255, 255, 255, 0.9)', // More glass-like
-  tabBarBorder: 'rgba(0,0,0,0.02)',
+  inputBg: 'rgba(255,255,255,0.8)', // Glassy input
+  chipBg: 'rgba(0,0,0,0.03)',
+  tabBar: 'rgba(255, 255, 255, 0.8)', // High blur glass
+  tabBarBorder: 'rgba(0,0,0,0.05)',
   statusBar: 'dark',
-  gradientStart: '#FFFFFF', // Keeping it clean, subtle gradients
-  gradientMid: '#F8FAFC',
-  gradientEnd: '#F1F5F9',
-  searchBg: '#F8FAFC',
-  overlay: 'rgba(15, 23, 42, 0.3)', // Slate-900 with opacity
+  gradientStart: '#FFFFFF', // Flattened gradients
+  gradientMid: '#FFFFFF',
+  gradientEnd: '#FFFFFF',
+  searchBg: 'rgba(0,0,0,0.03)',
+  overlay: 'rgba(15, 23, 42, 0.2)',
 };
 
 const darkColors: ThemeColors = {
-  bg: '#0F172A', // Slate-900 main background
+  bg: '#0F172A', // Deep slate background
   bgSecondary: '#1E293B', // Slate-800
-  bgTertiary: '#334155', // Slate-700
+  bgTertiary: '#334155',
   card: '#1E293B',
-  cardBorder: 'rgba(255,255,255,0.04)',
+  cardBorder: 'rgba(255,255,255,0.06)',
   text: '#F8FAFC', // Slate-50
   textSecondary: '#94A3B8', // Slate-400
   textTertiary: '#64748B', // Slate-500
   textInverse: '#0F172A',
-  separator: 'rgba(255,255,255,0.06)',
-  inputBg: '#1E293B',
-  chipBg: '#334155',
-  tabBar: 'rgba(15, 23, 42, 0.9)',
-  tabBarBorder: 'rgba(255,255,255,0.04)',
+  separator: 'rgba(255,255,255,0.08)',
+  inputBg: 'rgba(30, 41, 59, 0.6)', // Glassy dark input
+  chipBg: 'rgba(255,255,255,0.05)',
+  tabBar: 'rgba(15, 23, 42, 0.8)',
+  tabBarBorder: 'rgba(255,255,255,0.08)',
   statusBar: 'light',
-  gradientStart: '#0F172A',
-  gradientMid: '#162036',
-  gradientEnd: '#1E293B',
-  searchBg: '#1E293B',
-  overlay: 'rgba(0,0,0,0.7)',
+  gradientStart: '#0F172A', // Flattened gradients
+  gradientMid: '#0F172A',
+  gradientEnd: '#0F172A',
+  searchBg: 'rgba(255,255,255,0.05)',
+  overlay: 'rgba(0,0,0,0.6)',
 };
 
 const THEME_KEY = 'promptia-theme';

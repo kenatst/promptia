@@ -9,7 +9,6 @@ import {
   TextInput,
   View,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
@@ -44,7 +43,7 @@ const FOLDER_COLORS = ['#F59E0B', '#8B5CF6', '#10B981', '#EC4899', '#3B82F6', '#
 
 type FilterTab = 'all' | 'favorites' | 'text' | 'image' | 'video';
 
-function SavedContent() {
+const SavedContent = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, t, isDark } = useTheme();
@@ -182,7 +181,7 @@ function SavedContent() {
     return (
       <View style={styles.foldersSection}>
         <FlatList
-          data={[{ id: '__all', name: 'All', color: isDark ? '#F59E0B' : '#111827' } as PromptFolder, ...folders]}
+          data={[{ id: '__all', name: 'All', color: isDark ? '#F59E0B' : '#64748B' } as PromptFolder, ...folders]}
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item.id}
@@ -205,20 +204,19 @@ function SavedContent() {
                 }}
                 style={[
                   styles.folderChip,
-                  { backgroundColor: colors.chipBg, borderColor: 'transparent' },
-                  isActive && { backgroundColor: `${item.color}18`, borderColor: item.color },
+                  { backgroundColor: isActive ? (isDark ? '#F59E0B' : '#0F172A') : colors.chipBg },
                 ]}
               >
-                <Folder size={14} color={isActive ? item.color : colors.textTertiary} />
+                <Folder size={14} color={isActive ? '#FFF' : colors.textTertiary} />
                 <Text style={[
                   styles.folderChipText,
                   { color: colors.textSecondary },
-                  isActive && { color: item.color, fontWeight: '700' as const },
+                  isActive && { color: '#FFF', fontWeight: '700' as const },
                 ]}>
                   {item.name}
                 </Text>
-                <View style={[styles.folderCount, { backgroundColor: isActive ? `${item.color}20` : colors.bgTertiary }]}>
-                  <Text style={[styles.folderCountText, { color: isActive ? item.color : colors.textTertiary }]}>{count}</Text>
+                <View style={[styles.folderCount, { backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : colors.bgTertiary }]}>
+                  <Text style={[styles.folderCountText, { color: isActive ? '#FFF' : colors.textTertiary }]}>{count}</Text>
                 </View>
               </Pressable>
             );
@@ -259,7 +257,7 @@ function SavedContent() {
             <View style={{ flex: 1 }}>
               <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
               <View style={styles.cardMeta}>
-                <View style={[styles.modelBadge, { backgroundColor: `${modelColor}12` }]}>
+                <View style={[styles.modelBadge, { backgroundColor: `${modelColor}10` }]}>
                   <Text style={[styles.modelLabel, { color: modelColor }]}>{getModelLabel(item.model)}</Text>
                 </View>
                 <Text style={[styles.timeText, { color: colors.textTertiary }]}>{getTimeAgo(item.createdAt)}</Text>
@@ -284,8 +282,8 @@ function SavedContent() {
           {item.tags.length > 0 && (
             <View style={styles.tagsRow}>
               {item.tags.slice(0, 3).map((tag) => (
-                <View key={tag} style={[styles.tag, { backgroundColor: `${modelColor}08` }]}>
-                  <Text style={[styles.tagText, { color: modelColor }]}>#{tag}</Text>
+                <View key={tag} style={[styles.tag, { backgroundColor: colors.bgTertiary }]}>
+                  <Text style={[styles.tagText, { color: colors.textSecondary }]}>#{tag}</Text>
                 </View>
               ))}
             </View>
@@ -301,20 +299,20 @@ function SavedContent() {
                 {isCopied ? t.create.copied : t.library.copy}
               </Text>
             </Pressable>
-            <Pressable onPress={() => handleRemix(item)} style={[styles.actionBtn, { backgroundColor: colors.bgSecondary }]}>
-              <Shuffle size={14} color={colors.textSecondary} />
-              <Text style={[styles.actionText, { color: colors.textSecondary }]}>{t.library.remix}</Text>
-            </Pressable>
-            <Pressable
-              onPress={() => { setMovePromptId(item.id); setShowMoveModal(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-              style={[styles.actionBtn, { backgroundColor: colors.bgSecondary }]}
-            >
-              <Folder size={14} color={colors.textSecondary} />
-            </Pressable>
-            <View style={{ flex: 1 }} />
-            <Pressable onPress={() => handleDelete(item)} style={[styles.deleteBtn, { backgroundColor: 'rgba(239,68,68,0.08)' }]}>
-              <Trash2 size={14} color="#EF4444" />
-            </Pressable>
+
+            <View style={{ flexDirection: 'row', gap: 6 }}>
+              <Pressable onPress={() => handleRemix(item)} style={[styles.actionBtn, { backgroundColor: colors.bgSecondary, paddingHorizontal: 10 }]}>
+                <Shuffle size={14} color={colors.textSecondary} />
+              </Pressable>
+              <Pressable
+                onPress={() => { setMovePromptId(item.id); setShowMoveModal(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                style={[styles.actionBtn, { backgroundColor: colors.bgSecondary, paddingHorizontal: 10 }]}>
+                <Folder size={14} color={colors.textSecondary} />
+              </Pressable>
+              <Pressable onPress={() => handleDelete(item)} style={[styles.deleteBtn, { backgroundColor: 'rgba(239,68,68,0.08)' }]}>
+                <Trash2 size={14} color="#EF4444" />
+              </Pressable>
+            </View>
           </View>
         </View>
       </Pressable>
@@ -323,14 +321,12 @@ function SavedContent() {
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      <LinearGradient colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]} style={StyleSheet.absoluteFill} />
-
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <View style={styles.headerLeft}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>{t.library.title}</Text>
           {savedPrompts.length > 0 && (
-            <View style={[styles.countBadge, { backgroundColor: '#F59E0B' }]}>
-              <Text style={styles.countText}>{savedPrompts.length}</Text>
+            <View style={[styles.countBadge, { backgroundColor: 'rgba(0,0,0,0.05)' }]}>
+              <Text style={[styles.countText, { color: colors.textSecondary }]}>{savedPrompts.length}</Text>
             </View>
           )}
         </View>
@@ -366,8 +362,7 @@ function SavedContent() {
                 onPress={() => { setActiveFilter(tab.key); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
                 style={[
                   styles.filterTab,
-                  { backgroundColor: colors.chipBg },
-                  isActive && { backgroundColor: isDark ? '#F59E0B' : '#111827' },
+                  { backgroundColor: isActive ? (isDark ? '#F59E0B' : '#0F172A') : colors.chipBg },
                 ]}
               >
                 <Text style={[
