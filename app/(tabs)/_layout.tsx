@@ -40,23 +40,23 @@ function FloatingTabBar({ state, descriptors, navigation }: any) {
           if (isCenter) {
             return (
               <Pressable key={route.key} onPress={onPress} style={styles.tabItem}>
-                <View style={[styles.centerButton, isDark && { backgroundColor: '#F59E0B' }]}>
-                  <Plus size={24} color="#FFF" strokeWidth={3} />
+                <View style={[styles.centerButton, { backgroundColor: '#E8795A' }]}>
+                  <Plus size={22} color="#FFF" strokeWidth={2.5} />
                 </View>
               </Pressable>
             );
           }
 
           const { Icon, label } = config || { Icon: Settings, label: '' };
-          const activeColor = isDark ? '#F59E0B' : '#111827';
-          const inactiveColor = isDark ? '#6B7280' : '#B0B5BE';
+          const activeColor = isDark ? '#E8795A' : '#1A1A1A';
+          const inactiveColor = isDark ? '#6B6360' : '#B5ADA8';
 
           return (
             <Pressable key={route.key} onPress={onPress} style={styles.tabItem}>
               <Icon
-                size={22}
+                size={21}
                 color={isFocused ? activeColor : inactiveColor}
-                strokeWidth={isFocused ? 2.5 : 2}
+                strokeWidth={isFocused ? 2.5 : 1.8}
               />
               <Text style={[styles.tabLabel, { color: inactiveColor }, isFocused && { color: activeColor, fontWeight: '700' as const }]}>
                 {label}
@@ -91,13 +91,13 @@ const styles = StyleSheet.create({
     position: 'absolute',
     left: 20,
     right: 20,
-    height: 64,
-    borderRadius: 32,
+    height: 62,
+    borderRadius: 31,
     shadowColor: '#000',
-    shadowOpacity: 0.1,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 20,
+    shadowOpacity: 0.08,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 16,
     borderWidth: 1,
   },
   pill: {
@@ -111,22 +111,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     height: '100%',
     flex: 1,
-    gap: 2,
+    gap: 3,
   },
   tabLabel: {
     fontSize: 10,
     fontWeight: '600' as const,
+    letterSpacing: 0.2,
   },
   centerButton: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#111827',
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#111827',
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
+    shadowColor: '#E8795A',
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
     shadowOffset: { width: 0, height: 4 },
     elevation: 8,
   },

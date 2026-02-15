@@ -1,21 +1,20 @@
 import React, { useCallback, useMemo, useState } from 'react';
-import { FlatList, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { FlatList, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-// @ts-ignore
 import { Image } from 'expo-image';
-// @ts-ignore
 import * as Haptics from 'expo-haptics';
-// @ts-ignore
-import { Search, Heart, ArrowRight, Type, ImageIcon, Film, Star, Sparkles } from 'lucide-react-native';
+import { Search, Heart, ArrowRight, Type, ImageIcon, Film, Star, X } from 'lucide-react-native';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { gallerySeed } from '@/data/gallerySeed';
 import { usePromptStore } from '@/contexts/PromptContext';
 import { GalleryItem } from '@/types/prompt';
 import { getModelLabel } from '@/engine/promptEngine';
-// @ts-ignore
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+
+const CARD_BG_COLORS = ['#FFF0ED', '#F0FAF6', '#F4F0FF', '#EFF6FF', '#FFF3E8', '#FFFBE8'];
+const CARD_ACCENT_COLORS = ['#E8795A', '#34A77B', '#8B6FC0', '#4A8FE7', '#D4943A', '#E06B8B'];
 
 function GalleryContent() {
   const insets = useSafeAreaInsets();
@@ -23,14 +22,15 @@ function GalleryContent() {
   const { colors, t, isDark } = useTheme();
   const { searchQuery, setSearchQuery } = usePromptStore();
   const [activeFilter, setActiveFilter] = useState('All');
+  const [showSearch, setShowSearch] = useState(false);
 
   const FILTER_ITEMS = useMemo(() => [
-    { key: 'All', label: t.discover.all, icon: <Sparkles size={14} color={activeFilter === 'All' ? '#FFF' : colors.textSecondary} /> },
-    { key: 'Text', label: t.discover.text, icon: <Type size={14} color={activeFilter === 'Text' ? '#FFF' : colors.textSecondary} /> },
-    { key: 'Image', label: t.discover.image, icon: <ImageIcon size={14} color={activeFilter === 'Image' ? '#FFF' : colors.textSecondary} /> },
-    { key: 'Video', label: t.discover.video, icon: <Film size={14} color={activeFilter === 'Video' ? '#FFF' : colors.textSecondary} /> },
-    { key: 'Editor Picks', label: t.discover.editorPicks, icon: <Star size={14} color={activeFilter === 'Editor Picks' ? '#FFF' : '#F59E0B'} /> },
-  ], [t, activeFilter, colors]);
+    { key: 'All', label: t.discover.all },
+    { key: 'Text', label: t.discover.text },
+    { key: 'Image', label: t.discover.image },
+    { key: 'Video', label: t.discover.video },
+    { key: 'Editor Picks', label: t.discover.editorPicks },
+  ], [t]);
 
   const filteredPrompts = useMemo(() => {
     let items = [...gallerySeed];
@@ -53,117 +53,136 @@ function GalleryContent() {
     router.push(`/prompt/${item.id}` as any);
   }, [router]);
 
-  const renderCard = useCallback(({ item }: { item: GalleryItem }) => {
-    const hasThumb = Boolean(item.thumbnail);
+  const getCardStyle = useCallback((index: number) => {
+    const bgIdx = index % CARD_BG_COLORS.length;
+    return {
+      bg: isDark ? colors.card : CARD_BG_COLORS[bgIdx],
+      accent: CARD_ACCENT_COLORS[bgIdx],
+    };
+  }, [isDark, colors]);
 
-    // Vibrant accent colors for badges based on model
-    const accentColor = item.type === 'image' ? '#8B5CF6' : item.type === 'video' ? '#EC4899' : '#3B82F6';
+  const renderCard = useCallback(({ item, index }: { item: GalleryItem; index: number }) => {
+    const hasThumb = Boolean(item.thumbnail);
+    const cardStyle = getCardStyle(index);
 
     return (
       <Pressable
         onPress={() => handlePromptPress(item)}
         style={({ pressed }: { pressed: boolean }) => [
           styles.card,
-          { backgroundColor: colors.card, borderColor: colors.cardBorder },
-          pressed && { transform: [{ scale: 0.98 }] },
+          { backgroundColor: cardStyle.bg },
+          isDark && { borderColor: colors.cardBorder, borderWidth: 1 },
+          pressed && { transform: [{ scale: 0.97 }], opacity: 0.95 },
         ]}
       >
         {hasThumb && (
           <View style={styles.cardImageWrap}>
             <Image source={{ uri: item.thumbnail }} style={styles.cardImage} contentFit="cover" transition={200} />
-            <View style={styles.cardOverlay} />
-            <View style={[styles.typeBadge, { backgroundColor: 'rgba(0,0,0,0.6)' }]}>
-              {item.type === 'video' ? <Film size={12} color="#FFF" /> : <ImageIcon size={12} color="#FFF" />}
-              <Text style={styles.typeBadgeText}>{getModelLabel(item.model)}</Text>
-            </View>
           </View>
         )}
 
-        <View style={[styles.cardContent, !hasThumb && { paddingTop: 20 }]}>
-          {!hasThumb && (
-            <View style={[styles.textIconBadge, { backgroundColor: `${accentColor}15` }]}>
-              <Type size={16} color={accentColor} />
-              <Text style={[styles.textIconLabel, { color: accentColor }]}>{getModelLabel(item.model)}</Text>
+        <View style={styles.cardContent}>
+          <View style={styles.cardTopRow}>
+            <View style={[styles.typePill, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF' }]}>
+              {item.type === 'video' ? <Film size={11} color={cardStyle.accent} /> :
+               item.type === 'image' ? <ImageIcon size={11} color={cardStyle.accent} /> :
+               <Type size={11} color={cardStyle.accent} />}
+              <Text style={[styles.typePillText, { color: cardStyle.accent }]}>{getModelLabel(item.model)}</Text>
             </View>
-          )}
+            {item.isEditorPick && (
+              <View style={[styles.pickPill, { backgroundColor: isDark ? 'rgba(212,148,58,0.15)' : '#FFF5E0' }]}>
+                <Star size={10} color="#D4943A" fill="#D4943A" />
+              </View>
+            )}
+          </View>
 
           <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
 
           <Text style={[styles.cardDesc, { color: colors.textSecondary }]} numberOfLines={2}>
-            {item.prompt.slice(0, 80)}...
+            {item.prompt.slice(0, 90)}...
           </Text>
 
           <View style={styles.cardFooter}>
             <View style={styles.authorRow}>
-              <View style={[styles.avatarPlaceholder, { backgroundColor: colors.bgTertiary }]}>
-                <Text style={[styles.avatarText, { color: colors.textSecondary }]}>{item.author[0]}</Text>
+              <View style={[styles.avatarDot, { backgroundColor: cardStyle.accent }]}>
+                <Text style={styles.avatarText}>{item.author[0]}</Text>
               </View>
               <Text style={[styles.cardAuthor, { color: colors.textSecondary }]}>{item.author}</Text>
             </View>
 
             <View style={styles.likesRow}>
-              <Heart size={14} color={colors.textTertiary} />
+              <Heart size={13} color={colors.textTertiary} />
               <Text style={[styles.likesText, { color: colors.textTertiary }]}>{item.likes}</Text>
             </View>
           </View>
         </View>
+
+        <View style={[styles.openRow]}>
+          <Text style={[styles.openText, { color: cardStyle.accent }]}>Open</Text>
+          <ArrowRight size={14} color={cardStyle.accent} />
+        </View>
       </Pressable>
     );
-  }, [handlePromptPress, colors]);
+  }, [handlePromptPress, colors, isDark, getCardStyle]);
+
+  const renderHeader = () => (
+    <View style={styles.listHeader}>
+      <Text style={[styles.sectionLabel, { color: colors.textTertiary }]}>
+        {filteredPrompts.length} {activeFilter === 'All' ? 'prompts' : activeFilter.toLowerCase()}
+      </Text>
+    </View>
+  );
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      <View style={[styles.stickyHeader, { paddingTop: insets.top, backgroundColor: colors.bg }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={[styles.greeting, { color: colors.textTertiary }]}>{t.discover.title}</Text>
             <Text style={[styles.headerTitle, { color: colors.text }]}>{t.discover.subtitle}</Text>
           </View>
-          <Pressable style={[styles.profileBtn, { backgroundColor: colors.bgTertiary }]}>
-            <Text>👤</Text>
+          <Pressable
+            onPress={() => { setShowSearch(!showSearch); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+            style={[styles.searchToggle, { backgroundColor: showSearch ? colors.coral : colors.chipBg }]}
+          >
+            {showSearch ? <X size={18} color="#FFF" /> : <Search size={18} color={colors.textSecondary} />}
           </Pressable>
         </View>
 
-        <View style={styles.searchRow}>
-          <View style={[styles.searchBar, { backgroundColor: colors.searchBg, borderColor: colors.cardBorder }]}>
-            <Search size={18} color={colors.textTertiary} />
+        {showSearch && (
+          <View style={[styles.searchBar, { backgroundColor: colors.searchBg }]}>
+            <Search size={16} color={colors.textTertiary} />
             <TextInput
               placeholder={t.discover.searchPlaceholder}
               placeholderTextColor={colors.textTertiary}
               style={[styles.searchInput, { color: colors.text }]}
               value={searchQuery}
               onChangeText={setSearchQuery}
+              autoFocus
             />
           </View>
-        </View>
+        )}
 
-        <View style={styles.filtersSection}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.filtersContent}>
-            {FILTER_ITEMS.map((filter) => {
-              const isActive = activeFilter === filter.key;
-              return (
-                <Pressable
-                  key={filter.key}
-                  onPress={() => { setActiveFilter(filter.key); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                  style={({ pressed }: { pressed: boolean }) => [
-                    styles.filterPill,
-                    { backgroundColor: isActive ? '#0F172A' : colors.chipBg },
-                    isActive && isDark && { backgroundColor: '#F8FAFC' },
-                    pressed && { transform: [{ scale: 0.95 }] },
-                  ]}
-                >
-                  {filter.icon}
-                  <Text style={[
-                    styles.filterText,
-                    { color: isActive ? '#FFF' : colors.textSecondary },
-                    isActive && isDark && { color: '#0F172A' }
-                  ]}>
-                    {filter.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
+        <View style={styles.filtersRow}>
+          {FILTER_ITEMS.map((filter) => {
+            const isActive = activeFilter === filter.key;
+            return (
+              <Pressable
+                key={filter.key}
+                onPress={() => { setActiveFilter(filter.key); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                style={[
+                  styles.filterPill,
+                  { backgroundColor: isActive ? (isDark ? '#E8795A' : '#1A1A1A') : colors.chipBg },
+                ]}
+              >
+                <Text style={[
+                  styles.filterText,
+                  { color: isActive ? '#FFF' : colors.textSecondary },
+                ]}>
+                  {filter.label}
+                </Text>
+              </Pressable>
+            );
+          })}
         </View>
       </View>
 
@@ -171,7 +190,8 @@ function GalleryContent() {
         data={filteredPrompts}
         keyExtractor={(item: GalleryItem) => item.id}
         renderItem={renderCard}
-        contentContainerStyle={[styles.listContent]}
+        ListHeaderComponent={renderHeader}
+        contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
       />
     </View>
@@ -188,59 +208,65 @@ export default function GalleryScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  stickyHeader: { paddingBottom: 16, zIndex: 10 },
-  headerTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, marginBottom: 16 },
-  greeting: { fontSize: 13, fontWeight: '600', textTransform: 'uppercase', letterSpacing: 0.5 },
-  headerTitle: { fontSize: 28, fontWeight: '800', letterSpacing: -0.5 },
-  profileBtn: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-
-  searchRow: { paddingHorizontal: 20, marginBottom: 16 },
+  header: { paddingBottom: 12, zIndex: 10 },
+  headerTop: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    paddingHorizontal: 24, marginBottom: 16,
+  },
+  headerTitle: { fontSize: 30, fontWeight: '800' as const, letterSpacing: -0.8 },
+  searchToggle: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+  },
   searchBar: {
-    height: 48, borderRadius: 16, flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, gap: 10, borderWidth: 1,
+    marginHorizontal: 24, height: 44, borderRadius: 14,
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 14, gap: 10, marginBottom: 14,
   },
-  searchInput: { flex: 1, fontSize: 15, fontWeight: '500' },
-
-  filtersSection: {},
-  filtersContent: { paddingHorizontal: 20, gap: 8 },
+  searchInput: { flex: 1, fontSize: 15, fontWeight: '500' as const },
+  filtersRow: {
+    flexDirection: 'row', paddingHorizontal: 24, gap: 8,
+    flexWrap: 'wrap',
+  },
   filterPill: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 24,
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20,
   },
-  filterText: { fontSize: 13, fontWeight: '600' },
-
-  listContent: { paddingHorizontal: 20, paddingBottom: 100, gap: 20 },
+  filterText: { fontSize: 13, fontWeight: '600' as const },
+  listHeader: { paddingHorizontal: 4, paddingTop: 8, paddingBottom: 4 },
+  sectionLabel: { fontSize: 13, fontWeight: '600' as const },
+  listContent: { paddingHorizontal: 24, paddingBottom: 120, gap: 16, paddingTop: 8 },
 
   card: {
-    borderRadius: 24, overflow: 'hidden', borderWidth: 1,
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 15,
-    shadowOffset: { width: 0, height: 8 }, elevation: 3,
+    borderRadius: 24, overflow: 'hidden',
   },
-  cardImageWrap: { height: 180, position: 'relative' },
+  cardImageWrap: { height: 160, borderRadius: 16, margin: 12, marginBottom: 0, overflow: 'hidden' },
   cardImage: { width: '100%', height: '100%' },
-  cardOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.05)' },
-  typeBadge: {
-    position: 'absolute', top: 12, left: 12, flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12, overflow: 'hidden'
+  cardContent: { padding: 16, paddingBottom: 0 },
+  cardTopRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 10 },
+  typePill: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10,
   },
-  typeBadgeText: { color: '#FFF', fontSize: 11, fontWeight: '700' },
-
-  cardContent: { padding: 20 },
-  textIconBadge: {
-    alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, marginBottom: 12
+  typePillText: { fontSize: 11, fontWeight: '700' as const },
+  pickPill: {
+    width: 26, height: 26, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
   },
-  textIconLabel: { fontSize: 11, fontWeight: '700' },
-
-  cardTitle: { fontSize: 18, fontWeight: '700', lineHeight: 24, marginBottom: 6 },
-  cardDesc: { fontSize: 14, lineHeight: 20, marginBottom: 16 },
-
+  cardTitle: { fontSize: 18, fontWeight: '800' as const, lineHeight: 24, marginBottom: 6 },
+  cardDesc: { fontSize: 14, lineHeight: 20, marginBottom: 12 },
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  avatarPlaceholder: { width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  avatarText: { fontSize: 10, fontWeight: '700' },
-  cardAuthor: { fontSize: 13, fontWeight: '600' },
-
+  avatarDot: {
+    width: 24, height: 24, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avatarText: { fontSize: 11, fontWeight: '700' as const, color: '#FFF' },
+  cardAuthor: { fontSize: 13, fontWeight: '600' as const },
   likesRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  likesText: { fontSize: 12, fontWeight: '600' },
+  likesText: { fontSize: 12, fontWeight: '600' as const },
+  openRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 16, paddingVertical: 14,
+  },
+  openText: { fontSize: 13, fontWeight: '700' as const, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
 });

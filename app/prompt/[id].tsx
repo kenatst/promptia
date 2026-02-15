@@ -7,28 +7,22 @@ import {
   Pressable,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import { LinearGradient } from 'expo-linear-gradient';
-// @ts-ignore
 import { Image } from 'expo-image';
-// @ts-ignore
 import * as Clipboard from 'expo-clipboard';
-// @ts-ignore
 import * as Haptics from 'expo-haptics';
-// @ts-ignore
 import { Copy, User, Tag, Star, Shuffle, Heart, Check } from 'lucide-react-native';
 import { gallerySeed } from '@/data/gallerySeed';
 import { usePromptStore } from '@/contexts/PromptContext';
 import { getModelLabel } from '@/engine/promptEngine';
 import { GalleryItem, SavedPrompt, ModelType, DEFAULT_INPUTS } from '@/types/prompt';
 import { useTheme } from '@/contexts/ThemeContext';
-// @ts-ignore
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const MODEL_COLORS: Record<ModelType, string> = {
-  chatgpt: '#F59E0B',
-  midjourney: '#8B5CF6',
-  sdxl: '#06B6D4',
-  video: '#EC4899',
+  chatgpt: '#E8795A',
+  midjourney: '#8B6FC0',
+  sdxl: '#3B9EC4',
+  video: '#E06B8B',
 };
 
 function getPromptText(item: { source: 'gallery'; data: GalleryItem } | { source: 'saved'; data: SavedPrompt }): string {
@@ -142,24 +136,22 @@ function PromptDetailContent() {
   const title = item.data.title;
   const model = item.data.model;
   const tags = item.data.tags;
-  const modelColor = MODEL_COLORS[model as ModelType] ?? '#F59E0B';
+  const modelColor = MODEL_COLORS[model as ModelType] ?? '#E8795A';
   const hasImage = item.source === 'gallery' && item.data.thumbnail;
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
-      <LinearGradient colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]} style={StyleSheet.absoluteFill} />
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         {hasImage && item.source === 'gallery' && (
           <View style={styles.heroImage}>
             <Image source={{ uri: item.data.thumbnail }} style={StyleSheet.absoluteFill} contentFit="cover" transition={300} />
-            <LinearGradient colors={['transparent', colors.bg]} style={styles.heroGradient} />
           </View>
         )}
 
         <View style={styles.headerSection}>
           <Text style={[styles.title, { color: colors.text }]}>{title}</Text>
           <View style={styles.metaRow}>
-            <View style={[styles.modelBadge, { backgroundColor: `${modelColor}15`, borderColor: `${modelColor}30` }]}>
+            <View style={[styles.modelBadge, { backgroundColor: isDark ? `${modelColor}20` : `${modelColor}12` }]}>
               <Text style={[styles.modelText, { color: modelColor }]}>{getModelLabel(model)}</Text>
             </View>
             {item.source === 'gallery' && (
@@ -169,14 +161,14 @@ function PromptDetailContent() {
               </View>
             )}
             {item.source === 'gallery' && item.data.isEditorPick && (
-              <View style={styles.pickBadge}>
-                <Star size={10} color="#D97706" />
+              <View style={[styles.pickBadge, { backgroundColor: isDark ? 'rgba(212,148,58,0.15)' : '#FFF5E0' }]}>
+                <Star size={10} color="#D4943A" fill="#D4943A" />
                 <Text style={styles.pickText}>{t.detail.editorPick}</Text>
               </View>
             )}
             {item.source === 'gallery' && (
               <View style={styles.likesRow}>
-                <Heart size={12} color="#EC4899" />
+                <Heart size={12} color="#E06B8B" />
                 <Text style={[styles.likesText, { color: colors.textTertiary }]}>{item.data.likes.toLocaleString()}</Text>
               </View>
             )}
@@ -185,21 +177,25 @@ function PromptDetailContent() {
 
         <View style={styles.segmentsSection}>
           <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{t.detail.promptSegments}</Text>
-          {promptSegments.map((seg, i) => (
-            <View key={i} style={[styles.segmentCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
-              <View style={styles.segmentHeader}>
-                <Text style={[styles.segmentLabel, { color: modelColor }]}>{seg.label}</Text>
-                <Pressable
-                  onPress={() => handleCopy(seg.content, i)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  style={[styles.copyBtn, { backgroundColor: colors.bgSecondary }, copiedIndex === i && { backgroundColor: 'rgba(16,185,129,0.12)' }]}
-                >
-                  {copiedIndex === i ? <Check size={14} color="#10B981" /> : <Copy size={14} color={colors.textSecondary} />}
-                </Pressable>
+          {promptSegments.map((seg, i) => {
+            const segBgs = ['#FFF0ED', '#F0FAF6', '#F4F0FF', '#EFF6FF', '#FFF3E8'];
+            const segBg = isDark ? colors.card : segBgs[i % segBgs.length];
+            return (
+              <View key={i} style={[styles.segmentCard, { backgroundColor: segBg }, isDark && { borderColor: colors.cardBorder, borderWidth: 1 }]}>
+                <View style={styles.segmentHeader}>
+                  <Text style={[styles.segmentLabel, { color: modelColor }]}>{seg.label}</Text>
+                  <Pressable
+                    onPress={() => handleCopy(seg.content, i)}
+                    hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                    style={[styles.copyBtn, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF' }, copiedIndex === i && { backgroundColor: 'rgba(52,167,123,0.12)' }]}
+                  >
+                    {copiedIndex === i ? <Check size={14} color="#34A77B" /> : <Copy size={14} color={colors.textSecondary} />}
+                  </Pressable>
+                </View>
+                <Text style={[styles.segmentContent, { color: colors.text }]} selectable>{seg.content}</Text>
               </View>
-              <Text style={[styles.segmentContent, { color: colors.text }]} selectable>{seg.content}</Text>
-            </View>
-          ))}
+            );
+          })}
         </View>
 
         {tags.length > 0 && (
@@ -210,7 +206,7 @@ function PromptDetailContent() {
             </View>
             <View style={styles.tagRow}>
               {tags.map((tag: string) => (
-                <View key={tag} style={[styles.tag, { backgroundColor: colors.bgSecondary, borderColor: colors.cardBorder }]}>
+                <View key={tag} style={[styles.tag, { backgroundColor: isDark ? colors.bgSecondary : '#FFF5EE' }]}>
                   <Text style={[styles.tagText, { color: colors.textSecondary }]}>{tag}</Text>
                 </View>
               ))}
@@ -223,9 +219,9 @@ function PromptDetailContent() {
             onPress={handleCopyFull}
             style={({ pressed }: { pressed: boolean }) => [
               styles.primaryAction,
-              { backgroundColor: isDark ? '#F59E0B' : '#111827' },
+              { backgroundColor: isDark ? '#E8795A' : '#1A1A1A' },
               pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
-              fullCopied && { backgroundColor: '#10B981' },
+              fullCopied && { backgroundColor: '#34A77B' },
             ]}
           >
             {fullCopied ? <Check size={18} color="#FFF" /> : <Copy size={18} color="#FFF" />}
@@ -238,12 +234,12 @@ function PromptDetailContent() {
             onPress={handleRemix}
             style={({ pressed }: { pressed: boolean }) => [
               styles.secondaryAction,
-              { backgroundColor: colors.bgSecondary },
+              { backgroundColor: isDark ? colors.bgSecondary : '#FFF0ED' },
               pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
             ]}
           >
-            <Shuffle size={16} color={colors.text} />
-            <Text style={[styles.secondaryActionText, { color: colors.text }]}>{t.detail.remixBuilder}</Text>
+            <Shuffle size={16} color="#E8795A" />
+            <Text style={[styles.secondaryActionText, { color: '#E8795A' }]}>{t.detail.remixBuilder}</Text>
           </Pressable>
         </View>
 
@@ -267,53 +263,51 @@ const styles = StyleSheet.create({
   centered: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   notFound: { fontSize: 16 },
   heroImage: { width: '100%', height: 220, position: 'relative' },
-  heroGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 100 },
-  headerSection: { paddingHorizontal: 20, marginBottom: 24, gap: 12 },
+  headerSection: { paddingHorizontal: 20, marginBottom: 24, gap: 12, marginTop: 8 },
   title: { fontSize: 24, fontWeight: '800' as const, lineHeight: 30, letterSpacing: -0.3 },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: 10, flexWrap: 'wrap' },
-  modelBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10, borderWidth: 1 },
-  modelText: { fontSize: 11, fontWeight: '700' as const, letterSpacing: 0.3 },
+  modelBadge: { paddingHorizontal: 12, paddingVertical: 5, borderRadius: 12 },
+  modelText: { fontSize: 12, fontWeight: '700' as const, letterSpacing: 0.3 },
   authorRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   authorText: { fontSize: 12 },
   pickBadge: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(217,119,6,0.1)', paddingHorizontal: 8, paddingVertical: 4,
-    borderRadius: 8, borderWidth: 1, borderColor: 'rgba(217,119,6,0.2)',
+    paddingHorizontal: 10, paddingVertical: 5, borderRadius: 10,
   },
-  pickText: { fontSize: 11, fontWeight: '700' as const, color: '#D97706' },
+  pickText: { fontSize: 11, fontWeight: '700' as const, color: '#D4943A' },
   likesRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   likesText: { fontSize: 12, fontWeight: '600' as const },
   segmentsSection: { gap: 12, marginBottom: 24, paddingHorizontal: 20 },
   sectionTitle: {
-    fontSize: 13, fontWeight: '800' as const, textTransform: 'uppercase' as const, letterSpacing: 1,
+    fontSize: 12, fontWeight: '700' as const, textTransform: 'uppercase' as const, letterSpacing: 1,
   },
   segmentCard: {
-    padding: 16, borderRadius: 20, borderWidth: 1,
-    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 }, elevation: 2,
+    padding: 18, borderRadius: 20,
   },
   segmentHeader: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10,
   },
   segmentLabel: { fontSize: 12, fontWeight: '700' as const, textTransform: 'uppercase' as const, letterSpacing: 0.5 },
-  copyBtn: { padding: 6, borderRadius: 8 },
+  copyBtn: {
+    padding: 8, borderRadius: 10,
+    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 6, shadowOffset: { width: 0, height: 2 }, elevation: 1,
+  },
   segmentContent: { fontSize: 14, lineHeight: 22 },
   tagsSection: { marginBottom: 24, gap: 10, paddingHorizontal: 20 },
   tagHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tagRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
-  tag: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, borderWidth: 1 },
+  tag: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 12 },
   tagText: { fontSize: 13, fontWeight: '600' as const },
   actionsSection: { gap: 10, paddingHorizontal: 20 },
   primaryAction: {
-    height: 52, borderRadius: 26, flexDirection: 'row', alignItems: 'center',
-    justifyContent: 'center', gap: 8, shadowColor: '#000', shadowOpacity: 0.15,
-    shadowRadius: 8, shadowOffset: { width: 0, height: 4 }, elevation: 5,
+    height: 54, borderRadius: 27, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 8,
   },
   primaryActionText: { color: '#FFF', fontSize: 16, fontWeight: '700' as const },
   secondaryAction: {
-    height: 52, borderRadius: 26, flexDirection: 'row', alignItems: 'center',
+    height: 54, borderRadius: 27, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'center', gap: 8,
   },
-  secondaryActionText: { fontSize: 15, fontWeight: '600' as const },
+  secondaryActionText: { fontSize: 15, fontWeight: '700' as const },
   bottomPad: { height: 40 },
 });

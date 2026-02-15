@@ -62,11 +62,11 @@ function GlassButtonComponent({
 
   const variantStyles: Record<string, ViewStyle> = {
     primary: { backgroundColor: Colors.accent, borderColor: Colors.accentGlow },
-    secondary: { backgroundColor: Colors.glassMedium, borderColor: Colors.glassBorderLight },
+    secondary: { backgroundColor: 'rgba(0,0,0,0.04)', borderColor: Colors.glassBorder },
     ghost: { backgroundColor: 'transparent', borderColor: Colors.glassBorder },
-    danger: { backgroundColor: Colors.dangerDim, borderColor: 'rgba(239, 68, 68, 0.3)' },
-    accent: { backgroundColor: Colors.accentDim, borderColor: Colors.borderAccent },
-    glass: { backgroundColor: Colors.glass, borderColor: Colors.glassBorderLight },
+    danger: { backgroundColor: Colors.dangerDim, borderColor: 'rgba(220, 75, 75, 0.3)' },
+    accent: { backgroundColor: Colors.accentDim, borderColor: Colors.accentGlow },
+    glass: { backgroundColor: Colors.glass, borderColor: Colors.glassBorder },
   };
 
   const textColorMap: Record<string, string> = {

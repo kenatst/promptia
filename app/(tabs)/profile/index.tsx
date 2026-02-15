@@ -25,7 +25,6 @@ import {
   Shield,
   Star,
   Trash2,
-  Wand2,
   Info,
   Check,
   Zap,
@@ -70,11 +69,11 @@ function SettingsRow({ icon, label, sublabel, onPress, trailing, danger, isLast,
         !isLast && { borderBottomWidth: 1, borderBottomColor: colors.separator },
       ]}
     >
-      <View style={[styles.rowIcon, { backgroundColor: iconBg || colors.bgSecondary }, danger && { backgroundColor: '#FEE2E2' }]}>
+      <View style={[styles.rowIcon, { backgroundColor: iconBg || colors.bgSecondary }, danger && { backgroundColor: '#FDEDF2' }]}>
         {icon}
       </View>
       <View style={styles.rowContent}>
-        <Text style={[styles.rowLabel, { color: colors.text }, danger && { color: '#EF4444' }]}>{label}</Text>
+        <Text style={[styles.rowLabel, { color: colors.text }, danger && { color: '#DC4B4B' }]}>{label}</Text>
         {sublabel && <Text style={[styles.rowSublabel, { color: colors.textTertiary }]}>{sublabel}</Text>}
       </View>
       {trailing || (onPress && <ChevronRight size={18} color={colors.textTertiary} />)}
@@ -113,21 +112,10 @@ function SettingsContent() {
   }, []);
 
   const handleClearData = useCallback(() => {
-    Alert.alert(
-      t.settings.clearAllTitle,
-      t.settings.clearAllMsg,
-      [
-        { text: t.settings.cancel, style: 'cancel' },
-        {
-          text: t.settings.clearAll,
-          style: 'destructive',
-          onPress: () => {
-            clearAllData();
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-          },
-        },
-      ]
-    );
+    Alert.alert(t.settings.clearAllTitle, t.settings.clearAllMsg, [
+      { text: t.settings.cancel, style: 'cancel' },
+      { text: t.settings.clearAll, style: 'destructive', onPress: () => { clearAllData(); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning); } },
+    ]);
   }, [clearAllData, t]);
 
   const handleSelectLanguage = useCallback((lang: Language) => {
@@ -144,27 +132,29 @@ function SettingsContent() {
       >
         <View style={styles.header}>
           <Text style={[styles.pageTitle, { color: colors.text }]}>{t.settings.title}</Text>
-          <View style={[styles.badge, { backgroundColor: colors.bgSecondary }]}>
-            <Text style={[styles.badgeText, { color: colors.textSecondary }]}>v{APP_VERSION}</Text>
+          <View style={[styles.badge, { backgroundColor: isDark ? colors.bgSecondary : '#FFF0ED' }]}>
+            <Text style={[styles.badgeText, { color: '#E8795A' }]}>v{APP_VERSION}</Text>
           </View>
         </View>
 
-        <View style={[styles.profileCard, { backgroundColor: colors.card, shadowColor: colors.overlay }]}>
-          <View style={[styles.profileAvatar, { backgroundColor: colors.bgSecondary }]}>
-            <Text style={{ fontSize: 24 }}>👤</Text>
+        <View style={[styles.profileCard, { backgroundColor: isDark ? colors.card : '#FFF0ED' }]}>
+          <View style={[styles.profileAvatar, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF' }]}>
+            <Text style={{ fontSize: 22 }}>P</Text>
           </View>
-          <View>
-            <Text style={[styles.profileName, { color: colors.text }]}>Local User</Text>
-            <Text style={[styles.profileHandle, { color: colors.textTertiary }]}>Promptia Free Tier</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.profileName, { color: colors.text }]}>Promptia User</Text>
+            <Text style={[styles.profileHandle, { color: colors.textTertiary }]}>Free Tier</Text>
+          </View>
+          <View style={[styles.profileBadge, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF' }]}>
+            <Zap size={14} color="#E8795A" />
           </View>
         </View>
-
 
         <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{t.settings.appearance}</Text>
-        <View style={[styles.section, { backgroundColor: colors.card, shadowColor: colors.overlay }]}>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
           <SettingsRow
-            icon={<Moon size={20} color="#8B5CF6" />}
-            iconBg="#F3E8FF"
+            icon={<Moon size={20} color="#8B6FC0" />}
+            iconBg={isDark ? '#221E2E' : '#F4F0FF'}
             label={t.settings.darkMode}
             sublabel={t.settings.darkModeSub}
             colors={colors}
@@ -172,14 +162,14 @@ function SettingsContent() {
               <Switch
                 value={isDark}
                 onValueChange={() => { toggleTheme(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                trackColor={{ false: '#E2E8F0', true: '#8B5CF6' }}
+                trackColor={{ false: '#E5DDD8', true: '#E8795A' }}
                 thumbColor="#FFFFFF"
               />
             }
           />
           <SettingsRow
-            icon={<Globe size={20} color="#3B82F6" />}
-            iconBg="#DBEAFE"
+            icon={<Globe size={20} color="#4A8FE7" />}
+            iconBg={isDark ? '#1A2230' : '#EFF6FF'}
             label={t.settings.language}
             sublabel={langLabels[language]}
             onPress={() => setShowLanguageModal(true)}
@@ -189,10 +179,10 @@ function SettingsContent() {
         </View>
 
         <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>Gemini API</Text>
-        <View style={[styles.section, { backgroundColor: colors.card, shadowColor: colors.overlay }]}>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
           <SettingsRow
-            icon={<Zap size={20} color="#F59E0B" />}
-            iconBg="#FEF3C7"
+            icon={<Zap size={20} color="#E8795A" />}
+            iconBg={isDark ? '#2A1D1B' : '#FFF0ED'}
             label="API Key"
             sublabel={geminiStatus}
             colors={colors}
@@ -201,26 +191,26 @@ function SettingsContent() {
         </View>
 
         <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{t.settings.support}</Text>
-        <View style={[styles.section, { backgroundColor: colors.card, shadowColor: colors.overlay }]}>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
           <SettingsRow
-            icon={<Mail size={20} color="#14B8A6" />}
-            iconBg="#CCFBF1"
+            icon={<Mail size={20} color="#2BA8A0" />}
+            iconBg={isDark ? '#1A2A24' : '#E6F7F6'}
             label={t.settings.contactSupport}
             sublabel={SUPPORT_EMAIL}
             onPress={handleContactSupport}
             colors={colors}
           />
           <SettingsRow
-            icon={<Star size={20} color="#F59E0B" />}
-            iconBg="#FEF3C7"
+            icon={<Star size={20} color="#D4943A" />}
+            iconBg={isDark ? '#2A2618' : '#FFF5E0'}
             label={t.settings.rateApp}
             sublabel={t.settings.rateAppSub}
             onPress={handleRateApp}
             colors={colors}
           />
           <SettingsRow
-            icon={<HelpCircle size={20} color="#06B6D4" />}
-            iconBg="#CFFAFE"
+            icon={<HelpCircle size={20} color="#3B9EC4" />}
+            iconBg={isDark ? '#1A2230' : '#EBF5FA'}
             label={t.settings.faq}
             onPress={() => openURL('https://example.com/help')}
             colors={colors}
@@ -229,18 +219,18 @@ function SettingsContent() {
         </View>
 
         <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{t.settings.legal}</Text>
-        <View style={[styles.section, { backgroundColor: colors.card, shadowColor: colors.overlay }]}>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
           <SettingsRow
-            icon={<Shield size={20} color="#10B981" />}
-            iconBg="#D1FAE5"
+            icon={<Shield size={20} color="#34A77B" />}
+            iconBg={isDark ? '#1A2A24' : '#F0FAF6'}
             label={t.settings.privacyPolicy}
             onPress={() => openURL(PRIVACY_POLICY_URL)}
             trailing={<ExternalLink size={16} color={colors.textTertiary} />}
             colors={colors}
           />
           <SettingsRow
-            icon={<FileText size={20} color="#3B82F6" />}
-            iconBg="#DBEAFE"
+            icon={<FileText size={20} color="#4A8FE7" />}
+            iconBg={isDark ? '#1A2230' : '#EFF6FF'}
             label={t.settings.termsOfUse}
             onPress={() => openURL(TERMS_OF_USE_URL)}
             trailing={<ExternalLink size={16} color={colors.textTertiary} />}
@@ -250,7 +240,7 @@ function SettingsContent() {
         </View>
 
         <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{t.settings.data}</Text>
-        <View style={[styles.section, { backgroundColor: colors.card, shadowColor: colors.overlay }]}>
+        <View style={[styles.section, { backgroundColor: colors.card }]}>
           <SettingsRow
             icon={<Info size={20} color={colors.textSecondary} />}
             iconBg={colors.bgSecondary}
@@ -261,8 +251,8 @@ function SettingsContent() {
           />
           {savedPrompts.length > 0 && (
             <SettingsRow
-              icon={<Trash2 size={20} color="#EF4444" />}
-              iconBg="#FEE2E2"
+              icon={<Trash2 size={20} color="#DC4B4B" />}
+              iconBg={isDark ? '#2A1A1A' : '#FDEDF2'}
               label={t.settings.clearAll}
               sublabel={t.settings.clearAllSub}
               onPress={handleClearData}
@@ -274,7 +264,7 @@ function SettingsContent() {
         </View>
 
         <Text style={[styles.footerText, { color: colors.textTertiary }]}>
-          {t.settings.footer} • {APP_VERSION}
+          {t.settings.footer} {APP_VERSION}
         </Text>
       </ScrollView>
 
@@ -288,12 +278,12 @@ function SettingsContent() {
                 <Pressable
                   key={lang}
                   onPress={() => handleSelectLanguage(lang)}
-                  style={[styles.langOption, isActive && { backgroundColor: isDark ? 'rgba(245,158,11,0.12)' : '#FEF3C7' }]}
+                  style={[styles.langOption, isActive && { backgroundColor: isDark ? 'rgba(232,121,90,0.12)' : '#FFF0ED' }]}
                 >
-                  <Text style={[styles.langText, { color: colors.text }, isActive && { color: '#D97706', fontWeight: '700' as const }]}>
+                  <Text style={[styles.langText, { color: colors.text }, isActive && { color: '#E8795A', fontWeight: '700' as const }]}>
                     {langLabels[lang]}
                   </Text>
-                  {isActive && <Check size={18} color="#D97706" />}
+                  {isActive && <Check size={18} color="#E8795A" />}
                 </Pressable>
               );
             })}
@@ -316,33 +306,36 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   scrollContent: { paddingHorizontal: 24 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24 },
-  pageTitle: { fontSize: 34, fontWeight: '800', letterSpacing: -1 },
-  badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
-  badgeText: { fontSize: 13, fontWeight: '600' },
+  pageTitle: { fontSize: 30, fontWeight: '800' as const, letterSpacing: -0.8 },
+  badge: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14 },
+  badgeText: { fontSize: 13, fontWeight: '700' as const },
 
   profileCard: {
     flexDirection: 'row', alignItems: 'center', padding: 20, borderRadius: 24, marginBottom: 32, gap: 16,
-    shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.08, shadowRadius: 24, elevation: 4,
   },
-  profileAvatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
-  profileName: { fontSize: 18, fontWeight: '700', marginBottom: 2 },
+  profileAvatar: {
+    width: 48, height: 48, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1,
+  },
+  profileName: { fontSize: 18, fontWeight: '700' as const, marginBottom: 2 },
   profileHandle: { fontSize: 14 },
+  profileBadge: {
+    width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+  },
 
   sectionTitle: {
-    fontSize: 13, fontWeight: '700', textTransform: 'uppercase',
-    letterSpacing: 1, marginBottom: 12, marginLeft: 8,
+    fontSize: 12, fontWeight: '700' as const, textTransform: 'uppercase' as const,
+    letterSpacing: 1, marginBottom: 12, marginLeft: 4,
   },
   section: {
-    borderRadius: 24, marginBottom: 32,
-    shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.06, shadowRadius: 16, elevation: 3,
-    overflow: 'hidden',
+    borderRadius: 24, marginBottom: 28, overflow: 'hidden',
   },
   row: {
     flexDirection: 'row', alignItems: 'center', paddingVertical: 16, paddingHorizontal: 20, gap: 16,
   },
-  rowIcon: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  rowIcon: { width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
   rowContent: { flex: 1, gap: 2 },
-  rowLabel: { fontSize: 16, fontWeight: '600', letterSpacing: -0.2 },
+  rowLabel: { fontSize: 16, fontWeight: '600' as const, letterSpacing: -0.2 },
   rowSublabel: { fontSize: 13 },
   footerText: { textAlign: 'center', fontSize: 13, lineHeight: 20, marginTop: 8, marginBottom: 20 },
   modalOverlay: {
@@ -350,13 +343,12 @@ const styles = StyleSheet.create({
   },
   modalContent: {
     width: '100%', borderRadius: 28, padding: 24,
-    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 40, elevation: 10,
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 30, elevation: 10,
   },
-  modalTitle: { fontSize: 22, fontWeight: '800', marginBottom: 20, letterSpacing: -0.5 },
+  modalTitle: { fontSize: 22, fontWeight: '800' as const, marginBottom: 20, letterSpacing: -0.5 },
   langOption: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingVertical: 16, paddingHorizontal: 20, borderRadius: 16, marginBottom: 8,
+    paddingVertical: 16, paddingHorizontal: 20, borderRadius: 16, marginBottom: 6,
   },
-  langText: { fontSize: 16, fontWeight: '600' },
+  langText: { fontSize: 16, fontWeight: '600' as const },
 });
-

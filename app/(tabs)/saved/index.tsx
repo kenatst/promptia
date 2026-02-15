@@ -11,29 +11,25 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-// @ts-ignore
 import * as Clipboard from 'expo-clipboard';
-// @ts-ignore
 import * as Haptics from 'expo-haptics';
-// @ts-ignore
 import {
   Search, Trash2, Copy, Heart, Shuffle, Check, Bookmark,
   MessageSquare, Palette, Camera, Film, FolderPlus, Folder,
-  X, ChevronRight, MoreHorizontal,
+  X, ChevronRight,
 } from 'lucide-react-native';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { usePromptStore } from '@/contexts/PromptContext';
 import { SavedPrompt, DEFAULT_INPUTS, ModelType, PromptFolder } from '@/types/prompt';
 import { getModelLabel } from '@/engine/promptEngine';
-// @ts-ignore
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const MODEL_COLORS: Record<ModelType, string> = {
-  chatgpt: '#F59E0B',
-  midjourney: '#8B5CF6',
-  sdxl: '#06B6D4',
-  video: '#EC4899',
+  chatgpt: '#E8795A',
+  midjourney: '#8B6FC0',
+  sdxl: '#3B9EC4',
+  video: '#E06B8B',
 };
 
 const MODEL_ICONS: Record<ModelType, (s: number, c: string) => React.ReactNode> = {
@@ -43,7 +39,8 @@ const MODEL_ICONS: Record<ModelType, (s: number, c: string) => React.ReactNode> 
   video: (s, c) => <Film size={s} color={c} />,
 };
 
-const FOLDER_COLORS = ['#F59E0B', '#8B5CF6', '#10B981', '#EC4899', '#3B82F6', '#06B6D4', '#EF4444', '#14B8A6'];
+const CARD_BGS = ['#FFF0ED', '#F0FAF6', '#F4F0FF', '#EFF6FF', '#FFF3E8', '#FFFBE8'];
+const FOLDER_COLORS = ['#E8795A', '#8B6FC0', '#34A77B', '#E06B8B', '#4A8FE7', '#3B9EC4', '#DC4B4B', '#2BA8A0'];
 
 type FilterTab = 'all' | 'favorites' | 'text' | 'image' | 'video';
 
@@ -65,6 +62,7 @@ const SavedContent = () => {
   const [selectedFolderColor, setSelectedFolderColor] = useState(FOLDER_COLORS[0]);
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [movePromptId, setMovePromptId] = useState<string | null>(null);
+  const [showSearch, setShowSearch] = useState(false);
 
   const FILTER_TABS: { key: FilterTab; label: string }[] = useMemo(() => [
     { key: 'all', label: t.library.all },
@@ -76,16 +74,13 @@ const SavedContent = () => {
 
   const filteredPrompts = useMemo(() => {
     let items = savedPrompts;
-
     if (selectedFolderId) {
       items = items.filter((p: SavedPrompt) => p.folderId === selectedFolderId);
     }
-
     if (activeFilter === 'favorites') items = items.filter((p: SavedPrompt) => p.isFavorite);
     else if (activeFilter === 'text') items = items.filter((p: SavedPrompt) => p.type === 'text');
     else if (activeFilter === 'image') items = items.filter((p: SavedPrompt) => p.type === 'image');
     else if (activeFilter === 'video') items = items.filter((p: SavedPrompt) => p.type === 'video');
-
     if (localSearch.trim()) {
       const q = localSearch.toLowerCase();
       items = items.filter((p: SavedPrompt) =>
@@ -104,21 +99,10 @@ const SavedContent = () => {
 
   const handleDelete = useCallback((prompt: SavedPrompt) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert(
-      t.library.deleteTitle,
-      t.library.deleteMsg,
-      [
-        { text: t.library.cancel, style: 'cancel' },
-        {
-          text: t.library.delete,
-          style: 'destructive',
-          onPress: () => {
-            deletePrompt(prompt.id);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-          },
-        },
-      ]
-    );
+    Alert.alert(t.library.deleteTitle, t.library.deleteMsg, [
+      { text: t.library.cancel, style: 'cancel' },
+      { text: t.library.delete, style: 'destructive', onPress: () => { deletePrompt(prompt.id); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning); } },
+    ]);
   }, [deletePrompt, t]);
 
   const handleRemix = useCallback((prompt: SavedPrompt) => {
@@ -142,22 +126,10 @@ const SavedContent = () => {
 
   const handleDeleteFolder = useCallback((folder: PromptFolder) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    Alert.alert(
-      'Delete Folder',
-      `Delete "${folder.name}"? Prompts inside will be moved to "All".`,
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => {
-            deleteFolder(folder.id);
-            if (selectedFolderId === folder.id) setSelectedFolderId(null);
-            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
-          },
-        },
-      ]
-    );
+    Alert.alert('Delete Folder', `Delete "${folder.name}"? Prompts inside will be moved to "All".`, [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => { deleteFolder(folder.id); if (selectedFolderId === folder.id) setSelectedFolderId(null); } },
+    ]);
   }, [deleteFolder, selectedFolderId]);
 
   const handleMoveToFolder = useCallback((folderId: string | undefined) => {
@@ -181,42 +153,29 @@ const SavedContent = () => {
 
   const renderFolders = () => {
     if (folders.length === 0 && savedPrompts.length === 0) return null;
-
     return (
       <View style={styles.foldersSection}>
         <FlatList
-          data={[{ id: '__all', name: 'All', color: isDark ? '#F59E0B' : '#64748B' } as PromptFolder, ...folders]}
+          data={[{ id: '__all', name: 'All', color: '#E8795A' } as PromptFolder, ...folders]}
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item.id}
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+          contentContainerStyle={{ paddingHorizontal: 24, gap: 8 }}
           renderItem={({ item }: { item: PromptFolder }) => {
             const isAll = item.id === '__all';
             const isActive = isAll ? !selectedFolderId : selectedFolderId === item.id;
-            const count = isAll
-              ? savedPrompts.length
-              : savedPrompts.filter((p: SavedPrompt) => p.folderId === item.id).length;
-
+            const count = isAll ? savedPrompts.length : savedPrompts.filter((p: SavedPrompt) => p.folderId === item.id).length;
             return (
               <Pressable
-                onPress={() => {
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                  setSelectedFolderId(isAll ? null : item.id);
-                }}
-                onLongPress={() => {
-                  if (!isAll) handleDeleteFolder(item);
-                }}
+                onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setSelectedFolderId(isAll ? null : item.id); }}
+                onLongPress={() => { if (!isAll) handleDeleteFolder(item); }}
                 style={[
                   styles.folderChip,
-                  { backgroundColor: isActive ? (isDark ? '#F59E0B' : '#0F172A') : colors.chipBg },
+                  { backgroundColor: isActive ? (isDark ? '#E8795A' : '#1A1A1A') : colors.chipBg },
                 ]}
               >
                 <Folder size={14} color={isActive ? '#FFF' : colors.textTertiary} />
-                <Text style={[
-                  styles.folderChipText,
-                  { color: colors.textSecondary },
-                  isActive && { color: '#FFF', fontWeight: '700' as const },
-                ]}>
+                <Text style={[styles.folderChipText, { color: colors.textSecondary }, isActive && { color: '#FFF', fontWeight: '700' as const }]}>
                   {item.name}
                 </Text>
                 <View style={[styles.folderCount, { backgroundColor: isActive ? 'rgba(255,255,255,0.2)' : colors.bgTertiary }]}>
@@ -238,30 +197,32 @@ const SavedContent = () => {
     );
   };
 
-  const renderPromptItem = useCallback(({ item }: { item: SavedPrompt }) => {
-    const modelColor = MODEL_COLORS[item.model] ?? '#F59E0B';
+  const renderPromptItem = useCallback(({ item, index }: { item: SavedPrompt; index: number }) => {
+    const modelColor = MODEL_COLORS[item.model] ?? '#E8795A';
     const isCopied = copiedId === item.id;
     const iconFn = MODEL_ICONS[item.model];
+    const cardBg = isDark ? colors.card : CARD_BGS[index % CARD_BGS.length];
 
     return (
       <Pressable
         onPress={() => handlePromptPress(item)}
         style={({ pressed }: { pressed: boolean }) => [
           styles.card,
-          { backgroundColor: colors.card, borderColor: colors.cardBorder },
-          pressed && { transform: [{ scale: 0.98 }] },
+          { backgroundColor: cardBg },
+          isDark && { borderColor: colors.cardBorder, borderWidth: 1 },
+          pressed && { transform: [{ scale: 0.97 }], opacity: 0.95 },
         ]}
         testID={`saved-card-${item.id}`}
       >
         <View style={styles.cardBody}>
           <View style={styles.cardTop}>
-            <View style={[styles.modelIcon, { backgroundColor: `${modelColor}15` }]}>
+            <View style={[styles.modelIcon, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF' }]}>
               {iconFn ? iconFn(18, modelColor) : <MessageSquare size={18} color={modelColor} />}
             </View>
             <View style={{ flex: 1 }}>
               <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
               <View style={styles.cardMeta}>
-                <View style={[styles.modelBadge, { backgroundColor: `${modelColor}10` }]}>
+                <View style={[styles.modelBadge, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF' }]}>
                   <Text style={[styles.modelLabel, { color: modelColor }]}>{getModelLabel(item.model)}</Text>
                 </View>
                 <Text style={[styles.timeText, { color: colors.textTertiary }]}>{getTimeAgo(item.createdAt)}</Text>
@@ -273,8 +234,8 @@ const SavedContent = () => {
             >
               <Heart
                 size={20}
-                color={item.isFavorite ? '#EC4899' : colors.textTertiary}
-                fill={item.isFavorite ? '#EC4899' : 'transparent'}
+                color={item.isFavorite ? '#E06B8B' : colors.textTertiary}
+                fill={item.isFavorite ? '#E06B8B' : 'transparent'}
               />
             </Pressable>
           </View>
@@ -286,35 +247,35 @@ const SavedContent = () => {
           {item.tags.length > 0 && (
             <View style={styles.tagsRow}>
               {item.tags.slice(0, 3).map((tag) => (
-                <View key={tag} style={[styles.tag, { backgroundColor: colors.bgTertiary }]}>
+                <View key={tag} style={[styles.tag, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF' }]}>
                   <Text style={[styles.tagText, { color: colors.textSecondary }]}>#{tag}</Text>
                 </View>
               ))}
             </View>
           )}
 
-          <View style={[styles.cardActions, { borderTopColor: colors.separator }]}>
+          <View style={[styles.cardActions, { borderTopColor: isDark ? colors.separator : 'rgba(0,0,0,0.04)' }]}>
             <Pressable
               onPress={() => handleCopy(item)}
-              style={[styles.actionBtn, { backgroundColor: colors.bgSecondary }, isCopied && { backgroundColor: 'rgba(16,185,129,0.12)' }]}
+              style={[styles.actionBtn, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF' }, isCopied && { backgroundColor: 'rgba(52,167,123,0.12)' }]}
             >
-              {isCopied ? <Check size={14} color="#10B981" /> : <Copy size={14} color={colors.textSecondary} />}
-              <Text style={[styles.actionText, { color: colors.textSecondary }, isCopied && { color: '#10B981' }]}>
+              {isCopied ? <Check size={14} color="#34A77B" /> : <Copy size={14} color={colors.textSecondary} />}
+              <Text style={[styles.actionText, { color: colors.textSecondary }, isCopied && { color: '#34A77B' }]}>
                 {isCopied ? t.create.copied : t.library.copy}
               </Text>
             </Pressable>
 
             <View style={{ flexDirection: 'row', gap: 6 }}>
-              <Pressable onPress={() => handleRemix(item)} style={[styles.actionBtn, { backgroundColor: colors.bgSecondary, paddingHorizontal: 10 }]}>
+              <Pressable onPress={() => handleRemix(item)} style={[styles.actionBtn, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF', paddingHorizontal: 10 }]}>
                 <Shuffle size={14} color={colors.textSecondary} />
               </Pressable>
               <Pressable
                 onPress={() => { setMovePromptId(item.id); setShowMoveModal(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                style={[styles.actionBtn, { backgroundColor: colors.bgSecondary, paddingHorizontal: 10 }]}>
+                style={[styles.actionBtn, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF', paddingHorizontal: 10 }]}>
                 <Folder size={14} color={colors.textSecondary} />
               </Pressable>
-              <Pressable onPress={() => handleDelete(item)} style={[styles.deleteBtn, { backgroundColor: 'rgba(239,68,68,0.08)' }]}>
-                <Trash2 size={14} color="#EF4444" />
+              <Pressable onPress={() => handleDelete(item)} style={[styles.deleteBtn, { backgroundColor: isDark ? 'rgba(220,75,75,0.12)' : 'rgba(220,75,75,0.08)' }]}>
+                <Trash2 size={14} color="#DC4B4B" />
               </Pressable>
             </View>
           </View>
@@ -323,53 +284,41 @@ const SavedContent = () => {
     );
   }, [copiedId, handleCopy, handleDelete, handleRemix, handlePromptPress, toggleFavorite, getTimeAgo, colors, t, isDark]);
 
-  const renderFilterTab = useCallback((tab: { key: FilterTab; label: string }) => {
-    const isActive = activeFilter === tab.key;
-    return (
-      <Pressable
-        onPress={() => { setActiveFilter(tab.key); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-        style={[
-          styles.filterTab,
-          { backgroundColor: isActive ? (isDark ? '#F59E0B' : '#0F172A') : colors.chipBg },
-        ]}
-      >
-        <Text style={[
-          styles.filterTabText,
-          { color: colors.textSecondary },
-          isActive && { color: '#FFFFFF' },
-        ]}>
-          {tab.label}
-        </Text>
-      </Pressable>
-    );
-  }, [activeFilter, isDark, colors]);
-
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <View style={styles.headerLeft}>
           <Text style={[styles.headerTitle, { color: colors.text }]}>{t.library.title}</Text>
           {savedPrompts.length > 0 && (
-            <View style={[styles.countBadge, { backgroundColor: 'rgba(0,0,0,0.05)' }]}>
-              <Text style={[styles.countText, { color: colors.textSecondary }]}>{savedPrompts.length}</Text>
+            <View style={[styles.countBadge, { backgroundColor: isDark ? colors.coralDim : '#FFF0ED' }]}>
+              <Text style={[styles.countText, { color: '#E8795A' }]}>{savedPrompts.length}</Text>
             </View>
           )}
         </View>
+        <Pressable
+          onPress={() => { setShowSearch(!showSearch); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+          style={[styles.searchToggle, { backgroundColor: showSearch ? colors.coral : colors.chipBg }]}
+        >
+          {showSearch ? <X size={18} color="#FFF" /> : <Search size={18} color={colors.textSecondary} />}
+        </Pressable>
       </View>
 
-      <View style={styles.searchSection}>
-        <View style={[styles.searchBar, { backgroundColor: colors.searchBg, borderColor: colors.cardBorder }]}>
-          <Search size={18} color={colors.textTertiary} />
-          <TextInput
-            placeholder={t.library.searchPlaceholder}
-            placeholderTextColor={colors.textTertiary}
-            style={[styles.searchInput, { color: colors.text }]}
-            value={localSearch}
-            onChangeText={setLocalSearch}
-            testID="library-search-input"
-          />
+      {showSearch && (
+        <View style={styles.searchSection}>
+          <View style={[styles.searchBar, { backgroundColor: colors.searchBg }]}>
+            <Search size={16} color={colors.textTertiary} />
+            <TextInput
+              placeholder={t.library.searchPlaceholder}
+              placeholderTextColor={colors.textTertiary}
+              style={[styles.searchInput, { color: colors.text }]}
+              value={localSearch}
+              onChangeText={setLocalSearch}
+              autoFocus
+              testID="library-search-input"
+            />
+          </View>
         </View>
-      </View>
+      )}
 
       {renderFolders()}
 
@@ -379,8 +328,23 @@ const SavedContent = () => {
           horizontal
           showsHorizontalScrollIndicator={false}
           keyExtractor={(item) => item.key}
-          contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
-          renderItem={({ item }) => renderFilterTab(item)}
+          contentContainerStyle={{ paddingHorizontal: 24, gap: 8 }}
+          renderItem={({ item: tab }) => {
+            const isActive = activeFilter === tab.key;
+            return (
+              <Pressable
+                onPress={() => { setActiveFilter(tab.key); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                style={[
+                  styles.filterTab,
+                  { backgroundColor: isActive ? (isDark ? '#E8795A' : '#1A1A1A') : colors.chipBg },
+                ]}
+              >
+                <Text style={[styles.filterTabText, { color: colors.textSecondary }, isActive && { color: '#FFFFFF' }]}>
+                  {tab.label}
+                </Text>
+              </Pressable>
+            );
+          }}
         />
       </View>
 
@@ -392,10 +356,10 @@ const SavedContent = () => {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <View style={[styles.emptyIconWrap, { backgroundColor: colors.bgSecondary }]}>
-              <Bookmark size={32} color={colors.textTertiary} />
+            <View style={[styles.emptyIconWrap, { backgroundColor: isDark ? colors.bgSecondary : '#FFF0ED' }]}>
+              <Bookmark size={32} color="#E8795A" />
             </View>
-            <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
+            <Text style={[styles.emptyTitle, { color: colors.text }]}>
               {savedPrompts.length === 0 ? t.library.noPrompts : t.library.noResults}
             </Text>
             <Text style={[styles.emptySubtitle, { color: colors.textTertiary }]}>
@@ -419,7 +383,7 @@ const SavedContent = () => {
               onChangeText={setNewFolderName}
               placeholder="Folder name..."
               placeholderTextColor={colors.textTertiary}
-              style={[styles.folderInput, { color: colors.text, backgroundColor: colors.bgSecondary, borderColor: colors.cardBorder }]}
+              style={[styles.folderInput, { color: colors.text, backgroundColor: colors.bgSecondary }]}
               autoFocus
             />
             <View style={styles.colorPicker}>
@@ -495,7 +459,7 @@ const SavedContent = () => {
       </Modal>
     </View>
   );
-}
+};
 
 export default function SavedScreen() {
   return (
@@ -508,25 +472,27 @@ export default function SavedScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   header: {
-    paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 24, flexDirection: 'row', alignItems: 'center',
     justifyContent: 'space-between', marginBottom: 16,
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  headerTitle: { fontSize: 32, fontWeight: '800' as const, letterSpacing: -0.8 },
+  headerTitle: { fontSize: 30, fontWeight: '800' as const, letterSpacing: -0.8 },
   countBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
-  countText: { fontSize: 13, fontWeight: '700' as const, color: '#FFF' },
-  searchSection: { paddingHorizontal: 20, marginBottom: 16 },
-  searchBar: {
-    height: 48, borderRadius: 16, flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, gap: 10, shadowColor: '#000', shadowOpacity: 0.04,
-    shadowRadius: 8, elevation: 2, borderWidth: 1,
+  countText: { fontSize: 13, fontWeight: '700' as const },
+  searchToggle: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
   },
-  searchInput: { flex: 1, fontSize: 15 },
+  searchSection: { paddingHorizontal: 24, marginBottom: 14 },
+  searchBar: {
+    height: 44, borderRadius: 14, flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 14, gap: 10,
+  },
+  searchInput: { flex: 1, fontSize: 15, fontWeight: '500' as const },
   foldersSection: { marginBottom: 12 },
   folderChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
-    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12,
-    borderWidth: 1.5,
+    paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16,
   },
   folderChipText: { fontSize: 13, fontWeight: '600' as const },
   folderCount: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6, marginLeft: 2 },
@@ -537,28 +503,27 @@ const styles = StyleSheet.create({
   },
   filterRow: { marginBottom: 16 },
   filterTab: {
-    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12,
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 16,
   },
   filterTabText: { fontSize: 13, fontWeight: '600' as const },
-  listContent: { paddingHorizontal: 20, paddingBottom: 120, gap: 14 },
+  listContent: { paddingHorizontal: 24, paddingBottom: 120, gap: 14 },
   card: {
-    borderRadius: 22, overflow: 'hidden',
-    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 }, elevation: 3, borderWidth: 1,
+    borderRadius: 24, overflow: 'hidden',
   },
-  cardBody: { padding: 16, gap: 12 },
+  cardBody: { padding: 18, gap: 12 },
   cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   modelIcon: {
-    width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    width: 42, height: 42, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1,
   },
   cardTitle: { fontSize: 16, fontWeight: '700' as const, lineHeight: 21, marginBottom: 4 },
   cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  modelBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  modelBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
   modelLabel: { fontSize: 11, fontWeight: '700' as const },
   timeText: { fontSize: 11 },
   promptPreview: { fontSize: 13, lineHeight: 19 },
   tagsRow: { flexDirection: 'row', gap: 6 },
-  tag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  tag: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
   tagText: { fontSize: 11, fontWeight: '600' as const },
   cardActions: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
@@ -566,27 +531,27 @@ const styles = StyleSheet.create({
   },
   actionBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 12,
   },
   actionText: { fontSize: 12, fontWeight: '600' as const },
-  deleteBtn: { padding: 7, borderRadius: 10 },
-  emptyState: { alignItems: 'center', marginTop: 80, gap: 10 },
+  deleteBtn: { padding: 7, borderRadius: 12 },
+  emptyState: { alignItems: 'center', marginTop: 80, gap: 12 },
   emptyIconWrap: {
-    width: 64, height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 4,
+    width: 72, height: 72, borderRadius: 24, alignItems: 'center', justifyContent: 'center', marginBottom: 4,
   },
   emptyTitle: { fontSize: 18, fontWeight: '700' as const },
-  emptySubtitle: { fontSize: 14, textAlign: 'center', paddingHorizontal: 40 },
+  emptySubtitle: { fontSize: 14, textAlign: 'center', paddingHorizontal: 40, lineHeight: 20 },
   modalOverlay: {
     flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30,
   },
   modalContent: {
-    width: '100%', borderRadius: 24, padding: 24,
-    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20, elevation: 10,
+    width: '100%', borderRadius: 28, padding: 24,
+    shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 30, elevation: 10,
   },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
   modalTitle: { fontSize: 20, fontWeight: '800' as const },
   folderInput: {
-    borderRadius: 14, padding: 14, fontSize: 15, borderWidth: 1, marginBottom: 16,
+    borderRadius: 16, padding: 14, fontSize: 15, marginBottom: 16,
   },
   colorPicker: {
     flexDirection: 'row', gap: 10, marginBottom: 20, justifyContent: 'center',
@@ -599,7 +564,7 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, elevation: 3,
   },
   createFolderBtn: {
-    height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+    height: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
   },
   createFolderText: { color: '#FFF', fontSize: 15, fontWeight: '700' as const },
   moveFolderOption: {

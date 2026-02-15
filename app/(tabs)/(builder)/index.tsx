@@ -1,7 +1,6 @@
 import React, { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
-  Animated,
   FlatList,
   KeyboardAvoidingView,
   Platform,
@@ -46,7 +45,6 @@ import {
   AlertTriangle,
   HelpCircle,
   Info,
-  Sparkles,
 } from 'lucide-react-native';
 
 import { useTheme } from '@/contexts/ThemeContext';
@@ -91,6 +89,12 @@ const CATEGORY_ICONS: Record<string, (color: string) => React.ReactNode> = {
   business: (c) => <Briefcase size={20} color={c} />,
   ui_design: (c) => <Layout size={20} color={c} />,
 };
+
+const CAT_CARD_COLORS = [
+  '#FFF0ED', '#F0FAF6', '#EFF6FF', '#FDEDF2', '#FFF5E0',
+  '#F4F0FF', '#FFF0ED', '#E6F7F6', '#FDEDF2', '#FFF5E0',
+  '#F0FAF6', '#EFF6FF', '#FFF5E0', '#F0FAF6', '#FFF0ED', '#E6F7F6',
+];
 
 type BuilderMode = 'simple' | 'advanced';
 
@@ -207,19 +211,22 @@ function BuilderContent() {
     }
   }, [wizardStep]);
 
-  const renderCategoryCard = useCallback(({ item }: { item: CreationCategory }) => {
+  const renderCategoryCard = useCallback(({ item, index }: { item: CreationCategory; index: number }) => {
     const isSelected = selectedCategoryId === item.id;
     const iconFn = CATEGORY_ICONS[item.id];
+    const cardBg = isDark ? colors.card : CAT_CARD_COLORS[index % CAT_CARD_COLORS.length];
     return (
       <Pressable
         onPress={() => handleCategorySelect(item.id)}
         style={({ pressed }) => [
           styles.catCard,
-          { backgroundColor: isSelected ? `${item.color}18` : colors.card, borderColor: isSelected ? item.color : colors.cardBorder },
+          { backgroundColor: cardBg },
+          isSelected && { borderColor: item.color, borderWidth: 2 },
+          !isSelected && isDark && { borderColor: colors.cardBorder, borderWidth: 1 },
           pressed && { transform: [{ scale: 0.95 }] },
         ]}
       >
-        <View style={[styles.catIconWrap, { backgroundColor: `${item.color}15` }]}>
+        <View style={[styles.catIconWrap, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF' }]}>
           {iconFn ? iconFn(item.color) : <Wand2 size={20} color={item.color} />}
         </View>
         <Text style={[styles.catLabel, { color: colors.textSecondary }, isSelected && { color: item.color, fontWeight: '700' as const }]}>
@@ -227,20 +234,20 @@ function BuilderContent() {
         </Text>
       </Pressable>
     );
-  }, [selectedCategoryId, handleCategorySelect, colors]);
+  }, [selectedCategoryId, handleCategorySelect, colors, isDark]);
 
   const renderModeToggle = () => (
     <View style={styles.modeToggleContainer}>
-      <View style={[styles.modeToggle, { backgroundColor: colors.bgSecondary }]}>
+      <View style={[styles.modeToggle, { backgroundColor: colors.chipBg }]}>
         <Pressable
-          style={[styles.modeBtn, mode === 'simple' && { backgroundColor: accentColor }]}
+          style={[styles.modeBtn, mode === 'simple' && { backgroundColor: isDark ? '#E8795A' : '#1A1A1A' }]}
           onPress={() => { setMode('simple'); setGeneratedResult(null); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
         >
           <Zap size={14} color={mode === 'simple' ? '#FFF' : colors.textTertiary} />
           <Text style={[styles.modeBtnText, { color: mode === 'simple' ? '#FFF' : colors.textTertiary }]}>{t.create.quick}</Text>
         </Pressable>
         <Pressable
-          style={[styles.modeBtn, mode === 'advanced' && { backgroundColor: accentColor }]}
+          style={[styles.modeBtn, mode === 'advanced' && { backgroundColor: isDark ? '#E8795A' : '#1A1A1A' }]}
           onPress={() => { setMode('advanced'); setWizardStep(0); setGeneratedResult(null); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
         >
           <Sliders size={14} color={mode === 'advanced' ? '#FFF' : colors.textTertiary} />
@@ -256,9 +263,9 @@ function BuilderContent() {
         <View key={step} style={styles.wizardStepRow}>
           <View style={[
             styles.wizardDot,
-            { backgroundColor: colors.bgTertiary },
-            i <= wizardStep && { backgroundColor: accentColor },
-            i < wizardStep && { backgroundColor: '#10B981' },
+            { backgroundColor: colors.chipBg },
+            i <= wizardStep && { backgroundColor: '#E8795A' },
+            i < wizardStep && { backgroundColor: '#34A77B' },
           ]}>
             {i < wizardStep ? (
               <Check size={10} color="#FFF" />
@@ -266,11 +273,11 @@ function BuilderContent() {
               <Text style={[styles.wizardDotText, { color: colors.textTertiary }, i <= wizardStep && { color: '#FFF' }]}>{i + 1}</Text>
             )}
           </View>
-          <Text style={[styles.wizardStepLabel, { color: colors.textTertiary }, i === wizardStep && { color: accentColor, fontWeight: '700' as const }]}>
+          <Text style={[styles.wizardStepLabel, { color: colors.textTertiary }, i === wizardStep && { color: '#E8795A', fontWeight: '700' as const }]}>
             {step}
           </Text>
           {i < WIZARD_STEPS.length - 1 && (
-            <View style={[styles.wizardLine, { backgroundColor: colors.bgTertiary }, i < wizardStep && { backgroundColor: '#10B981' }]} />
+            <View style={[styles.wizardLine, { backgroundColor: colors.chipBg }, i < wizardStep && { backgroundColor: '#34A77B' }]} />
           )}
         </View>
       ))}
@@ -290,9 +297,9 @@ function BuilderContent() {
         />
       </View>
 
-      <View style={[styles.mainCard, { borderTopColor: accentColor, backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+      <View style={[styles.mainCard, { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: colors.cardBorder }]}>
         <View style={styles.cardHeader}>
-          <View style={[styles.cardIconBox, { backgroundColor: `${accentColor}15` }]}>
+          <View style={[styles.cardIconBox, { backgroundColor: isDark ? colors.bgTertiary : `${accentColor}12` }]}>
             {CATEGORY_ICONS[selectedCategoryId]
               ? CATEGORY_ICONS[selectedCategoryId](accentColor)
               : <Wand2 size={20} color={accentColor} />}
@@ -309,7 +316,7 @@ function BuilderContent() {
           placeholder={t.create.describeIdea}
           placeholderTextColor={colors.textTertiary}
           multiline
-          style={[styles.mainInput, { color: colors.text, backgroundColor: colors.inputBg, borderColor: isDark ? 'transparent' : 'rgba(0,0,0,0.05)', borderWidth: 1 }]}
+          style={[styles.mainInput, { color: colors.text, backgroundColor: colors.bgSecondary }]}
           textAlignVertical="top"
           testID="builder-objective-input"
         />
@@ -320,15 +327,13 @@ function BuilderContent() {
           style={({ pressed }) => [styles.generateBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
           testID="builder-generate-btn"
         >
-          <View
-            style={[styles.generateGradient, { backgroundColor: isDark ? '#F1F5F9' : '#0F172A' }]}
-          >
+          <View style={[styles.generateInner, { backgroundColor: isDark ? '#E8795A' : '#1A1A1A' }]}>
             {isGenerating ? (
-              <ActivityIndicator color={isDark ? '#000' : '#FFF'} size="small" />
+              <ActivityIndicator color="#FFF" size="small" />
             ) : (
-              <Wand2 size={18} color={isDark ? '#000' : '#FFF'} />
+              <Wand2 size={18} color="#FFF" />
             )}
-            <Text style={[styles.generateBtnText, { color: isDark ? '#000' : '#FFF' }]}>
+            <Text style={styles.generateBtnText}>
               {isGenerating ? 'Generating...' : t.create.generatePrompt}
             </Text>
           </View>
@@ -344,20 +349,22 @@ function BuilderContent() {
       <Text style={[styles.stepTitle, { color: colors.text }]}>{t.create.whatCreating}</Text>
       <Text style={[styles.stepSubtitle, { color: colors.textTertiary }]}>{t.create.chooseCategory}</Text>
       <View style={styles.categoryGrid}>
-        {CREATION_CATEGORIES.map((cat) => {
+        {CREATION_CATEGORIES.map((cat, index) => {
           const isSelected = selectedCategoryId === cat.id;
           const iconFn = CATEGORY_ICONS[cat.id];
+          const gridBg = isDark ? colors.card : CAT_CARD_COLORS[index % CAT_CARD_COLORS.length];
           return (
             <Pressable
               key={cat.id}
               onPress={() => handleCategorySelect(cat.id)}
               style={[
                 styles.gridItem,
-                { backgroundColor: colors.card, borderColor: colors.cardBorder },
-                isSelected && { backgroundColor: `${cat.color}15`, borderColor: cat.color },
+                { backgroundColor: gridBg },
+                isSelected && { borderColor: cat.color, borderWidth: 2 },
+                !isSelected && isDark && { borderColor: colors.cardBorder, borderWidth: 1 },
               ]}
             >
-              <View style={[styles.gridItemIcon, { backgroundColor: `${cat.color}12` }]}>
+              <View style={[styles.gridItemIcon, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF' }]}>
                 {iconFn ? iconFn(cat.color) : <Wand2 size={20} color={cat.color} />}
               </View>
               <Text style={[styles.gridItemLabel, { color: colors.textSecondary }, isSelected && { color: cat.color, fontWeight: '700' as const }]}>
@@ -375,30 +382,26 @@ function BuilderContent() {
       <Text style={[styles.stepTitle, { color: colors.text }]}>{t.create.describePrompt}</Text>
       <Text style={[styles.stepSubtitle, { color: colors.textTertiary }]}>{t.create.beSpecific}</Text>
 
-      <View style={[styles.wizardInputCard, { backgroundColor: 'transparent' }]}>
-        <TextInput
-          value={currentInputs.objective}
-          onChangeText={(text) => setCurrentInputs({ objective: text })}
-          placeholder={t.create.whatAchieve}
-          placeholderTextColor={colors.textTertiary}
-          multiline
-          style={[styles.wizardInput, { color: colors.text, backgroundColor: colors.inputBg, borderColor: colors.cardBorder, borderWidth: 1 }]}
-          textAlignVertical="top"
-        />
-      </View>
+      <TextInput
+        value={currentInputs.objective}
+        onChangeText={(text) => setCurrentInputs({ objective: text })}
+        placeholder={t.create.whatAchieve}
+        placeholderTextColor={colors.textTertiary}
+        multiline
+        style={[styles.wizardInput, { color: colors.text, backgroundColor: colors.bgSecondary }]}
+        textAlignVertical="top"
+      />
 
       {isImageOrVideo && (
         <>
           <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.style}</Text>
-          <View style={[styles.fieldCard, { backgroundColor: 'transparent' }]}>
-            <TextInput
-              value={currentInputs.style || ''}
-              onChangeText={(text) => setCurrentInputs({ style: text })}
-              placeholder="e.g. Photorealistic, Anime, Oil Painting..."
-              placeholderTextColor={colors.textTertiary}
-              style={[styles.fieldInput, { color: colors.text, backgroundColor: colors.inputBg, borderColor: colors.cardBorder, borderWidth: 1 }]}
-            />
-          </View>
+          <TextInput
+            value={currentInputs.style || ''}
+            onChangeText={(text) => setCurrentInputs({ style: text })}
+            placeholder="e.g. Photorealistic, Anime, Oil Painting..."
+            placeholderTextColor={colors.textTertiary}
+            style={[styles.fieldInput, { color: colors.text, backgroundColor: colors.bgSecondary }]}
+          />
         </>
       )}
     </>
@@ -419,9 +422,9 @@ function BuilderContent() {
                 <Pressable
                   key={opt.value}
                   onPress={() => { setCurrentInputs({ tone: opt.value as any }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                  style={[styles.chip, { backgroundColor: colors.chipBg, borderColor: 'transparent' }, isSelected && { backgroundColor: `${accentColor}15`, borderColor: accentColor }]}
+                  style={[styles.chip, { backgroundColor: colors.chipBg }, isSelected && { backgroundColor: isDark ? 'rgba(232,121,90,0.15)' : '#FFF0ED', borderColor: '#E8795A', borderWidth: 1.5 }]}
                 >
-                  <Text style={[styles.chipText, { color: colors.textSecondary }, isSelected && { color: accentColor, fontWeight: '700' as const }]}>
+                  <Text style={[styles.chipText, { color: colors.textSecondary }, isSelected && { color: '#E8795A', fontWeight: '700' as const }]}>
                     {(t.tones as any)[opt.value] || opt.label}
                   </Text>
                 </Pressable>
@@ -437,9 +440,9 @@ function BuilderContent() {
                 <Pressable
                   key={len}
                   onPress={() => { setCurrentInputs({ length: len }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                  style={[styles.chip, { backgroundColor: colors.chipBg, borderColor: 'transparent' }, isSelected && { backgroundColor: `${accentColor}15`, borderColor: accentColor }]}
+                  style={[styles.chip, { backgroundColor: colors.chipBg }, isSelected && { backgroundColor: isDark ? 'rgba(232,121,90,0.15)' : '#FFF0ED', borderColor: '#E8795A', borderWidth: 1.5 }]}
                 >
-                  <Text style={[styles.chipText, { color: colors.textSecondary }, isSelected && { color: accentColor, fontWeight: '700' as const }]}>
+                  <Text style={[styles.chipText, { color: colors.textSecondary }, isSelected && { color: '#E8795A', fontWeight: '700' as const }]}>
                     {(t.lengths as any)[len]}
                   </Text>
                 </Pressable>
@@ -455,9 +458,9 @@ function BuilderContent() {
                 <Pressable
                   key={fmt}
                   onPress={() => { setCurrentInputs({ outputFormat: fmt.toLowerCase() }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                  style={[styles.chip, { backgroundColor: colors.chipBg, borderColor: 'transparent' }, isSelected && { backgroundColor: `${accentColor}15`, borderColor: accentColor }]}
+                  style={[styles.chip, { backgroundColor: colors.chipBg }, isSelected && { backgroundColor: isDark ? 'rgba(232,121,90,0.15)' : '#FFF0ED', borderColor: '#E8795A', borderWidth: 1.5 }]}
                 >
-                  <Text style={[styles.chipText, { color: colors.textSecondary }, isSelected && { color: accentColor, fontWeight: '700' as const }]}>
+                  <Text style={[styles.chipText, { color: colors.textSecondary }, isSelected && { color: '#E8795A', fontWeight: '700' as const }]}>
                     {fmt}
                   </Text>
                 </Pressable>
@@ -470,63 +473,53 @@ function BuilderContent() {
       {isImageOrVideo && (
         <>
           <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.lighting}</Text>
-          <View style={[styles.fieldCard, { backgroundColor: 'transparent' }]}>
-            <TextInput
-              value={currentInputs.lighting || ''}
-              onChangeText={(text) => setCurrentInputs({ lighting: text })}
-              placeholder="e.g. Golden hour, Studio, Neon..."
-              placeholderTextColor={colors.textTertiary}
-              style={[styles.fieldInput, { color: colors.text, backgroundColor: colors.inputBg, borderColor: colors.cardBorder, borderWidth: 1 }]}
-            />
-          </View>
+          <TextInput
+            value={currentInputs.lighting || ''}
+            onChangeText={(text) => setCurrentInputs({ lighting: text })}
+            placeholder="e.g. Golden hour, Studio, Neon..."
+            placeholderTextColor={colors.textTertiary}
+            style={[styles.fieldInput, { color: colors.text, backgroundColor: colors.bgSecondary }]}
+          />
 
           <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.cameraAngle}</Text>
-          <View style={[styles.fieldCard, { backgroundColor: 'transparent' }]}>
-            <TextInput
-              value={currentInputs.cameraAngle || ''}
-              onChangeText={(text) => setCurrentInputs({ cameraAngle: text })}
-              placeholder="e.g. Close-up, Wide angle, Bird's eye..."
-              placeholderTextColor={colors.textTertiary}
-              style={[styles.fieldInput, { color: colors.text, backgroundColor: colors.inputBg, borderColor: colors.cardBorder, borderWidth: 1 }]}
-            />
-          </View>
+          <TextInput
+            value={currentInputs.cameraAngle || ''}
+            onChangeText={(text) => setCurrentInputs({ cameraAngle: text })}
+            placeholder="e.g. Close-up, Wide angle, Bird's eye..."
+            placeholderTextColor={colors.textTertiary}
+            style={[styles.fieldInput, { color: colors.text, backgroundColor: colors.bgSecondary }]}
+          />
 
           <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.negativePrompt}</Text>
-          <View style={[styles.fieldCard, { backgroundColor: 'transparent' }]}>
-            <TextInput
-              value={currentInputs.negativePrompt || ''}
-              onChangeText={(text) => setCurrentInputs({ negativePrompt: text })}
-              placeholder="What to exclude..."
-              placeholderTextColor={colors.textTertiary}
-              style={[styles.fieldInput, { color: colors.text, backgroundColor: colors.inputBg, borderColor: colors.cardBorder, borderWidth: 1 }]}
-            />
-          </View>
+          <TextInput
+            value={currentInputs.negativePrompt || ''}
+            onChangeText={(text) => setCurrentInputs({ negativePrompt: text })}
+            placeholder="What to exclude..."
+            placeholderTextColor={colors.textTertiary}
+            style={[styles.fieldInput, { color: colors.text, backgroundColor: colors.bgSecondary }]}
+          />
         </>
       )}
 
       <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.audience}</Text>
-      <View style={[styles.fieldCard, { backgroundColor: 'transparent' }]}>
-        <TextInput
-          value={currentInputs.audience}
-          onChangeText={(text) => setCurrentInputs({ audience: text })}
-          placeholder={t.create.whoIsFor}
-          placeholderTextColor={colors.textTertiary}
-          style={[styles.fieldInput, { color: colors.text, backgroundColor: colors.inputBg, borderColor: colors.cardBorder, borderWidth: 1 }]}
-        />
-      </View>
+      <TextInput
+        value={currentInputs.audience}
+        onChangeText={(text) => setCurrentInputs({ audience: text })}
+        placeholder={t.create.whoIsFor}
+        placeholderTextColor={colors.textTertiary}
+        style={[styles.fieldInput, { color: colors.text, backgroundColor: colors.bgSecondary }]}
+      />
 
       <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.constraints}</Text>
-      <View style={[styles.fieldCard, { backgroundColor: 'transparent' }]}>
-        <TextInput
-          value={currentInputs.constraints}
-          onChangeText={(text) => setCurrentInputs({ constraints: text })}
-          placeholder={t.create.anyRules}
-          placeholderTextColor={colors.textTertiary}
-          multiline
-          style={[styles.fieldInput, { color: colors.text, minHeight: 60, backgroundColor: colors.inputBg, borderColor: colors.cardBorder, borderWidth: 1 }]}
-          textAlignVertical="top"
-        />
-      </View>
+      <TextInput
+        value={currentInputs.constraints}
+        onChangeText={(text) => setCurrentInputs({ constraints: text })}
+        placeholder={t.create.anyRules}
+        placeholderTextColor={colors.textTertiary}
+        multiline
+        style={[styles.fieldInput, { color: colors.text, minHeight: 60, backgroundColor: colors.bgSecondary }]}
+        textAlignVertical="top"
+      />
     </>
   );
 
@@ -538,15 +531,15 @@ function BuilderContent() {
       <View style={styles.resultSection}>
         <View style={styles.resultHeader}>
           <View style={styles.resultTitleRow}>
-            <View style={[styles.resultDot, { backgroundColor: accentColor }]} />
+            <View style={[styles.resultDot, { backgroundColor: '#E8795A' }]} />
             <Text style={[styles.resultTitle, { color: colors.text }]}>{t.create.generatedPrompt}</Text>
           </View>
           <View style={styles.resultActions}>
             <Pressable
               onPress={handleCopy}
-              style={[styles.resultActionBtn, { backgroundColor: colors.chipBg }, copied && { backgroundColor: 'rgba(16,185,129,0.12)' }]}
+              style={[styles.resultActionBtn, { backgroundColor: colors.chipBg }, copied && { backgroundColor: 'rgba(52,167,123,0.12)' }]}
             >
-              {copied ? <Check size={16} color="#10B981" /> : <Copy size={16} color={colors.textSecondary} />}
+              {copied ? <Check size={16} color="#34A77B" /> : <Copy size={16} color={colors.textSecondary} />}
             </Pressable>
             <Pressable onPress={handleSave} style={[styles.resultActionBtn, { backgroundColor: colors.chipBg }]}>
               <Save size={16} color={colors.textSecondary} />
@@ -557,17 +550,17 @@ function BuilderContent() {
           </View>
         </View>
 
-        <View style={[styles.resultCard, { borderLeftColor: accentColor, backgroundColor: colors.card }]}>
+        <View style={[styles.resultCard, { backgroundColor: isDark ? colors.card : '#FFF0ED', borderLeftColor: '#E8795A' }]}>
           <Text style={[styles.resultPromptText, { color: colors.text }]} selectable>
             {generatedResult.finalPrompt}
           </Text>
         </View>
 
         {metadata.assumptions.length > 0 && (
-          <View style={[styles.metaBlock, { backgroundColor: 'rgba(59,130,246,0.08)' }]}>
+          <View style={[styles.metaBlock, { backgroundColor: isDark ? colors.card : '#EFF6FF' }]}>
             <View style={styles.metaHeader}>
-              <Info size={14} color="#3B82F6" />
-              <Text style={[styles.metaTitle, { color: '#3B82F6' }]}>{t.create.assumptions}</Text>
+              <Info size={14} color="#4A8FE7" />
+              <Text style={[styles.metaTitle, { color: '#4A8FE7' }]}>{t.create.assumptions}</Text>
             </View>
             {metadata.assumptions.map((a, i) => (
               <Text key={i} style={[styles.metaItem, { color: colors.textSecondary }]}>{a}</Text>
@@ -576,10 +569,10 @@ function BuilderContent() {
         )}
 
         {metadata.warnings.length > 0 && (
-          <View style={[styles.metaBlock, { backgroundColor: 'rgba(245,158,11,0.08)' }]}>
+          <View style={[styles.metaBlock, { backgroundColor: isDark ? colors.card : '#FFF5E0' }]}>
             <View style={styles.metaHeader}>
-              <AlertTriangle size={14} color="#F59E0B" />
-              <Text style={[styles.metaTitle, { color: '#F59E0B' }]}>{t.create.warnings}</Text>
+              <AlertTriangle size={14} color="#D4943A" />
+              <Text style={[styles.metaTitle, { color: '#D4943A' }]}>{t.create.warnings}</Text>
             </View>
             {metadata.warnings.map((w, i) => (
               <Text key={i} style={[styles.metaItem, { color: colors.textSecondary }]}>{w}</Text>
@@ -588,10 +581,10 @@ function BuilderContent() {
         )}
 
         {metadata.questions.length > 0 && (
-          <View style={[styles.metaBlock, { backgroundColor: 'rgba(139,92,246,0.08)' }]}>
+          <View style={[styles.metaBlock, { backgroundColor: isDark ? colors.card : '#F4F0FF' }]}>
             <View style={styles.metaHeader}>
-              <HelpCircle size={14} color="#8B5CF6" />
-              <Text style={[styles.metaTitle, { color: '#8B5CF6' }]}>{t.create.suggestions}</Text>
+              <HelpCircle size={14} color="#8B6FC0" />
+              <Text style={[styles.metaTitle, { color: '#8B6FC0' }]}>{t.create.suggestions}</Text>
             </View>
             {metadata.questions.map((q, i) => (
               <Text key={i} style={[styles.metaItem, { color: colors.textSecondary }]}>{q}</Text>
@@ -631,17 +624,15 @@ function BuilderContent() {
             disabled={isGenerating}
             style={[styles.wizardNavNext, wizardStep === 0 ? { flex: 1 } : {}]}
           >
-            <View
-              style={[styles.wizardNavNextGradient, { backgroundColor: isDark ? '#F1F5F9' : '#0F172A' }]}
-            >
+            <View style={[styles.wizardNavNextInner, { backgroundColor: isDark ? '#E8795A' : '#1A1A1A' }]}>
               {isGenerating ? (
-                <ActivityIndicator color={isDark ? '#000' : '#FFF'} size="small" />
+                <ActivityIndicator color="#FFF" size="small" />
               ) : (
                 <>
-                  <Text style={[styles.wizardNavNextText, { color: isDark ? '#000' : '#FFF' }]}>
+                  <Text style={styles.wizardNavNextText}>
                     {wizardStep === 2 ? t.create.generate : t.create.next}
                   </Text>
-                  {wizardStep === 2 ? <Wand2 size={18} color={isDark ? '#000' : '#FFF'} /> : <ChevronRight size={18} color={isDark ? '#000' : '#FFF'} />}
+                  {wizardStep === 2 ? <Wand2 size={18} color="#FFF" /> : <ChevronRight size={18} color="#FFF" />}
                 </>
               )}
             </View>
@@ -661,8 +652,8 @@ function BuilderContent() {
         >
           <View style={styles.header}>
             <Text style={[styles.title, { color: colors.text }]}>{t.create.title}</Text>
-            <View style={[styles.proBadge, { backgroundColor: isDark ? 'rgba(217,119,6,0.15)' : '#FEF3C7', borderColor: 'rgba(217,119,6,0.15)' }]}>
-              <Text style={styles.proBadgeText}>{t.create.pro}</Text>
+            <View style={[styles.proBadge, { backgroundColor: isDark ? 'rgba(232,121,90,0.15)' : '#FFF0ED' }]}>
+              <Text style={[styles.proBadgeText, { color: '#E8795A' }]}>{t.create.pro}</Text>
             </View>
           </View>
 
@@ -694,28 +685,23 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   title: {
-    fontSize: 32,
+    fontSize: 30,
     fontWeight: '800' as const,
     letterSpacing: -0.8,
   },
   proBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 6,
-    borderRadius: 20,
-    gap: 5,
-    borderWidth: 1,
+    borderRadius: 16,
   },
   proBadgeText: {
-    color: '#D97706',
     fontWeight: '700' as const,
-    fontSize: 12,
+    fontSize: 13,
   },
   modeToggleContainer: { marginBottom: 24, alignItems: 'center' },
   modeToggle: {
     flexDirection: 'row',
-    borderRadius: 14,
+    borderRadius: 16,
     padding: 4,
     width: 240,
   },
@@ -726,48 +712,45 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 10,
     gap: 6,
-    zIndex: 1,
-    borderRadius: 11,
+    borderRadius: 12,
   },
   modeBtnText: {
     fontSize: 13,
-    fontWeight: '600' as const,
+    fontWeight: '700' as const,
   },
   catSection: { marginHorizontal: -20, marginBottom: 24 },
   catList: { paddingHorizontal: 20, gap: 10 },
   catCard: {
-    width: 82,
+    width: 84,
     paddingVertical: 14,
     paddingHorizontal: 6,
-    borderRadius: 18,
+    borderRadius: 20,
     alignItems: 'center',
     gap: 8,
-    borderWidth: 1.5,
+  },
+  catIconWrap: {
+    width: 44,
+    height: 44,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
     shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
   },
-  catIconWrap: {
-    width: 42,
-    height: 42,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
   catLabel: { fontSize: 11, fontWeight: '600' as const, textAlign: 'center' },
   mainCard: {
-    borderRadius: 28,
+    borderRadius: 24,
     padding: 20,
     marginBottom: 24,
-    borderTopWidth: 3,
-    shadowColor: '#000',
-    shadowOpacity: 0.06,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 5,
     borderWidth: 1,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
   },
   cardHeader: {
     flexDirection: 'row',
@@ -778,15 +761,18 @@ const styles = StyleSheet.create({
   cardIconBox: {
     width: 44,
     height: 44,
-    borderRadius: 14,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   cardTitle: { fontSize: 18, fontWeight: '700' as const },
   cardSubtitle: { fontSize: 13, marginTop: 2 },
-  mainInput: { fontSize: 16, minHeight: 100, marginBottom: 16, lineHeight: 24, textAlignVertical: 'top' },
+  mainInput: {
+    fontSize: 16, minHeight: 100, marginBottom: 16, lineHeight: 24,
+    textAlignVertical: 'top', borderRadius: 16, padding: 16,
+  },
   generateBtn: { borderRadius: 26, overflow: 'hidden' },
-  generateGradient: {
+  generateInner: {
     height: 52,
     borderRadius: 26,
     flexDirection: 'row',
@@ -812,7 +798,7 @@ const styles = StyleSheet.create({
   },
   wizardDotText: { fontSize: 11, fontWeight: '700' as const },
   wizardStepLabel: { fontSize: 11, fontWeight: '500' as const, marginLeft: 4 },
-  wizardLine: { width: 20, height: 2, marginHorizontal: 6 },
+  wizardLine: { width: 20, height: 2, marginHorizontal: 6, borderRadius: 1 },
   wizardContent: { minHeight: 300 },
   stepTitle: { fontSize: 22, fontWeight: '800' as const, marginBottom: 6 },
   stepSubtitle: { fontSize: 14, marginBottom: 24 },
@@ -823,56 +809,40 @@ const styles = StyleSheet.create({
     flexBasis: '30%',
     paddingVertical: 14,
     paddingHorizontal: 10,
-    borderRadius: 18,
-    borderWidth: 1.5,
+    borderRadius: 20,
     alignItems: 'center',
     gap: 8,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 1,
   },
   gridItemIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 14,
+    width: 42,
+    height: 42,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  gridItemLabel: { fontSize: 12, fontWeight: '600' as const, textAlign: 'center' },
-  wizardInputCard: {
-    borderRadius: 20,
-    padding: 16,
-    marginBottom: 20,
     shadowColor: '#000',
     shadowOpacity: 0.04,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-    borderWidth: 1,
-  },
-  wizardInput: { fontSize: 16, minHeight: 80, lineHeight: 24, textAlignVertical: 'top' },
-  chipSectionTitle: { fontSize: 14, fontWeight: '700' as const, marginBottom: 10, marginTop: 16 },
-  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 20,
-    borderWidth: 1.5,
-  },
-  chipText: { fontSize: 13, fontWeight: '500' as const },
-  fieldCard: {
-    borderRadius: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
     shadowRadius: 8,
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
-    borderWidth: 1,
-    marginBottom: 4,
   },
-  fieldInput: { fontSize: 15, padding: 14, minHeight: 44 },
+  gridItemLabel: { fontSize: 12, fontWeight: '600' as const, textAlign: 'center' },
+  wizardInput: {
+    fontSize: 16, minHeight: 80, lineHeight: 24,
+    textAlignVertical: 'top', borderRadius: 16, padding: 16, marginBottom: 20,
+  },
+  chipSectionTitle: { fontSize: 14, fontWeight: '700' as const, marginBottom: 10, marginTop: 16 },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 9,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'transparent',
+  },
+  chipText: { fontSize: 13, fontWeight: '600' as const },
+  fieldInput: {
+    fontSize: 15, padding: 14, minHeight: 44, borderRadius: 14, marginBottom: 4,
+  },
   wizardNav: { flexDirection: 'row', gap: 12, marginTop: 24 },
   wizardNavBack: {
     height: 52,
@@ -885,7 +855,7 @@ const styles = StyleSheet.create({
   },
   wizardNavBackText: { fontSize: 15, fontWeight: '600' as const },
   wizardNavNext: { flex: 1, borderRadius: 26, overflow: 'hidden' },
-  wizardNavNextGradient: {
+  wizardNavNextInner: {
     height: 52,
     borderRadius: 26,
     flexDirection: 'row',
@@ -911,14 +881,9 @@ const styles = StyleSheet.create({
     borderRadius: 20,
     padding: 18,
     borderLeftWidth: 4,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
   },
   resultPromptText: { fontSize: 14, lineHeight: 22 },
-  metaBlock: { gap: 6, borderRadius: 16, padding: 14 },
+  metaBlock: { gap: 6, borderRadius: 20, padding: 16 },
   metaHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   metaTitle: { fontSize: 13, fontWeight: '700' as const },
   metaItem: { fontSize: 13, paddingLeft: 20, lineHeight: 20 },
