@@ -1,54 +1,85 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { LayoutChangeEvent, StyleSheet, Text, View } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+
 import Colors from '@/constants/colors';
 
 interface WizardProgressProps {
   currentStep: number;
   totalSteps: number;
   stepLabels: string[];
+  accentColor?: string;
 }
 
-function WizardProgressComponent({ currentStep, totalSteps, stepLabels }: WizardProgressProps) {
-  const progressAnim = useRef(new Animated.Value(0)).current;
+function WizardProgressComponent({ currentStep, totalSteps, stepLabels, accentColor = Colors.accent }: WizardProgressProps) {
+  const [trackWidth, setTrackWidth] = useState(0);
+  const progress = useSharedValue(0);
+
+  const normalizedStep = useMemo(() => {
+    const min = 1;
+    const max = Math.max(1, totalSteps);
+    return Math.min(max, Math.max(min, currentStep));
+  }, [currentStep, totalSteps]);
+
+  const progressRatio = useMemo(() => {
+    if (totalSteps <= 1) {
+      return 1;
+    }
+    return (normalizedStep - 1) / (totalSteps - 1);
+  }, [normalizedStep, totalSteps]);
 
   useEffect(() => {
-    Animated.spring(progressAnim, {
-      toValue: (currentStep + 1) / totalSteps,
-      useNativeDriver: false,
-      speed: 12,
-      bounciness: 2,
-    }).start();
-  }, [currentStep, totalSteps, progressAnim]);
+    progress.value = withTiming(progressRatio, { duration: 250 });
+  }, [progress, progressRatio]);
 
-  const progressWidth = progressAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0%', '100%'],
-  });
+  const onTrackLayout = (event: LayoutChangeEvent) => {
+    setTrackWidth(event.nativeEvent.layout.width);
+  };
+
+  const lineFillStyle = useAnimatedStyle(() => ({
+    width: trackWidth * progress.value,
+  }));
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.stepLabel}>{stepLabels[currentStep]}</Text>
-        <Text style={styles.stepCount}>
-          {currentStep + 1}<Text style={styles.stepTotal}>/{totalSteps}</Text>
+      <View style={styles.headerRow}>
+        <Text style={styles.headerLabel}>{stepLabels[normalizedStep - 1] ?? 'Step'}</Text>
+        <Text style={styles.headerCount}>
+          {normalizedStep}
+          <Text style={styles.headerTotal}>/{totalSteps}</Text>
         </Text>
       </View>
-      <View style={styles.trackOuter}>
-        <Animated.View style={[styles.trackFill, { width: progressWidth }]}>
-          <View style={styles.trackGlow} />
-        </Animated.View>
-      </View>
-      <View style={styles.dotsRow}>
-        {stepLabels.map((_, i) => (
-          <View
-            key={i}
-            style={[
-              styles.dot,
-              i <= currentStep && styles.dotActive,
-              i === currentStep && styles.dotCurrent,
-            ]}
-          />
-        ))}
+
+      <View style={styles.stepsWrap}>
+        <View style={styles.track} onLayout={onTrackLayout}>
+          <Animated.View style={[styles.trackFill, { backgroundColor: accentColor }, lineFillStyle]} />
+        </View>
+
+        <View style={styles.stepsRow}>
+          {stepLabels.map((label, index) => {
+            const stepNumber = index + 1;
+            const isComplete = stepNumber < normalizedStep;
+            const isActive = stepNumber === normalizedStep;
+
+            return (
+              <View style={styles.stepNode} key={`${label}-${stepNumber}`}>
+                <View
+                  style={[
+                    styles.dot,
+                    isComplete && styles.dotComplete,
+                    isActive && styles.dotActive,
+                    isActive && { borderColor: accentColor, shadowColor: accentColor },
+                  ]}
+                >
+                  {isComplete ? <Text style={styles.check}>✓</Text> : null}
+                </View>
+                <Text style={[styles.stepLabel, isActive && { color: Colors.textSecondary }]} numberOfLines={1}>
+                  {label}
+                </Text>
+              </View>
+            );
+          })}
+        </View>
       </View>
     </View>
   );
@@ -58,69 +89,88 @@ export const WizardProgress = React.memo(WizardProgressComponent);
 
 const styles = StyleSheet.create({
   container: {
-    gap: 8,
-    paddingHorizontal: 4,
+    gap: 10,
   },
-  header: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-  stepLabel: {
-    fontSize: 13,
-    fontWeight: '600' as const,
+  headerLabel: {
+    fontSize: 12,
+    fontWeight: '600',
     color: Colors.textSecondary,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 1,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
-  stepCount: {
+  headerCount: {
     fontSize: 15,
-    fontWeight: '800' as const,
+    fontWeight: '700',
     color: Colors.accent,
   },
-  stepTotal: {
+  headerTotal: {
     color: Colors.textTertiary,
-    fontWeight: '500' as const,
+    fontWeight: '500',
   },
-  trackOuter: {
-    height: 3,
-    borderRadius: 2,
-    backgroundColor: Colors.glass,
+  stepsWrap: {
+    position: 'relative',
+    paddingTop: 2,
+  },
+  track: {
+    position: 'absolute',
+    left: 16,
+    right: 16,
+    top: 8,
+    height: 2,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    borderRadius: 8,
     overflow: 'hidden',
   },
   trackFill: {
-    height: '100%',
-    borderRadius: 2,
-    backgroundColor: Colors.accent,
-    position: 'relative',
+    height: 2,
+    borderRadius: 8,
   },
-  trackGlow: {
-    position: 'absolute',
-    right: 0,
-    top: -2,
-    bottom: -2,
-    width: 12,
-    borderRadius: 6,
-    backgroundColor: Colors.accentGlow,
-  },
-  dotsRow: {
+  stepsRow: {
     flexDirection: 'row',
-    justifyContent: 'center',
+    justifyContent: 'space-between',
+  },
+  stepNode: {
+    width: 54,
+    alignItems: 'center',
     gap: 8,
-    paddingTop: 2,
   },
   dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: Colors.glass,
+    width: 12,
+    height: 12,
+    borderRadius: 999,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.04)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  dotComplete: {
+    backgroundColor: Colors.accent,
+    borderColor: Colors.accent,
   },
   dotActive: {
-    backgroundColor: Colors.accentDim,
+    width: 14,
+    height: 14,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    shadowOpacity: 0.55,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
   },
-  dotCurrent: {
-    backgroundColor: Colors.accent,
-    width: 18,
-    borderRadius: 4,
+  check: {
+    fontSize: 9,
+    lineHeight: 10,
+    color: '#2a1700',
+    fontWeight: '900',
+  },
+  stepLabel: {
+    fontSize: 10,
+    fontWeight: '500',
+    color: Colors.textTertiary,
+    textAlign: 'center',
   },
 });

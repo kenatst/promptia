@@ -1,60 +1,68 @@
-import { Tabs } from "expo-router";
-import { Wand2, Compass, Bookmark } from "lucide-react-native";
-import React from "react";
-import { Platform, View, StyleSheet } from "react-native";
-import { BlurView } from "expo-blur";
-import Colors from "@/constants/colors";
+import React from 'react';
+import { Platform, StyleSheet, View } from 'react-native';
+import { Tabs } from 'expo-router';
+import { BlurView } from 'expo-blur';
+import { Bookmark, Compass, Wand2 } from 'lucide-react-native';
 
-export default function TabLayout() {
+import Colors from '@/constants/colors';
+
+function TabBackground() {
+  if (Platform.OS === 'web') {
+    return <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.background }]} />;
+  }
+
+  return (
+    <View style={StyleSheet.absoluteFill}>
+      <BlurView tint="dark" intensity={80} style={StyleSheet.absoluteFill} />
+      <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.tabBar }]} />
+      <View style={styles.topBorder} />
+    </View>
+  );
+}
+
+export default function TabsLayout() {
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: Colors.accent,
         tabBarInactiveTintColor: Colors.textTertiary,
+        tabBarBackground: () => <TabBackground />,
         tabBarStyle: {
           position: 'absolute',
-          backgroundColor: 'transparent',
           borderTopWidth: 0,
+          backgroundColor: 'transparent',
           elevation: 0,
-          ...(Platform.OS === 'web' ? { height: 60, backgroundColor: Colors.background } : {}),
+          height: Platform.OS === 'ios' ? 88 : 74,
+          paddingBottom: Platform.OS === 'ios' ? 24 : 12,
+          paddingTop: 10,
         },
         tabBarLabelStyle: {
           fontSize: 11,
-          fontWeight: '600' as const,
-          letterSpacing: 0.3,
+          fontWeight: '600',
+          letterSpacing: 0.2,
         },
-        tabBarBackground: () =>
-          Platform.OS === 'web' ? (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.background }]} />
-          ) : (
-            <View style={StyleSheet.absoluteFill}>
-              <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
-              <View style={[StyleSheet.absoluteFill, { backgroundColor: Colors.tabBar }]} />
-              <View style={styles.tabBarTopBorder} />
-            </View>
-          ),
       }}
     >
       <Tabs.Screen
         name="(builder)"
         options={{
-          title: "Create",
-          tabBarIcon: ({ color, size }) => <Wand2 size={size} color={color} />,
+          title: 'Create',
+          tabBarIcon: ({ color, size }) => <Wand2 color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="gallery"
         options={{
-          title: "Explore",
-          tabBarIcon: ({ color, size }) => <Compass size={size} color={color} />,
+          title: 'Explore',
+          tabBarIcon: ({ color, size }) => <Compass color={color} size={size} />,
         }}
       />
       <Tabs.Screen
         name="saved"
         options={{
-          title: "Library",
-          tabBarIcon: ({ color, size }) => <Bookmark size={size} color={color} />,
+          title: 'Library',
+          tabBarIcon: ({ color, size }) => <Bookmark color={color} size={size} />,
         }}
       />
     </Tabs>
@@ -62,12 +70,12 @@ export default function TabLayout() {
 }
 
 const styles = StyleSheet.create({
-  tabBarTopBorder: {
+  topBorder: {
     position: 'absolute',
-    top: 0,
     left: 0,
     right: 0,
+    top: 0,
     height: 1,
-    backgroundColor: Colors.glassBorder,
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
 });

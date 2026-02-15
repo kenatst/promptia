@@ -5,5 +5,11 @@ module.exports = defineConfig([
   expoConfig,
   {
     ignores: ["dist/*"],
-  }
+  },
+  {
+    files: ["**/*.{ts,tsx}"],
+    rules: {
+      "import/no-unresolved": ["error", { ignore: ["react-native-reanimated"] }],
+    },
+  },
 ]);

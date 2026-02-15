@@ -24,11 +24,8 @@ function RootLayoutNav() {
       <Stack.Screen
         name="prompt/[id]"
         options={{
-          presentation: "modal",
-          headerTitle: "Prompt Detail",
-          headerStyle: { backgroundColor: Colors.background },
-          headerTintColor: Colors.text,
-          headerShadowVisible: false,
+          headerShown: false,
+          presentation: "card",
         }}
       />
     </Stack>

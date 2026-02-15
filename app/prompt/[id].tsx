@@ -1,257 +1,118 @@
-import React, { useMemo, useCallback } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Alert,
-  TouchableOpacity,
-} from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import React, { useCallback, useMemo, useState } from 'react';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Image } from 'expo-image';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
-import { Copy, User, Tag, Sparkles, Shuffle, Heart } from 'lucide-react-native';
-import { GlassCard } from '@/components/GlassCard';
-import { GlassButton } from '@/components/GlassButton';
-import { gallerySeed } from '@/data/gallerySeed';
-import { usePromptStore } from '@/store/promptStore';
-import { getModelLabel } from '@/engine/promptEngine';
-import { GalleryItem, SavedPrompt, ModelType, DEFAULT_INPUTS } from '@/types/prompt';
+import { ArrowLeft, Share2 } from 'lucide-react-native';
+
 import Colors from '@/constants/colors';
-
-const MODEL_COLORS: Record<ModelType, string> = {
-  chatgpt: Colors.accent,
-  midjourney: Colors.secondary,
-  sdxl: Colors.cyan,
-  video: Colors.pink,
-};
-
-const MODEL_EMOJIS: Record<string, string> = {
-  chatgpt: '💬',
-  midjourney: '🎨',
-  sdxl: '🖼️',
-  video: '🎬',
-};
-
-function getPromptText(item: { source: 'gallery'; data: GalleryItem } | { source: 'saved'; data: SavedPrompt }): string {
-  if (item.source === 'gallery') return item.data.prompt;
-  return item.data.finalPrompt;
-}
-
-function parseSegments(prompt: string): { label: string; content: string }[] {
-  const lines = prompt.split('\n');
-  const segments: { label: string; content: string }[] = [];
-  let currentLabel = '';
-  let currentContent: string[] = [];
-
-  for (const line of lines) {
-    if (line.startsWith('##') || line.startsWith('Scene:') || line.startsWith('Camera:') ||
-        line.startsWith('Lighting:') || line.startsWith('Style:') || line.startsWith('Positive:') ||
-        line.startsWith('Negative:') || line.startsWith('Duration:') || line.startsWith('Motion:') ||
-        line.startsWith('Aspect Ratio:')) {
-      if (currentLabel || currentContent.length > 0) {
-        segments.push({
-          label: currentLabel || 'Content',
-          content: currentContent.join('\n').trim(),
-        });
-      }
-      const colonIdx = line.indexOf(':');
-      if (line.startsWith('##')) {
-        currentLabel = line.replace(/^#+\s*/, '');
-        currentContent = [];
-      } else if (colonIdx > -1) {
-        currentLabel = line.substring(0, colonIdx).trim();
-        currentContent = [line.substring(colonIdx + 1).trim()];
-      } else {
-        currentLabel = line;
-        currentContent = [];
-      }
-    } else {
-      currentContent.push(line);
-    }
-  }
-
-  if (currentLabel || currentContent.length > 0) {
-    segments.push({
-      label: currentLabel || 'Content',
-      content: currentContent.join('\n').trim(),
-    });
-  }
-
-  if (segments.length === 0) {
-    segments.push({ label: 'Prompt', content: prompt });
-  }
-
-  return segments;
-}
+import { GlowButton } from '@/components/GlowButton';
+import { SectionBlock } from '@/components/SectionBlock';
+import { getCategoryById, gallerySeed } from '@/data/gallerySeed';
+import { usePromptStore } from '@/store/promptStore';
+import { Prompt } from '@/types/prompt';
+import { sharePromptText } from '@/utils/sharePrompt';
 
 export default function PromptDetailScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
-  const { savedPrompts, setCurrentInputs } = usePromptStore();
+  const insets = useSafeAreaInsets();
   const router = useRouter();
 
-  const item = useMemo(() => {
-    const gallery = gallerySeed.find((g) => g.id === id);
-    if (gallery) return { source: 'gallery' as const, data: gallery };
+  const { library, prefillBuilderFromPrompt } = usePromptStore();
+  const [toast, setToast] = useState<string | null>(null);
 
-    const saved = savedPrompts.find((s) => s.id === id);
-    if (saved) return { source: 'saved' as const, data: saved };
+  const prompt = useMemo<Prompt | null>(() => {
+    const fromGallery = gallerySeed.find((item) => item.id === id);
+    if (fromGallery) {
+      return fromGallery;
+    }
 
-    return null;
-  }, [id, savedPrompts]);
+    const fromLibrary = library.items.find((item) => item.id === id);
+    return fromLibrary ?? null;
+  }, [id, library.items]);
 
-  const prompt = useMemo(() => (item ? getPromptText(item) : ''), [item]);
-  const promptSegments = useMemo(() => parseSegments(prompt), [prompt]);
+  const category = useMemo(() => (prompt ? getCategoryById(prompt.category) : null), [prompt]);
 
-  const handleCopy = useCallback(async (text: string) => {
-    await Clipboard.setStringAsync(text);
+  const handleCopySection = useCallback(async (content: string) => {
+    await Clipboard.setStringAsync(content);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Copied!', 'Copied to clipboard');
+    setToast('Copied!');
+    setTimeout(() => setToast(null), 1200);
   }, []);
 
-  const handleRemix = useCallback(() => {
-    if (!item) return;
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    setCurrentInputs({
-      ...DEFAULT_INPUTS,
-      objective: item.data.title,
-      model: item.data.model,
-      objectiveChips: item.data.tags.slice(0, 3),
-      style: item.source === 'gallery' ? item.data.style : (item.data.inputs?.style ?? ''),
-    });
-    router.back();
-    setTimeout(() => router.push('/(tabs)/(builder)'), 100);
-  }, [item, setCurrentInputs, router]);
+  const handleShare = useCallback(async () => {
+    if (!prompt) {
+      return;
+    }
+    await sharePromptText(prompt.fullPrompt, prompt.title);
+  }, [prompt]);
 
-  if (!item) {
+  const handleRemix = useCallback(() => {
+    if (!prompt) {
+      return;
+    }
+    prefillBuilderFromPrompt(prompt);
+    router.push('/(tabs)/(builder)');
+  }, [prefillBuilderFromPrompt, prompt, router]);
+
+  if (!prompt || !category) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.emptyEmoji}>🔍</Text>
-        <Text style={styles.notFound}>Prompt not found</Text>
+      <View style={styles.emptyState}>
+        <Text style={styles.emptyTitle}>Prompt not found</Text>
       </View>
     );
   }
 
-  const title = item.data.title;
-  const model = item.data.model;
-  const tags = item.data.tags;
-  const emoji = MODEL_EMOJIS[model] ?? '💬';
-  const modelColor = MODEL_COLORS[model] ?? Colors.accent;
-  const hasImage = item.source === 'gallery' && item.data.thumbnail;
-
   return (
     <View style={styles.container}>
+      <LinearGradient colors={[Colors.background, Colors.backgroundGradientMid, Colors.background]} style={StyleSheet.absoluteFill} />
       <LinearGradient
-        colors={[Colors.backgroundGradientStart, Colors.backgroundGradientMid, Colors.backgroundGradientEnd]}
-        style={StyleSheet.absoluteFill}
+        colors={[`${prompt.accentColor}14`, 'rgba(8,8,8,0)']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.glow}
       />
+
+      <View style={[styles.topBar, { paddingTop: insets.top + 8 }]}> 
+        <Pressable onPress={() => router.back()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.iconBtn}>
+          <ArrowLeft size={20} color={Colors.textSecondary} />
+        </Pressable>
+        <Pressable onPress={handleShare} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} style={styles.iconBtn}>
+          <Share2 size={18} color={Colors.textSecondary} />
+        </Pressable>
+      </View>
+
       <ScrollView
-        contentContainerStyle={styles.content}
+        contentContainerStyle={{ paddingTop: insets.top + 66, paddingHorizontal: 20, paddingBottom: insets.bottom + 120 }}
         showsVerticalScrollIndicator={false}
       >
-        {hasImage && item.source === 'gallery' && (
-          <View style={styles.heroImage}>
-            <Image
-              source={{ uri: item.data.thumbnail }}
-              style={StyleSheet.absoluteFill}
-              contentFit="cover"
-              transition={300}
-            />
-            <LinearGradient
-              colors={['transparent', Colors.background]}
-              style={styles.heroGradient}
-            />
-          </View>
-        )}
-
-        <View style={styles.headerSection}>
-          <View style={styles.titleRow}>
-            <Text style={styles.titleEmoji}>{emoji}</Text>
-            <Text style={styles.title}>{title}</Text>
-          </View>
-          <View style={styles.metaRow}>
-            <View style={[styles.modelBadge, { backgroundColor: `${modelColor}18`, borderColor: `${modelColor}35` }]}>
-              <Text style={[styles.modelText, { color: modelColor }]}>{getModelLabel(model)}</Text>
-            </View>
-            {item.source === 'gallery' && (
-              <View style={styles.authorRow}>
-                <User size={12} color={Colors.textTertiary} />
-                <Text style={styles.authorText}>{item.data.author}</Text>
-              </View>
-            )}
-            {item.source === 'gallery' && item.data.isEditorPick && (
-              <View style={styles.pickBadge}>
-                <Sparkles size={10} color="#FFD700" />
-                <Text style={styles.pickText}>Editor Pick</Text>
-              </View>
-            )}
-            {item.source === 'gallery' && (
-              <View style={styles.likesRow}>
-                <Heart size={12} color={Colors.pink} fill={Colors.pink} />
-                <Text style={styles.likesText}>{item.data.likes.toLocaleString()}</Text>
-              </View>
-            )}
+        <View style={styles.headerWrap}>
+          <Text style={styles.title}>{prompt.title}</Text>
+          <View style={[styles.categoryBadge, { borderColor: `${prompt.accentColor}88`, backgroundColor: `${prompt.accentColor}22` }]}>
+            <Text style={[styles.categoryBadgeText, { color: prompt.accentColor }]}>
+              {category.emoji} {category.label}
+            </Text>
           </View>
         </View>
 
-        <View style={styles.segmentsSection}>
-          <Text style={styles.sectionTitle}>Prompt Segments</Text>
-          {promptSegments.map((seg, i) => (
-            <GlassCard key={i}>
-              <View style={styles.segmentHeader}>
-                <Text style={[styles.segmentLabel, { color: modelColor }]}>{seg.label}</Text>
-                <TouchableOpacity
-                  onPress={() => handleCopy(seg.content)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  style={styles.copyBtn}
-                >
-                  <Copy size={14} color={Colors.textSecondary} />
-                </TouchableOpacity>
-              </View>
-              <Text style={styles.segmentContent} selectable>{seg.content}</Text>
-            </GlassCard>
+        <View style={styles.sectionsWrap}>
+          {prompt.sections.map((section) => (
+            <SectionBlock key={`${prompt.id}-${section.id}-${section.header}`} section={section} onCopied={() => handleCopySection(section.content)} />
           ))}
         </View>
-
-        {tags.length > 0 && (
-          <View style={styles.tagsSection}>
-            <View style={styles.tagHeader}>
-              <Tag size={14} color={Colors.textTertiary} />
-              <Text style={styles.sectionTitle}>Tags</Text>
-            </View>
-            <View style={styles.tagRow}>
-              {tags.map((tag) => (
-                <View key={tag} style={styles.tag}>
-                  <Text style={styles.tagText}>{tag}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
-
-        <View style={styles.actionsSection}>
-          <GlassButton
-            label="Copy Full Prompt"
-            onPress={() => handleCopy(prompt)}
-            variant="primary"
-            size="lg"
-            icon={<Copy size={18} color={Colors.textInverse} />}
-            fullWidth
-          />
-          <GlassButton
-            label="Remix in Builder"
-            onPress={handleRemix}
-            variant="accent"
-            size="md"
-            icon={<Shuffle size={16} color={Colors.accent} />}
-            fullWidth
-          />
-        </View>
-
-        <View style={styles.bottomPad} />
       </ScrollView>
+
+      <View style={[styles.bottomCta, { paddingBottom: insets.bottom + 10 }]}> 
+        <GlowButton title="Remix in Builder" onPress={handleRemix} />
+      </View>
+
+      {toast ? (
+        <View style={[styles.toast, { bottom: insets.bottom + 92 }]}>
+          <Text style={styles.toastText}>{toast}</Text>
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -261,175 +122,93 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-  content: {
-    paddingBottom: 40,
+  glow: {
+    position: 'absolute',
+    top: 0,
+    left: -70,
+    right: -70,
+    height: 320,
   },
-  centered: {
+  topBar: {
+    position: 'absolute',
+    zIndex: 20,
+    left: 0,
+    right: 0,
+    paddingHorizontal: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  iconBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerWrap: {
+    gap: 10,
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 29,
+    lineHeight: 35,
+    color: Colors.text,
+    fontWeight: '700',
+    letterSpacing: -0.5,
+  },
+  categoryBadge: {
+    alignSelf: 'flex-start',
+    borderWidth: 1,
+    borderRadius: 999,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+  },
+  categoryBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  sectionsWrap: {
+    gap: 12,
+  },
+  bottomCta: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(8,8,8,0.92)',
+  },
+  toast: {
+    position: 'absolute',
+    left: 20,
+    right: 20,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: 'rgba(18,18,18,0.95)',
+    alignItems: 'center',
+    paddingVertical: 9,
+  },
+  toastText: {
+    color: Colors.text,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  emptyState: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: Colors.background,
-    gap: 12,
   },
-  emptyEmoji: {
-    fontSize: 48,
-  },
-  notFound: {
+  emptyTitle: {
+    color: Colors.textTertiary,
     fontSize: 16,
-    color: Colors.textTertiary,
-  },
-  heroImage: {
-    width: '100%',
-    height: 220,
-    position: 'relative',
-  },
-  heroGradient: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    height: 100,
-  },
-  headerSection: {
-    paddingHorizontal: 20,
-    marginBottom: 24,
-    gap: 12,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-  },
-  titleEmoji: {
-    fontSize: 28,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: '800' as const,
-    color: Colors.text,
-    lineHeight: 30,
-    flex: 1,
-    letterSpacing: -0.3,
-  },
-  metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    flexWrap: 'wrap',
-  },
-  modelBadge: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 10,
-    borderWidth: 1,
-  },
-  modelText: {
-    fontSize: 11,
-    fontWeight: '700' as const,
-    letterSpacing: 0.3,
-  },
-  authorRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  authorText: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-  },
-  pickBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: 'rgba(255, 215, 0, 0.12)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.25)',
-  },
-  pickText: {
-    fontSize: 11,
-    fontWeight: '700' as const,
-    color: '#FFD700',
-  },
-  likesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  likesText: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    fontWeight: '600' as const,
-  },
-  segmentsSection: {
-    gap: 12,
-    marginBottom: 24,
-    paddingHorizontal: 20,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '800' as const,
-    color: Colors.textTertiary,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 1,
-  },
-  segmentHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  segmentLabel: {
-    fontSize: 12,
-    fontWeight: '700' as const,
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.5,
-  },
-  copyBtn: {
-    padding: 6,
-    borderRadius: 8,
-    backgroundColor: Colors.glassMedium,
-  },
-  segmentContent: {
-    fontSize: 14,
-    color: Colors.text,
-    lineHeight: 22,
-  },
-  tagsSection: {
-    marginBottom: 24,
-    gap: 10,
-    paddingHorizontal: 20,
-  },
-  tagHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  tagRow: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-  },
-  tag: {
-    backgroundColor: Colors.glassMedium,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  tagText: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    fontWeight: '600' as const,
-  },
-  actionsSection: {
-    gap: 10,
-    paddingHorizontal: 20,
-  },
-  bottomPad: {
-    height: 40,
   },
 });

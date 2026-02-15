@@ -1,407 +1,330 @@
-import React, { useMemo, useCallback, useRef } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  FlatList,
-  TextInput,
-  TouchableOpacity,
-  Animated,
   Alert,
+  FlatList,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as Haptics from 'expo-haptics';
-import * as Clipboard from 'expo-clipboard';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
-import { Search, Heart, Copy, Trash2, Wand2, X, Bookmark } from 'lucide-react-native';
-import { usePromptStore } from '@/store/promptStore';
-import { SavedPrompt, ModelType } from '@/types/prompt';
-import { getModelLabel } from '@/engine/promptEngine';
+import * as Clipboard from 'expo-clipboard';
+import * as Haptics from 'expo-haptics';
+import { Swipeable } from 'react-native-gesture-handler';
+import { BookText, Search, Trash2, X } from 'lucide-react-native';
+
 import Colors from '@/constants/colors';
-
-const MODEL_COLORS: Record<ModelType, string> = {
-  chatgpt: Colors.accent,
-  midjourney: Colors.secondary,
-  sdxl: Colors.cyan,
-  video: Colors.pink,
-};
-
-const MODEL_EMOJIS: Record<string, string> = {
-  chatgpt: '💬',
-  midjourney: '🎨',
-  sdxl: '🖼️',
-  video: '🎬',
-};
+import { AnimatedChip } from '@/components/AnimatedChip';
+import { GlassCard } from '@/components/GlassCard';
+import { GlowButton } from '@/components/GlowButton';
+import { PromptCard } from '@/components/PromptCard';
+import { CREATION_CATEGORIES } from '@/data/gallerySeed';
+import { usePromptStore } from '@/store/promptStore';
+import { Prompt, PromptCategory, SavedPrompt } from '@/types/prompt';
 
 export default function SavedScreen() {
   const insets = useSafeAreaInsets();
-  const { savedPrompts, searchQuery, setSearchQuery, toggleFavorite, deletePrompt, loadInputsFromPrompt } = usePromptStore();
   const router = useRouter();
 
-  const filtered = useMemo(() => {
-    if (!searchQuery.trim()) return savedPrompts;
-    const q = searchQuery.toLowerCase();
-    return savedPrompts.filter(
-      (p) =>
-        p.title.toLowerCase().includes(q) ||
-        p.tags.some((t) => t.toLowerCase().includes(q)) ||
-        p.finalPrompt.toLowerCase().includes(q)
-    );
-  }, [savedPrompts, searchQuery]);
+  const {
+    library,
+    setLibrarySearchQuery,
+    setLibraryCategoryFilter,
+    deleteSavedPrompt,
+    prefillBuilderFromPrompt,
+    removeTagFromSavedPrompt,
+  } = usePromptStore();
 
-  const handleCopy = useCallback(async (prompt: SavedPrompt) => {
-    await Clipboard.setStringAsync(prompt.finalPrompt);
+  const filteredPrompts = useMemo(() => {
+    let list = library.items;
+
+    if (library.categoryFilter !== 'all') {
+      list = list.filter((item) => item.category === library.categoryFilter);
+    }
+
+    const query = library.searchQuery.trim().toLowerCase();
+    if (!query) {
+      return list;
+    }
+
+    return list.filter((item) => {
+      return (
+        item.title.toLowerCase().includes(query) ||
+        item.tags.some((tag) => tag.toLowerCase().includes(query)) ||
+        item.fullPrompt.toLowerCase().includes(query)
+      );
+    });
+  }, [library.categoryFilter, library.items, library.searchQuery]);
+
+  const handleOpenDetail = useCallback(
+    (prompt: Prompt) => {
+      router.push(`/prompt/${prompt.id}`);
+    },
+    [router]
+  );
+
+  const handleCopy = useCallback(async (prompt: Prompt) => {
+    await Clipboard.setStringAsync(prompt.fullPrompt);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    Alert.alert('Copied!', 'Prompt copied to clipboard');
+    Alert.alert('Copied!', 'Prompt copied to clipboard.');
   }, []);
 
-  const handleDelete = useCallback((id: string) => {
-    Alert.alert('Delete Prompt', 'Are you sure?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: () => {
-          deletePrompt(id);
-          Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+  const handleEdit = useCallback(
+    (prompt: Prompt) => {
+      prefillBuilderFromPrompt(prompt);
+      router.push('/(tabs)/(builder)');
+    },
+    [prefillBuilderFromPrompt, router]
+  );
+
+  const confirmDelete = useCallback(
+    (prompt: Prompt) => {
+      Alert.alert('Delete prompt?', prompt.title, [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deleteSavedPrompt(prompt.id);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          },
         },
-      },
-    ]);
-  }, [deletePrompt]);
+      ]);
+    },
+    [deleteSavedPrompt]
+  );
 
-  const handleRemix = useCallback((prompt: SavedPrompt) => {
-    loadInputsFromPrompt(prompt);
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    router.push('/(tabs)/(builder)');
-  }, [loadInputsFromPrompt, router]);
+  const handleRemoveTag = useCallback((prompt: Prompt, tag: string) => {
+    removeTagFromSavedPrompt(prompt.id, tag);
+  }, [removeTagFromSavedPrompt]);
 
-  const renderItem = useCallback(({ item }: { item: SavedPrompt }) => (
-    <SavedCard
-      item={item}
-      onCopy={handleCopy}
-      onDelete={handleDelete}
-      onFavorite={toggleFavorite}
-      onRemix={handleRemix}
-    />
-  ), [handleCopy, handleDelete, toggleFavorite, handleRemix]);
+  const renderItem = useCallback(
+    ({ item }: { item: SavedPrompt }) => {
+      return (
+        <Swipeable
+          overshootRight={false}
+          renderRightActions={() => (
+            <Pressable
+              onPress={() => confirmDelete(item)}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              style={styles.deleteSwipe}
+            >
+              <Trash2 size={18} color="#fff" />
+              <Text style={styles.deleteSwipeText}>Delete</Text>
+            </Pressable>
+          )}
+        >
+          <PromptCard
+            prompt={item}
+            variant="library"
+            onPress={handleOpenDetail}
+            onCopy={handleCopy}
+            onEdit={handleEdit}
+            onDelete={confirmDelete}
+            onRemoveTag={handleRemoveTag}
+          />
+        </Swipeable>
+      );
+    },
+    [confirmDelete, handleCopy, handleEdit, handleOpenDetail, handleRemoveTag]
+  );
 
-  const keyExtractor = useCallback((item: SavedPrompt) => item.id, []);
+  const filters = useMemo(() => ['all', ...CREATION_CATEGORIES.map((item) => item.id)] as const, []);
 
   return (
     <View style={styles.container}>
+      <LinearGradient colors={[Colors.background, Colors.backgroundGradientMid, Colors.background]} style={StyleSheet.absoluteFill} />
       <LinearGradient
-        colors={[Colors.backgroundGradientStart, Colors.backgroundGradientMid, Colors.backgroundGradientEnd]}
-        style={StyleSheet.absoluteFill}
+        colors={[`${Colors.accent}12`, 'rgba(8,8,8,0)']}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={styles.glow}
       />
 
       <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
-        <Text style={styles.headerTitle}>Library</Text>
-        <Text style={styles.headerSub}>Your saved prompts</Text>
+        <View style={styles.headerRow}>
+          <Text style={styles.title}>Library</Text>
+          <View style={styles.countBadge}>
+            <Text style={styles.countText}>{library.items.length}</Text>
+          </View>
+        </View>
+
+        <View style={styles.searchWrap}>
+          <Search size={17} color={Colors.textTertiary} />
+          <TextInput
+            value={library.searchQuery}
+            onChangeText={setLibrarySearchQuery}
+            placeholder="Search saved prompts"
+            placeholderTextColor={Colors.textTertiary}
+            style={styles.searchInput}
+          />
+          {library.searchQuery.length > 0 ? (
+            <Pressable onPress={() => setLibrarySearchQuery('')} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+              <X size={16} color={Colors.textTertiary} />
+            </Pressable>
+          ) : null}
+        </View>
+
+        <FlatList
+          data={filters}
+          keyExtractor={(item) => item}
+          horizontal
+          windowSize={5}
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filterRow}
+          renderItem={({ item }) => {
+            const selected = library.categoryFilter === item;
+            const label = item === 'all' ? 'All' : CREATION_CATEGORIES.find((category) => category.id === item)?.label ?? item;
+            const accent = item === 'all' ? Colors.accent : CREATION_CATEGORIES.find((category) => category.id === item)?.accentColor ?? Colors.accent;
+            return (
+              <AnimatedChip
+                label={label}
+                selected={selected}
+                onPress={() => setLibraryCategoryFilter(item as 'all' | PromptCategory)}
+                accentColor={accent}
+              />
+            );
+          }}
+        />
       </View>
 
-      <FlatList
-        data={filtered}
-        renderItem={renderItem}
-        keyExtractor={keyExtractor}
-        contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 90 }]}
-        showsVerticalScrollIndicator={false}
-        ListHeaderComponent={
-          <View style={styles.searchSection}>
-            <View style={styles.searchBar}>
-              <Search size={18} color={Colors.textTertiary} />
-              <TextInput
-                style={styles.searchInput}
-                placeholder="Search prompts..."
-                placeholderTextColor={Colors.textTertiary}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')}>
-                  <X size={16} color={Colors.textTertiary} />
-                </TouchableOpacity>
-              )}
-            </View>
-            <Text style={styles.countText}>
-              {filtered.length} prompt{filtered.length !== 1 ? 's' : ''}
-            </Text>
-          </View>
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <View style={styles.emptyIcon}>
-              <Bookmark size={32} color={Colors.textTertiary} />
-            </View>
-            <Text style={styles.emptyTitle}>No saved prompts yet</Text>
-            <Text style={styles.emptySubtitle}>
-              Create a prompt in the builder and save it here
-            </Text>
-          </View>
-        }
-        ItemSeparatorComponent={() => <View style={styles.separator} />}
-      />
+      {filteredPrompts.length === 0 ? (
+        <View style={[styles.emptyWrap, { paddingBottom: insets.bottom + 120 }]}> 
+          <GlassCard style={styles.emptyCard}>
+            <BookText size={48} color="rgba(255,255,255,0.30)" />
+            <Text style={styles.emptyTitle}>No prompts yet</Text>
+            <Text style={styles.emptySubtitle}>Build your first god-tier prompt</Text>
+            <GlowButton title="Start Building →" onPress={() => router.push('/(tabs)/(builder)')} />
+          </GlassCard>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredPrompts}
+          keyExtractor={(item) => item.id}
+          windowSize={5}
+          renderItem={renderItem}
+          contentContainerStyle={{
+            paddingHorizontal: 20,
+            paddingTop: 206,
+            paddingBottom: insets.bottom + 120,
+          }}
+          showsVerticalScrollIndicator={false}
+          ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+        />
+      )}
     </View>
   );
 }
-
-interface SavedCardProps {
-  item: SavedPrompt;
-  onCopy: (item: SavedPrompt) => void;
-  onDelete: (id: string) => void;
-  onFavorite: (id: string) => void;
-  onRemix: (item: SavedPrompt) => void;
-}
-
-const SavedCard = React.memo(function SavedCard({ item, onCopy, onDelete, onFavorite, onRemix }: SavedCardProps) {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const modelColor = MODEL_COLORS[item.model] ?? Colors.accent;
-
-  const timeAgo = useMemo(() => {
-    const diff = Date.now() - item.createdAt;
-    const mins = Math.floor(diff / 60000);
-    if (mins < 60) return `${mins}m ago`;
-    const hours = Math.floor(mins / 60);
-    if (hours < 24) return `${hours}h ago`;
-    const days = Math.floor(hours / 24);
-    return `${days}d ago`;
-  }, [item.createdAt]);
-
-  const emoji = MODEL_EMOJIS[item.model] ?? '💬';
-
-  return (
-    <Animated.View style={{ transform: [{ scale: scaleAnim }] }}>
-      <TouchableOpacity
-        onPressIn={() => Animated.spring(scaleAnim, { toValue: 0.97, useNativeDriver: true, speed: 50, bounciness: 4 }).start()}
-        onPressOut={() => Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 4 }).start()}
-        activeOpacity={0.9}
-      >
-        <View style={styles.card}>
-          <View style={[styles.cardAccentLine, { backgroundColor: modelColor }]} />
-          <View style={styles.cardInner}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardHeaderLeft}>
-                <Text style={styles.cardEmoji}>{emoji}</Text>
-                <View style={[styles.modelTag, { backgroundColor: `${modelColor}18`, borderColor: `${modelColor}35` }]}>
-                  <Text style={[styles.modelTagText, { color: modelColor }]}>{getModelLabel(item.model)}</Text>
-                </View>
-                <Text style={styles.timeText}>{timeAgo}</Text>
-              </View>
-              <TouchableOpacity
-                onPress={() => onFavorite(item.id)}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Heart
-                  size={20}
-                  color={item.isFavorite ? Colors.pink : Colors.textTertiary}
-                  fill={item.isFavorite ? Colors.pink : 'none'}
-                />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-            <Text style={styles.cardPrompt} numberOfLines={3}>{item.finalPrompt}</Text>
-
-            {item.tags.length > 0 && (
-              <View style={styles.tagRow}>
-                {item.tags.slice(0, 4).map((tag) => (
-                  <View key={tag} style={styles.tag}>
-                    <Text style={styles.tagText}>{tag}</Text>
-                  </View>
-                ))}
-              </View>
-            )}
-
-            <View style={styles.actionRow}>
-              <TouchableOpacity style={styles.actionBtn} onPress={() => onCopy(item)}>
-                <Copy size={14} color={Colors.accent} />
-                <Text style={[styles.actionText, { color: Colors.accent }]}>Copy</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.actionBtn} onPress={() => onRemix(item)}>
-                <Wand2 size={14} color={Colors.secondary} />
-                <Text style={[styles.actionText, { color: Colors.secondary }]}>Edit</Text>
-              </TouchableOpacity>
-              <View style={styles.actionSpacer} />
-              <TouchableOpacity style={styles.actionBtn} onPress={() => onDelete(item.id)}>
-                <Trash2 size={14} color={Colors.danger} />
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </TouchableOpacity>
-    </Animated.View>
-  );
-});
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
+  glow: {
+    position: 'absolute',
+    top: 0,
+    left: -80,
+    right: -80,
+    height: 320,
+  },
   header: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 30,
     paddingHorizontal: 20,
-    paddingBottom: 4,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.06)',
+    backgroundColor: 'rgba(8,8,8,0.86)',
   },
-  headerTitle: {
-    fontSize: 34,
-    fontWeight: '900' as const,
-    color: Colors.text,
-    letterSpacing: -0.5,
-  },
-  headerSub: {
-    fontSize: 15,
-    color: Colors.textTertiary,
-    marginTop: 2,
-  },
-  listContent: {
-    padding: 20,
-  },
-  separator: {
-    height: 12,
-  },
-  searchSection: {
-    marginBottom: 16,
-    gap: 10,
-  },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    backgroundColor: Colors.glass,
-    borderRadius: 16,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-  },
-  searchInput: {
-    flex: 1,
-    fontSize: 15,
-    color: Colors.text,
-  },
-  countText: {
-    fontSize: 12,
-    color: Colors.textTertiary,
-    fontWeight: '600' as const,
-  },
-  emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: 80,
-    gap: 12,
-  },
-  emptyIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 24,
-    backgroundColor: Colors.glass,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '800' as const,
-    color: Colors.text,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: Colors.textTertiary,
-    textAlign: 'center',
-    maxWidth: 240,
-  },
-  card: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    backgroundColor: Colors.glass,
-    borderWidth: 1,
-    borderColor: Colors.glassBorder,
-    flexDirection: 'row',
-  },
-  cardAccentLine: {
-    width: 3,
-  },
-  cardInner: {
-    flex: 1,
-    padding: 16,
-    gap: 8,
-  },
-  cardHeader: {
+  headerRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: 10,
   },
-  cardHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  cardEmoji: {
-    fontSize: 16,
-  },
-  modelTag: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    borderWidth: 1,
-  },
-  modelTagText: {
-    fontSize: 10,
-    fontWeight: '700' as const,
-    letterSpacing: 0.3,
-  },
-  timeText: {
-    fontSize: 11,
-    color: Colors.textTertiary,
-  },
-  cardTitle: {
-    fontSize: 17,
-    fontWeight: '800' as const,
+  title: {
+    fontSize: 31,
     color: Colors.text,
-    letterSpacing: -0.2,
+    fontWeight: '700',
+    letterSpacing: -0.5,
   },
-  cardPrompt: {
-    fontSize: 13,
-    color: Colors.textSecondary,
-    lineHeight: 19,
-  },
-  tagRow: {
-    flexDirection: 'row',
-    gap: 6,
-    flexWrap: 'wrap',
-  },
-  tag: {
-    backgroundColor: Colors.glassMedium,
+  countBadge: {
+    minWidth: 32,
+    height: 32,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    alignItems: 'center',
+    justifyContent: 'center',
     paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
   },
-  tagText: {
-    fontSize: 11,
-    color: Colors.textTertiary,
-    fontWeight: '500' as const,
+  countText: {
+    color: Colors.text,
+    fontSize: 12,
+    fontWeight: '700',
   },
-  actionRow: {
+  searchWrap: {
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.10)',
+    borderRadius: 16,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 18,
-    borderTopWidth: 1,
-    borderTopColor: Colors.glassBorder,
-    paddingTop: 12,
-    marginTop: 4,
+    gap: 10,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    paddingHorizontal: 12,
+    paddingVertical: 11,
   },
-  actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-  },
-  actionText: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-  },
-  actionSpacer: {
+  searchInput: {
     flex: 1,
+    color: Colors.text,
+    fontSize: 15,
+  },
+  filterRow: {
+    gap: 8,
+    paddingTop: 12,
+    paddingRight: 20,
+  },
+  emptyWrap: {
+    flex: 1,
+    justifyContent: 'center',
+    paddingHorizontal: 20,
+    paddingTop: 210,
+  },
+  emptyCard: {
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 26,
+  },
+  emptyTitle: {
+    color: Colors.text,
+    fontSize: 22,
+    fontWeight: '600',
+  },
+  emptySubtitle: {
+    color: Colors.textTertiary,
+    fontSize: 15,
+    marginBottom: 8,
+  },
+  deleteSwipe: {
+    marginLeft: 8,
+    marginVertical: 4,
+    width: 92,
+    borderRadius: 16,
+    backgroundColor: '#B91C1C',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+  },
+  deleteSwipeText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 12,
   },
 });
