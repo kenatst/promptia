@@ -3,20 +3,22 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
 import { Bookmark, Compass, Plus, Settings } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTheme } from '@/contexts/ThemeContext';
 
 function FloatingTabBar({ state, descriptors, navigation }: any) {
   const insets = useSafeAreaInsets();
+  const { colors, isDark, t } = useTheme();
   const bottomPos = insets.bottom + 8;
 
   const TAB_CONFIG: Record<string, { Icon: any; label: string }> = {
-    'gallery': { Icon: Compass, label: 'Discover' },
-    '(builder)': { Icon: null, label: 'Create' },
-    'saved': { Icon: Bookmark, label: 'Library' },
-    'profile': { Icon: Settings, label: 'Settings' },
+    'gallery': { Icon: Compass, label: t.tabs.discover },
+    '(builder)': { Icon: null, label: t.tabs.create },
+    'saved': { Icon: Bookmark, label: t.tabs.library },
+    'profile': { Icon: Settings, label: t.tabs.settings },
   };
 
   return (
-    <View style={[styles.tabContainer, { bottom: bottomPos }]}>
+    <View style={[styles.tabContainer, { bottom: bottomPos, backgroundColor: colors.tabBar, borderColor: colors.tabBarBorder }]}>
       <View style={styles.pill}>
         {state.routes.map((route: any, index: number) => {
           const isFocused = state.index === index;
@@ -37,12 +39,8 @@ function FloatingTabBar({ state, descriptors, navigation }: any) {
 
           if (isCenter) {
             return (
-              <Pressable
-                key={route.key}
-                onPress={onPress}
-                style={styles.tabItem}
-              >
-                <View style={styles.centerButton}>
+              <Pressable key={route.key} onPress={onPress} style={styles.tabItem}>
+                <View style={[styles.centerButton, isDark && { backgroundColor: '#F59E0B' }]}>
                   <Plus size={24} color="#FFF" strokeWidth={3} />
                 </View>
               </Pressable>
@@ -50,19 +48,17 @@ function FloatingTabBar({ state, descriptors, navigation }: any) {
           }
 
           const { Icon, label } = config || { Icon: Settings, label: '' };
+          const activeColor = isDark ? '#F59E0B' : '#111827';
+          const inactiveColor = isDark ? '#6B7280' : '#B0B5BE';
 
           return (
-            <Pressable
-              key={route.key}
-              onPress={onPress}
-              style={styles.tabItem}
-            >
+            <Pressable key={route.key} onPress={onPress} style={styles.tabItem}>
               <Icon
                 size={22}
-                color={isFocused ? '#111827' : '#B0B5BE'}
+                color={isFocused ? activeColor : inactiveColor}
                 strokeWidth={isFocused ? 2.5 : 2}
               />
-              <Text style={[styles.tabLabel, isFocused && styles.tabLabelActive]}>
+              <Text style={[styles.tabLabel, { color: inactiveColor }, isFocused && { color: activeColor, fontWeight: '700' as const }]}>
                 {label}
               </Text>
             </Pressable>
@@ -97,14 +93,12 @@ const styles = StyleSheet.create({
     right: 20,
     height: 64,
     borderRadius: 32,
-    backgroundColor: '#FFFFFF',
     shadowColor: '#000',
     shadowOpacity: 0.1,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 10 },
     elevation: 20,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
   },
   pill: {
     flexDirection: 'row',
@@ -122,11 +116,6 @@ const styles = StyleSheet.create({
   tabLabel: {
     fontSize: 10,
     fontWeight: '600' as const,
-    color: '#B0B5BE',
-  },
-  tabLabelActive: {
-    color: '#111827',
-    fontWeight: '700' as const,
   },
   centerButton: {
     width: 46,

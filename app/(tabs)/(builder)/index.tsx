@@ -11,6 +11,7 @@ import {
   Text,
   TextInput,
   View,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -19,7 +20,6 @@ import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import {
   Wand2,
-  Sparkles,
   ChevronRight,
   ChevronLeft,
   Copy,
@@ -49,7 +49,7 @@ import {
   Info,
 } from 'lucide-react-native';
 
-import Colors from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import {
   CREATION_CATEGORIES,
   OBJECTIVE_CHIPS,
@@ -61,6 +61,7 @@ import {
 import { usePromptStore } from '@/store/promptStore';
 import { assemblePrompt } from '@/engine/promptEngine';
 import { PromptInputs, DEFAULT_INPUTS, PromptResult } from '@/types/prompt';
+import { generateWithGemini, isGeminiConfigured, setGeminiApiKey } from '@/services/gemini';
 
 const CATEGORY_ICONS: Record<string, (color: string) => React.ReactNode> = {
   chat: (c) => <MessageSquare size={20} color={c} />,
@@ -82,20 +83,27 @@ const CATEGORY_ICONS: Record<string, (color: string) => React.ReactNode> = {
 };
 
 type BuilderMode = 'simple' | 'advanced';
-const WIZARD_STEPS = ['Category', 'Details', 'Options', 'Result'];
 
 export default function BuilderScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
-  const { currentInputs, setCurrentInputs, resetInputs, savePrompt } = usePromptStore();
+  const { colors, t, isDark } = useTheme();
+  const { currentInputs, setCurrentInputs, resetInputs, savePrompt, geminiApiKey } = usePromptStore();
 
   const [mode, setMode] = useState<BuilderMode>('simple');
   const [selectedCategoryId, setSelectedCategoryId] = useState('chat');
   const [wizardStep, setWizardStep] = useState(0);
   const [generatedResult, setGeneratedResult] = useState<PromptResult | null>(null);
   const [copied, setCopied] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const slideAnim = useRef(new Animated.Value(0)).current;
+  const WIZARD_STEPS = [t.create.category, t.create.details, t.create.options, t.create.result];
+
+  useEffect(() => {
+    if (geminiApiKey) {
+      setGeminiApiKey(geminiApiKey);
+    }
+  }, [geminiApiKey]);
 
   const selectedCategory = useMemo(() =>
     CREATION_CATEGORIES.find(c => c.id === selectedCategoryId) || CREATION_CATEGORIES[0],
@@ -104,15 +112,6 @@ export default function BuilderScreen() {
 
   const accentColor = selectedCategory.color;
   const isImageOrVideo = selectedCategory.type === 'image' || selectedCategory.type === 'video';
-
-  useEffect(() => {
-    Animated.spring(slideAnim, {
-      toValue: mode === 'simple' ? 0 : 1,
-      useNativeDriver: false,
-      speed: 20,
-      bounciness: 0,
-    }).start();
-  }, [mode]);
 
   const handleCategorySelect = useCallback((categoryId: string) => {
     setSelectedCategoryId(categoryId);
@@ -123,16 +122,33 @@ export default function BuilderScreen() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
   }, [setCurrentInputs]);
 
-  const handleGenerate = useCallback(() => {
+  const handleGenerate = useCallback(async () => {
     if (currentInputs.objective.trim().length === 0) {
-      Alert.alert('Empty Prompt', 'Please describe what you want to create.');
+      Alert.alert(t.create.emptyPrompt, t.create.emptyPromptMsg);
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
-    const result = assemblePrompt(currentInputs);
-    setGeneratedResult(result);
-    if (mode === 'advanced') setWizardStep(3);
-  }, [currentInputs, mode]);
+
+    if (isGeminiConfigured()) {
+      setIsGenerating(true);
+      try {
+        const result = await generateWithGemini(currentInputs);
+        setGeneratedResult(result);
+        if (mode === 'advanced') setWizardStep(3);
+      } catch (e: any) {
+        console.log('[Generate] Gemini error, falling back to local:', e.message);
+        const result = assemblePrompt(currentInputs);
+        setGeneratedResult(result);
+        if (mode === 'advanced') setWizardStep(3);
+      } finally {
+        setIsGenerating(false);
+      }
+    } else {
+      const result = assemblePrompt(currentInputs);
+      setGeneratedResult(result);
+      if (mode === 'advanced') setWizardStep(3);
+    }
+  }, [currentInputs, mode, t]);
 
   const handleCopy = useCallback(async () => {
     if (!generatedResult) return;
@@ -155,8 +171,8 @@ export default function BuilderScreen() {
       tags: currentInputs.objectiveChips.slice(0, 5),
       isFavorite: false,
     });
-    Alert.alert('Saved', 'Prompt saved to your library.');
-  }, [generatedResult, currentInputs, selectedCategory, savePrompt]);
+    Alert.alert(t.create.saved, t.create.savedAlert);
+  }, [generatedResult, currentInputs, selectedCategory, savePrompt, t]);
 
   const handleReset = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -202,49 +218,40 @@ export default function BuilderScreen() {
         onPress={() => handleCategorySelect(item.id)}
         style={({ pressed }) => [
           styles.catCard,
-          { backgroundColor: isSelected ? `${item.color}18` : '#FFFFFF' },
-          isSelected && { borderColor: item.color },
+          { backgroundColor: isSelected ? `${item.color}18` : colors.card, borderColor: isSelected ? item.color : colors.cardBorder },
           pressed && { transform: [{ scale: 0.95 }] },
         ]}
       >
         <View style={[styles.catIconWrap, { backgroundColor: `${item.color}15` }]}>
           {iconFn ? iconFn(item.color) : <Wand2 size={20} color={item.color} />}
         </View>
-        <Text style={[styles.catLabel, isSelected && { color: item.color, fontWeight: '700' as const }]}>
+        <Text style={[styles.catLabel, { color: colors.textSecondary }, isSelected && { color: item.color, fontWeight: '700' as const }]}>
           {item.label}
         </Text>
       </Pressable>
     );
-  }, [selectedCategoryId, handleCategorySelect]);
+  }, [selectedCategoryId, handleCategorySelect, colors]);
 
-  const renderModeToggle = () => {
-    const toggleLeft = slideAnim.interpolate({
-      inputRange: [0, 1],
-      outputRange: ['0%', '50%'],
-    });
-
-    return (
-      <View style={styles.modeToggleContainer}>
-        <View style={styles.modeToggle}>
-          <Animated.View style={[styles.modeIndicator, { left: toggleLeft }]} />
-          <Pressable
-            style={styles.modeBtn}
-            onPress={() => { setMode('simple'); setGeneratedResult(null); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-          >
-            <Zap size={14} color={mode === 'simple' ? accentColor : '#9CA3AF'} />
-            <Text style={[styles.modeBtnText, mode === 'simple' && { color: '#111827' }]}>Quick</Text>
-          </Pressable>
-          <Pressable
-            style={styles.modeBtn}
-            onPress={() => { setMode('advanced'); setWizardStep(0); setGeneratedResult(null); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-          >
-            <Sliders size={14} color={mode === 'advanced' ? accentColor : '#9CA3AF'} />
-            <Text style={[styles.modeBtnText, mode === 'advanced' && { color: '#111827' }]}>Advanced</Text>
-          </Pressable>
-        </View>
+  const renderModeToggle = () => (
+    <View style={styles.modeToggleContainer}>
+      <View style={[styles.modeToggle, { backgroundColor: colors.bgSecondary }]}>
+        <Pressable
+          style={[styles.modeBtn, mode === 'simple' && { backgroundColor: accentColor }]}
+          onPress={() => { setMode('simple'); setGeneratedResult(null); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+        >
+          <Zap size={14} color={mode === 'simple' ? '#FFF' : colors.textTertiary} />
+          <Text style={[styles.modeBtnText, { color: mode === 'simple' ? '#FFF' : colors.textTertiary }]}>{t.create.quick}</Text>
+        </Pressable>
+        <Pressable
+          style={[styles.modeBtn, mode === 'advanced' && { backgroundColor: accentColor }]}
+          onPress={() => { setMode('advanced'); setWizardStep(0); setGeneratedResult(null); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+        >
+          <Sliders size={14} color={mode === 'advanced' ? '#FFF' : colors.textTertiary} />
+          <Text style={[styles.modeBtnText, { color: mode === 'advanced' ? '#FFF' : colors.textTertiary }]}>{t.create.advanced}</Text>
+        </Pressable>
       </View>
-    );
-  };
+    </View>
+  );
 
   const renderWizardProgress = () => (
     <View style={styles.wizardProgress}>
@@ -252,20 +259,21 @@ export default function BuilderScreen() {
         <View key={step} style={styles.wizardStepRow}>
           <View style={[
             styles.wizardDot,
+            { backgroundColor: colors.bgTertiary },
             i <= wizardStep && { backgroundColor: accentColor },
-            i < wizardStep && { backgroundColor: Colors.tertiary },
+            i < wizardStep && { backgroundColor: '#10B981' },
           ]}>
             {i < wizardStep ? (
               <Check size={10} color="#FFF" />
             ) : (
-              <Text style={[styles.wizardDotText, i <= wizardStep && { color: '#FFF' }]}>{i + 1}</Text>
+              <Text style={[styles.wizardDotText, { color: colors.textTertiary }, i <= wizardStep && { color: '#FFF' }]}>{i + 1}</Text>
             )}
           </View>
-          <Text style={[styles.wizardStepLabel, i === wizardStep && { color: accentColor, fontWeight: '700' as const }]}>
+          <Text style={[styles.wizardStepLabel, { color: colors.textTertiary }, i === wizardStep && { color: accentColor, fontWeight: '700' as const }]}>
             {step}
           </Text>
           {i < WIZARD_STEPS.length - 1 && (
-            <View style={[styles.wizardLine, i < wizardStep && { backgroundColor: Colors.tertiary }]} />
+            <View style={[styles.wizardLine, { backgroundColor: colors.bgTertiary }, i < wizardStep && { backgroundColor: '#10B981' }]} />
           )}
         </View>
       ))}
@@ -285,7 +293,7 @@ export default function BuilderScreen() {
         />
       </View>
 
-      <View style={[styles.mainCard, { borderTopColor: accentColor }]}>
+      <View style={[styles.mainCard, { borderTopColor: accentColor, backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
         <View style={styles.cardHeader}>
           <View style={[styles.cardIconBox, { backgroundColor: `${accentColor}15` }]}>
             {CATEGORY_ICONS[selectedCategoryId]
@@ -293,58 +301,40 @@ export default function BuilderScreen() {
               : <Wand2 size={20} color={accentColor} />}
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={styles.cardTitle}>{selectedCategory.label}</Text>
-            <Text style={styles.cardSubtitle}>Describe what you need</Text>
+            <Text style={[styles.cardTitle, { color: colors.text }]}>{selectedCategory.label}</Text>
+            <Text style={[styles.cardSubtitle, { color: colors.textTertiary }]}>{t.create.describeWhat}</Text>
           </View>
         </View>
 
         <TextInput
           value={currentInputs.objective}
           onChangeText={(text) => setCurrentInputs({ objective: text })}
-          placeholder="Describe your idea in detail..."
-          placeholderTextColor="#B0B5BE"
+          placeholder={t.create.describeIdea}
+          placeholderTextColor={colors.textTertiary}
           multiline
-          style={styles.mainInput}
+          style={[styles.mainInput, { color: colors.text }]}
           textAlignVertical="top"
         />
 
-        {(isImageOrVideo ? STYLE_CHIPS : OBJECTIVE_CHIPS).length > 0 && (
-          <View style={styles.quickChips}>
-            <Text style={styles.quickChipsLabel}>Quick tags</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.quickChipsList}>
-              {(isImageOrVideo ? STYLE_CHIPS : OBJECTIVE_CHIPS).slice(0, 10).map((chip) => {
-                const isSelected = currentInputs.objectiveChips.includes(chip);
-                return (
-                  <Pressable
-                    key={chip}
-                    onPress={() => toggleChip(chip)}
-                    style={[
-                      styles.quickChip,
-                      isSelected && { backgroundColor: `${accentColor}15`, borderColor: accentColor },
-                    ]}
-                  >
-                    <Text style={[styles.quickChipText, isSelected && { color: accentColor, fontWeight: '700' as const }]}>
-                      {chip}
-                    </Text>
-                  </Pressable>
-                );
-              })}
-            </ScrollView>
-          </View>
-        )}
-
         <Pressable
           onPress={handleGenerate}
+          disabled={isGenerating}
           style={({ pressed }) => [styles.generateBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
         >
           <LinearGradient
-            colors={[accentColor, '#111827']}
+            colors={[accentColor, isDark ? '#1A1A24' : '#111827']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={styles.generateGradient}
           >
-            <Wand2 size={18} color="#FFF" />
-            <Text style={styles.generateBtnText}>Generate Prompt</Text>
+            {isGenerating ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <Wand2 size={18} color="#FFF" />
+            )}
+            <Text style={styles.generateBtnText}>
+              {isGenerating ? 'Generating...' : t.create.generatePrompt}
+            </Text>
           </LinearGradient>
         </Pressable>
       </View>
@@ -355,8 +345,8 @@ export default function BuilderScreen() {
 
   const renderAdvancedStep0 = () => (
     <>
-      <Text style={styles.stepTitle}>What are you creating?</Text>
-      <Text style={styles.stepSubtitle}>Choose a category to get started</Text>
+      <Text style={[styles.stepTitle, { color: colors.text }]}>{t.create.whatCreating}</Text>
+      <Text style={[styles.stepSubtitle, { color: colors.textTertiary }]}>{t.create.chooseCategory}</Text>
       <View style={styles.categoryGrid}>
         {CREATION_CATEGORIES.map((cat) => {
           const isSelected = selectedCategoryId === cat.id;
@@ -367,13 +357,14 @@ export default function BuilderScreen() {
               onPress={() => handleCategorySelect(cat.id)}
               style={[
                 styles.gridItem,
+                { backgroundColor: colors.card, borderColor: colors.cardBorder },
                 isSelected && { backgroundColor: `${cat.color}15`, borderColor: cat.color },
               ]}
             >
               <View style={[styles.gridItemIcon, { backgroundColor: `${cat.color}12` }]}>
                 {iconFn ? iconFn(cat.color) : <Wand2 size={20} color={cat.color} />}
               </View>
-              <Text style={[styles.gridItemLabel, isSelected && { color: cat.color, fontWeight: '700' as const }]}>
+              <Text style={[styles.gridItemLabel, { color: colors.textSecondary }, isSelected && { color: cat.color, fontWeight: '700' as const }]}>
                 {cat.label}
               </Text>
             </Pressable>
@@ -385,49 +376,31 @@ export default function BuilderScreen() {
 
   const renderAdvancedStep1 = () => (
     <>
-      <Text style={styles.stepTitle}>Describe your prompt</Text>
-      <Text style={styles.stepSubtitle}>Be as specific as possible for better results</Text>
+      <Text style={[styles.stepTitle, { color: colors.text }]}>{t.create.describePrompt}</Text>
+      <Text style={[styles.stepSubtitle, { color: colors.textTertiary }]}>{t.create.beSpecific}</Text>
 
-      <View style={styles.wizardInputCard}>
+      <View style={[styles.wizardInputCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
         <TextInput
           value={currentInputs.objective}
           onChangeText={(text) => setCurrentInputs({ objective: text })}
-          placeholder="What do you want to achieve?"
-          placeholderTextColor="#B0B5BE"
+          placeholder={t.create.whatAchieve}
+          placeholderTextColor={colors.textTertiary}
           multiline
-          style={styles.wizardInput}
+          style={[styles.wizardInput, { color: colors.text }]}
           textAlignVertical="top"
         />
       </View>
 
-      <Text style={styles.chipSectionTitle}>Quick Tags</Text>
-      <View style={styles.chipWrap}>
-        {(isImageOrVideo ? STYLE_CHIPS : OBJECTIVE_CHIPS).slice(0, 12).map((chip) => {
-          const isSelected = currentInputs.objectiveChips.includes(chip);
-          return (
-            <Pressable
-              key={chip}
-              onPress={() => toggleChip(chip)}
-              style={[styles.chip, isSelected && { backgroundColor: `${accentColor}15`, borderColor: accentColor }]}
-            >
-              <Text style={[styles.chipText, isSelected && { color: accentColor, fontWeight: '700' as const }]}>
-                {chip}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </View>
-
       {isImageOrVideo && (
         <>
-          <Text style={styles.chipSectionTitle}>Style</Text>
-          <View style={styles.fieldCard}>
+          <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.style}</Text>
+          <View style={[styles.fieldCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <TextInput
               value={currentInputs.style || ''}
               onChangeText={(text) => setCurrentInputs({ style: text })}
               placeholder="e.g. Photorealistic, Anime, Oil Painting..."
-              placeholderTextColor="#B0B5BE"
-              style={styles.fieldInput}
+              placeholderTextColor={colors.textTertiary}
+              style={[styles.fieldInput, { color: colors.text }]}
             />
           </View>
         </>
@@ -437,12 +410,12 @@ export default function BuilderScreen() {
 
   const renderAdvancedStep2 = () => (
     <>
-      <Text style={styles.stepTitle}>Fine-tune options</Text>
-      <Text style={styles.stepSubtitle}>Customize tone, length, and more</Text>
+      <Text style={[styles.stepTitle, { color: colors.text }]}>{t.create.fineTune}</Text>
+      <Text style={[styles.stepSubtitle, { color: colors.textTertiary }]}>{t.create.customizeTone}</Text>
 
       {!isImageOrVideo && (
         <>
-          <Text style={styles.chipSectionTitle}>Tone</Text>
+          <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.tone}</Text>
           <View style={styles.chipWrap}>
             {TONE_OPTIONS.map((opt) => {
               const isSelected = currentInputs.tone === opt.value;
@@ -450,17 +423,17 @@ export default function BuilderScreen() {
                 <Pressable
                   key={opt.value}
                   onPress={() => { setCurrentInputs({ tone: opt.value as any }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                  style={[styles.chip, isSelected && { backgroundColor: `${accentColor}15`, borderColor: accentColor }]}
+                  style={[styles.chip, { backgroundColor: colors.chipBg, borderColor: 'transparent' }, isSelected && { backgroundColor: `${accentColor}15`, borderColor: accentColor }]}
                 >
-                  <Text style={[styles.chipText, isSelected && { color: accentColor, fontWeight: '700' as const }]}>
-                    {opt.label}
+                  <Text style={[styles.chipText, { color: colors.textSecondary }, isSelected && { color: accentColor, fontWeight: '700' as const }]}>
+                    {(t.tones as any)[opt.value] || opt.label}
                   </Text>
                 </Pressable>
               );
             })}
           </View>
 
-          <Text style={styles.chipSectionTitle}>Length</Text>
+          <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.length}</Text>
           <View style={styles.chipWrap}>
             {(['concise', 'medium', 'detailed', 'exhaustive'] as const).map((len) => {
               const isSelected = currentInputs.length === len;
@@ -468,17 +441,17 @@ export default function BuilderScreen() {
                 <Pressable
                   key={len}
                   onPress={() => { setCurrentInputs({ length: len }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                  style={[styles.chip, isSelected && { backgroundColor: `${accentColor}15`, borderColor: accentColor }]}
+                  style={[styles.chip, { backgroundColor: colors.chipBg, borderColor: 'transparent' }, isSelected && { backgroundColor: `${accentColor}15`, borderColor: accentColor }]}
                 >
-                  <Text style={[styles.chipText, isSelected && { color: accentColor, fontWeight: '700' as const }]}>
-                    {len.charAt(0).toUpperCase() + len.slice(1)}
+                  <Text style={[styles.chipText, { color: colors.textSecondary }, isSelected && { color: accentColor, fontWeight: '700' as const }]}>
+                    {(t.lengths as any)[len]}
                   </Text>
                 </Pressable>
               );
             })}
           </View>
 
-          <Text style={styles.chipSectionTitle}>Output Format</Text>
+          <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.outputFormat}</Text>
           <View style={styles.chipWrap}>
             {OUTPUT_FORMATS.map((fmt) => {
               const isSelected = currentInputs.outputFormat === fmt.toLowerCase();
@@ -486,9 +459,9 @@ export default function BuilderScreen() {
                 <Pressable
                   key={fmt}
                   onPress={() => { setCurrentInputs({ outputFormat: fmt.toLowerCase() }); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
-                  style={[styles.chip, isSelected && { backgroundColor: `${accentColor}15`, borderColor: accentColor }]}
+                  style={[styles.chip, { backgroundColor: colors.chipBg, borderColor: 'transparent' }, isSelected && { backgroundColor: `${accentColor}15`, borderColor: accentColor }]}
                 >
-                  <Text style={[styles.chipText, isSelected && { color: accentColor, fontWeight: '700' as const }]}>
+                  <Text style={[styles.chipText, { color: colors.textSecondary }, isSelected && { color: accentColor, fontWeight: '700' as const }]}>
                     {fmt}
                   </Text>
                 </Pressable>
@@ -500,61 +473,61 @@ export default function BuilderScreen() {
 
       {isImageOrVideo && (
         <>
-          <Text style={styles.chipSectionTitle}>Lighting</Text>
-          <View style={styles.fieldCard}>
+          <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.lighting}</Text>
+          <View style={[styles.fieldCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <TextInput
               value={currentInputs.lighting || ''}
               onChangeText={(text) => setCurrentInputs({ lighting: text })}
               placeholder="e.g. Golden hour, Studio, Neon..."
-              placeholderTextColor="#B0B5BE"
-              style={styles.fieldInput}
+              placeholderTextColor={colors.textTertiary}
+              style={[styles.fieldInput, { color: colors.text }]}
             />
           </View>
 
-          <Text style={styles.chipSectionTitle}>Camera Angle</Text>
-          <View style={styles.fieldCard}>
+          <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.cameraAngle}</Text>
+          <View style={[styles.fieldCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <TextInput
               value={currentInputs.cameraAngle || ''}
               onChangeText={(text) => setCurrentInputs({ cameraAngle: text })}
               placeholder="e.g. Close-up, Wide angle, Bird's eye..."
-              placeholderTextColor="#B0B5BE"
-              style={styles.fieldInput}
+              placeholderTextColor={colors.textTertiary}
+              style={[styles.fieldInput, { color: colors.text }]}
             />
           </View>
 
-          <Text style={styles.chipSectionTitle}>Negative Prompt</Text>
-          <View style={styles.fieldCard}>
+          <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.negativePrompt}</Text>
+          <View style={[styles.fieldCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
             <TextInput
               value={currentInputs.negativePrompt || ''}
               onChangeText={(text) => setCurrentInputs({ negativePrompt: text })}
               placeholder="What to exclude..."
-              placeholderTextColor="#B0B5BE"
-              style={styles.fieldInput}
+              placeholderTextColor={colors.textTertiary}
+              style={[styles.fieldInput, { color: colors.text }]}
             />
           </View>
         </>
       )}
 
-      <Text style={styles.chipSectionTitle}>Audience</Text>
-      <View style={styles.fieldCard}>
+      <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.audience}</Text>
+      <View style={[styles.fieldCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
         <TextInput
           value={currentInputs.audience}
           onChangeText={(text) => setCurrentInputs({ audience: text })}
-          placeholder="Who is this for?"
-          placeholderTextColor="#B0B5BE"
-          style={styles.fieldInput}
+          placeholder={t.create.whoIsFor}
+          placeholderTextColor={colors.textTertiary}
+          style={[styles.fieldInput, { color: colors.text }]}
         />
       </View>
 
-      <Text style={styles.chipSectionTitle}>Constraints</Text>
-      <View style={styles.fieldCard}>
+      <Text style={[styles.chipSectionTitle, { color: colors.text }]}>{t.create.constraints}</Text>
+      <View style={[styles.fieldCard, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
         <TextInput
           value={currentInputs.constraints}
           onChangeText={(text) => setCurrentInputs({ constraints: text })}
-          placeholder="Any specific rules or limitations..."
-          placeholderTextColor="#B0B5BE"
+          placeholder={t.create.anyRules}
+          placeholderTextColor={colors.textTertiary}
           multiline
-          style={[styles.fieldInput, { minHeight: 60 }]}
+          style={[styles.fieldInput, { color: colors.text, minHeight: 60 }]}
           textAlignVertical="top"
         />
       </View>
@@ -570,62 +543,62 @@ export default function BuilderScreen() {
         <View style={styles.resultHeader}>
           <View style={styles.resultTitleRow}>
             <View style={[styles.resultDot, { backgroundColor: accentColor }]} />
-            <Text style={styles.resultTitle}>Generated Prompt</Text>
+            <Text style={[styles.resultTitle, { color: colors.text }]}>{t.create.generatedPrompt}</Text>
           </View>
           <View style={styles.resultActions}>
             <Pressable
               onPress={handleCopy}
-              style={[styles.resultActionBtn, copied && { backgroundColor: Colors.tertiaryDim }]}
+              style={[styles.resultActionBtn, { backgroundColor: colors.chipBg }, copied && { backgroundColor: 'rgba(16,185,129,0.12)' }]}
             >
-              {copied ? <Check size={16} color={Colors.tertiary} /> : <Copy size={16} color="#6B7280" />}
+              {copied ? <Check size={16} color="#10B981" /> : <Copy size={16} color={colors.textSecondary} />}
             </Pressable>
-            <Pressable onPress={handleSave} style={styles.resultActionBtn}>
-              <Save size={16} color="#6B7280" />
+            <Pressable onPress={handleSave} style={[styles.resultActionBtn, { backgroundColor: colors.chipBg }]}>
+              <Save size={16} color={colors.textSecondary} />
             </Pressable>
-            <Pressable onPress={handleReset} style={styles.resultActionBtn}>
-              <RotateCcw size={16} color="#6B7280" />
+            <Pressable onPress={handleReset} style={[styles.resultActionBtn, { backgroundColor: colors.chipBg }]}>
+              <RotateCcw size={16} color={colors.textSecondary} />
             </Pressable>
           </View>
         </View>
 
-        <View style={[styles.resultCard, { borderLeftColor: accentColor }]}>
-          <Text style={styles.resultPromptText} selectable>
+        <View style={[styles.resultCard, { borderLeftColor: accentColor, backgroundColor: colors.card }]}>
+          <Text style={[styles.resultPromptText, { color: colors.text }]} selectable>
             {generatedResult.finalPrompt}
           </Text>
         </View>
 
         {metadata.assumptions.length > 0 && (
-          <View style={[styles.metaBlock, { backgroundColor: `${Colors.blue}08` }]}>
+          <View style={[styles.metaBlock, { backgroundColor: 'rgba(59,130,246,0.08)' }]}>
             <View style={styles.metaHeader}>
-              <Info size={14} color={Colors.blue} />
-              <Text style={[styles.metaTitle, { color: Colors.blue }]}>Assumptions</Text>
+              <Info size={14} color="#3B82F6" />
+              <Text style={[styles.metaTitle, { color: '#3B82F6' }]}>{t.create.assumptions}</Text>
             </View>
             {metadata.assumptions.map((a, i) => (
-              <Text key={i} style={styles.metaItem}>{a}</Text>
+              <Text key={i} style={[styles.metaItem, { color: colors.textSecondary }]}>{a}</Text>
             ))}
           </View>
         )}
 
         {metadata.warnings.length > 0 && (
-          <View style={[styles.metaBlock, { backgroundColor: `${Colors.accent}08` }]}>
+          <View style={[styles.metaBlock, { backgroundColor: 'rgba(245,158,11,0.08)' }]}>
             <View style={styles.metaHeader}>
-              <AlertTriangle size={14} color={Colors.accent} />
-              <Text style={[styles.metaTitle, { color: Colors.accent }]}>Warnings</Text>
+              <AlertTriangle size={14} color="#F59E0B" />
+              <Text style={[styles.metaTitle, { color: '#F59E0B' }]}>{t.create.warnings}</Text>
             </View>
             {metadata.warnings.map((w, i) => (
-              <Text key={i} style={styles.metaItem}>{w}</Text>
+              <Text key={i} style={[styles.metaItem, { color: colors.textSecondary }]}>{w}</Text>
             ))}
           </View>
         )}
 
         {metadata.questions.length > 0 && (
-          <View style={[styles.metaBlock, { backgroundColor: `${Colors.secondary}08` }]}>
+          <View style={[styles.metaBlock, { backgroundColor: 'rgba(139,92,246,0.08)' }]}>
             <View style={styles.metaHeader}>
-              <HelpCircle size={14} color={Colors.secondary} />
-              <Text style={[styles.metaTitle, { color: Colors.secondary }]}>Suggestions</Text>
+              <HelpCircle size={14} color="#8B5CF6" />
+              <Text style={[styles.metaTitle, { color: '#8B5CF6' }]}>{t.create.suggestions}</Text>
             </View>
             {metadata.questions.map((q, i) => (
-              <Text key={i} style={styles.metaItem}>{q}</Text>
+              <Text key={i} style={[styles.metaItem, { color: colors.textSecondary }]}>{q}</Text>
             ))}
           </View>
         )}
@@ -645,32 +618,39 @@ export default function BuilderScreen() {
 
       <View style={styles.wizardNav}>
         {wizardStep > 0 && wizardStep < 3 && (
-          <Pressable onPress={handlePrevStep} style={styles.wizardNavBack}>
-            <ChevronLeft size={18} color="#111827" />
-            <Text style={styles.wizardNavBackText}>Back</Text>
+          <Pressable onPress={handlePrevStep} style={[styles.wizardNavBack, { backgroundColor: colors.chipBg }]}>
+            <ChevronLeft size={18} color={colors.text} />
+            <Text style={[styles.wizardNavBackText, { color: colors.text }]}>{t.create.back}</Text>
           </Pressable>
         )}
         {wizardStep === 3 && (
-          <Pressable onPress={handleReset} style={styles.wizardNavBack}>
-            <RotateCcw size={16} color="#111827" />
-            <Text style={styles.wizardNavBackText}>New Prompt</Text>
+          <Pressable onPress={handleReset} style={[styles.wizardNavBack, { backgroundColor: colors.chipBg }]}>
+            <RotateCcw size={16} color={colors.text} />
+            <Text style={[styles.wizardNavBackText, { color: colors.text }]}>{t.create.newPrompt}</Text>
           </Pressable>
         )}
         {wizardStep < 3 && (
           <Pressable
             onPress={handleNextStep}
+            disabled={isGenerating}
             style={[styles.wizardNavNext, wizardStep === 0 ? { flex: 1 } : {}]}
           >
             <LinearGradient
-              colors={[accentColor, '#111827']}
+              colors={[accentColor, isDark ? '#1A1A24' : '#111827']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
               style={styles.wizardNavNextGradient}
             >
-              <Text style={styles.wizardNavNextText}>
-                {wizardStep === 2 ? 'Generate' : 'Next'}
-              </Text>
-              {wizardStep === 2 ? <Wand2 size={18} color="#FFF" /> : <ChevronRight size={18} color="#FFF" />}
+              {isGenerating ? (
+                <ActivityIndicator color="#FFF" size="small" />
+              ) : (
+                <>
+                  <Text style={styles.wizardNavNextText}>
+                    {wizardStep === 2 ? t.create.generate : t.create.next}
+                  </Text>
+                  {wizardStep === 2 ? <Wand2 size={18} color="#FFF" /> : <ChevronRight size={18} color="#FFF" />}
+                </>
+              )}
             </LinearGradient>
           </Pressable>
         )}
@@ -679,8 +659,8 @@ export default function BuilderScreen() {
   );
 
   return (
-    <View style={styles.container}>
-      <LinearGradient colors={['#FAFAFA', '#FFF8EE', '#FEF5F0']} style={StyleSheet.absoluteFill} />
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+      <LinearGradient colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]} style={StyleSheet.absoluteFill} />
 
       <KeyboardAvoidingView style={styles.flex1} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
         <ScrollView
@@ -689,10 +669,9 @@ export default function BuilderScreen() {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.header}>
-            <Text style={styles.title}>Create</Text>
-            <View style={styles.proBadge}>
-              <Sparkles size={13} color="#D97706" />
-              <Text style={styles.proBadgeText}>Pro</Text>
+            <Text style={[styles.title, { color: colors.text }]}>{t.create.title}</Text>
+            <View style={[styles.proBadge, { backgroundColor: isDark ? 'rgba(217,119,6,0.15)' : '#FEF3C7', borderColor: 'rgba(217,119,6,0.15)' }]}>
+              <Text style={styles.proBadgeText}>{t.create.pro}</Text>
             </View>
           </View>
 
@@ -706,16 +685,9 @@ export default function BuilderScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FAFAFA',
-  },
-  flex1: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-  },
+  container: { flex: 1 },
+  flex1: { flex: 1 },
+  scrollContent: { paddingHorizontal: 20 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -725,49 +697,28 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 32,
     fontWeight: '800' as const,
-    color: '#111827',
     letterSpacing: -0.8,
   },
   proBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FEF3C7',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 20,
     gap: 5,
     borderWidth: 1,
-    borderColor: 'rgba(217,119,6,0.15)',
   },
   proBadgeText: {
     color: '#D97706',
     fontWeight: '700' as const,
     fontSize: 12,
   },
-  modeToggleContainer: {
-    marginBottom: 24,
-    alignItems: 'center',
-  },
+  modeToggleContainer: { marginBottom: 24, alignItems: 'center' },
   modeToggle: {
     flexDirection: 'row',
-    backgroundColor: '#F3F4F6',
     borderRadius: 14,
     padding: 4,
-    position: 'relative',
     width: 240,
-  },
-  modeIndicator: {
-    position: 'absolute',
-    top: 4,
-    width: '50%',
-    height: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 11,
-    shadowColor: '#000',
-    shadowOpacity: 0.08,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
   },
   modeBtn: {
     flex: 1,
@@ -777,20 +728,14 @@ const styles = StyleSheet.create({
     paddingVertical: 10,
     gap: 6,
     zIndex: 1,
+    borderRadius: 11,
   },
   modeBtnText: {
     fontSize: 13,
     fontWeight: '600' as const,
-    color: '#9CA3AF',
   },
-  catSection: {
-    marginHorizontal: -20,
-    marginBottom: 24,
-  },
-  catList: {
-    paddingHorizontal: 20,
-    gap: 10,
-  },
+  catSection: { marginHorizontal: -20, marginBottom: 24 },
+  catList: { paddingHorizontal: 20, gap: 10 },
   catCard: {
     width: 82,
     paddingVertical: 14,
@@ -799,7 +744,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     borderWidth: 1.5,
-    borderColor: 'rgba(0,0,0,0.04)',
     shadowColor: '#000',
     shadowOpacity: 0.03,
     shadowRadius: 6,
@@ -813,14 +757,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  catLabel: {
-    fontSize: 11,
-    color: '#6B7280',
-    fontWeight: '600' as const,
-    textAlign: 'center',
-  },
+  catLabel: { fontSize: 11, fontWeight: '600' as const, textAlign: 'center' },
   mainCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 28,
     padding: 20,
     marginBottom: 24,
@@ -831,7 +769,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 8 },
     elevation: 5,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.02)',
   },
   cardHeader: {
     flexDirection: 'row',
@@ -846,53 +783,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  cardTitle: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-    color: '#1F2937',
-  },
-  cardSubtitle: {
-    fontSize: 13,
-    color: '#9CA3AF',
-    marginTop: 2,
-  },
-  mainInput: {
-    fontSize: 16,
-    color: '#1F2937',
-    minHeight: 100,
-    marginBottom: 16,
-    lineHeight: 24,
-    textAlignVertical: 'top',
-  },
-  quickChips: {
-    marginBottom: 20,
-  },
-  quickChipsLabel: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    color: '#9CA3AF',
-    marginBottom: 8,
-  },
-  quickChipsList: {
-    gap: 8,
-  },
-  quickChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 16,
-    backgroundColor: '#F3F4F6',
-    borderWidth: 1.5,
-    borderColor: 'transparent',
-  },
-  quickChipText: {
-    fontSize: 12,
-    fontWeight: '500' as const,
-    color: '#6B7280',
-  },
-  generateBtn: {
-    borderRadius: 26,
-    overflow: 'hidden',
-  },
+  cardTitle: { fontSize: 18, fontWeight: '700' as const },
+  cardSubtitle: { fontSize: 13, marginTop: 2 },
+  mainInput: { fontSize: 16, minHeight: 100, marginBottom: 16, lineHeight: 24, textAlignVertical: 'top' },
+  generateBtn: { borderRadius: 26, overflow: 'hidden' },
   generateGradient: {
     height: 52,
     borderRadius: 26,
@@ -901,11 +795,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  generateBtnText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700' as const,
-  },
+  generateBtnText: { color: '#FFF', fontSize: 16, fontWeight: '700' as const },
   wizardProgress: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -913,54 +803,21 @@ const styles = StyleSheet.create({
     marginBottom: 28,
     paddingHorizontal: 8,
   },
-  wizardStepRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
+  wizardStepRow: { flexDirection: 'row', alignItems: 'center' },
   wizardDot: {
     width: 24,
     height: 24,
     borderRadius: 12,
-    backgroundColor: '#E5E7EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  wizardDotText: {
-    fontSize: 11,
-    fontWeight: '700' as const,
-    color: '#9CA3AF',
-  },
-  wizardStepLabel: {
-    fontSize: 11,
-    color: '#9CA3AF',
-    fontWeight: '500' as const,
-    marginLeft: 4,
-  },
-  wizardLine: {
-    width: 20,
-    height: 2,
-    backgroundColor: '#E5E7EB',
-    marginHorizontal: 6,
-  },
-  wizardContent: {
-    minHeight: 300,
-  },
-  stepTitle: {
-    fontSize: 22,
-    fontWeight: '800' as const,
-    color: '#111827',
-    marginBottom: 6,
-  },
-  stepSubtitle: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    marginBottom: 24,
-  },
-  categoryGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 10,
-  },
+  wizardDotText: { fontSize: 11, fontWeight: '700' as const },
+  wizardStepLabel: { fontSize: 11, fontWeight: '500' as const, marginLeft: 4 },
+  wizardLine: { width: 20, height: 2, marginHorizontal: 6 },
+  wizardContent: { minHeight: 300 },
+  stepTitle: { fontSize: 22, fontWeight: '800' as const, marginBottom: 6 },
+  stepSubtitle: { fontSize: 14, marginBottom: 24 },
+  categoryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
   gridItem: {
     width: '30%',
     flexGrow: 1,
@@ -968,9 +825,7 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     paddingHorizontal: 10,
     borderRadius: 18,
-    backgroundColor: '#FFFFFF',
     borderWidth: 1.5,
-    borderColor: 'rgba(0,0,0,0.04)',
     alignItems: 'center',
     gap: 8,
     shadowColor: '#000',
@@ -986,14 +841,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  gridItemLabel: {
-    fontSize: 12,
-    color: '#6B7280',
-    fontWeight: '600' as const,
-    textAlign: 'center',
-  },
+  gridItemLabel: { fontSize: 12, fontWeight: '600' as const, textAlign: 'center' },
   wizardInputCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 16,
     marginBottom: 20,
@@ -1003,42 +852,18 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
   },
-  wizardInput: {
-    fontSize: 16,
-    color: '#1F2937',
-    minHeight: 80,
-    lineHeight: 24,
-    textAlignVertical: 'top',
-  },
-  chipSectionTitle: {
-    fontSize: 14,
-    fontWeight: '700' as const,
-    color: '#374151',
-    marginBottom: 10,
-    marginTop: 16,
-  },
-  chipWrap: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
+  wizardInput: { fontSize: 16, minHeight: 80, lineHeight: 24, textAlignVertical: 'top' },
+  chipSectionTitle: { fontSize: 14, fontWeight: '700' as const, marginBottom: 10, marginTop: 16 },
+  chipWrap: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
     borderWidth: 1.5,
-    borderColor: 'transparent',
   },
-  chipText: {
-    fontSize: 13,
-    fontWeight: '500' as const,
-    color: '#6B7280',
-  },
+  chipText: { fontSize: 13, fontWeight: '500' as const },
   fieldCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 16,
     shadowColor: '#000',
     shadowOpacity: 0.03,
@@ -1046,20 +871,10 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     elevation: 1,
     borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
     marginBottom: 4,
   },
-  fieldInput: {
-    fontSize: 15,
-    color: '#1F2937',
-    padding: 14,
-    minHeight: 44,
-  },
-  wizardNav: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 24,
-  },
+  fieldInput: { fontSize: 15, padding: 14, minHeight: 44 },
+  wizardNav: { flexDirection: 'row', gap: 12, marginTop: 24 },
   wizardNavBack: {
     height: 52,
     borderRadius: 26,
@@ -1068,18 +883,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 6,
     paddingHorizontal: 20,
-    backgroundColor: '#F3F4F6',
   },
-  wizardNavBackText: {
-    color: '#111827',
-    fontSize: 15,
-    fontWeight: '600' as const,
-  },
-  wizardNavNext: {
-    flex: 1,
-    borderRadius: 26,
-    overflow: 'hidden',
-  },
+  wizardNavBackText: { fontSize: 15, fontWeight: '600' as const },
+  wizardNavNext: { flex: 1, borderRadius: 26, overflow: 'hidden' },
   wizardNavNextGradient: {
     height: 52,
     borderRadius: 26,
@@ -1088,48 +894,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 8,
   },
-  wizardNavNextText: {
-    color: '#FFF',
-    fontSize: 16,
-    fontWeight: '700' as const,
-  },
-  resultSection: {
-    gap: 16,
-  },
-  resultHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  resultTitleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  resultDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-  },
-  resultTitle: {
-    fontSize: 20,
-    fontWeight: '800' as const,
-    color: '#111827',
-  },
-  resultActions: {
-    flexDirection: 'row',
-    gap: 8,
-  },
+  wizardNavNextText: { color: '#FFF', fontSize: 16, fontWeight: '700' as const },
+  resultSection: { gap: 16 },
+  resultHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  resultTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  resultDot: { width: 10, height: 10, borderRadius: 5 },
+  resultTitle: { fontSize: 20, fontWeight: '800' as const },
+  resultActions: { flexDirection: 'row', gap: 8 },
   resultActionBtn: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: '#F3F4F6',
     alignItems: 'center',
     justifyContent: 'center',
   },
   resultCard: {
-    backgroundColor: '#FFFFFF',
     borderRadius: 20,
     padding: 18,
     borderLeftWidth: 4,
@@ -1139,29 +918,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 4 },
     elevation: 2,
   },
-  resultPromptText: {
-    fontSize: 14,
-    color: '#1F2937',
-    lineHeight: 22,
-  },
-  metaBlock: {
-    gap: 6,
-    borderRadius: 16,
-    padding: 14,
-  },
-  metaHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  metaTitle: {
-    fontSize: 13,
-    fontWeight: '700' as const,
-  },
-  metaItem: {
-    fontSize: 13,
-    color: '#6B7280',
-    paddingLeft: 20,
-    lineHeight: 20,
-  },
+  resultPromptText: { fontSize: 14, lineHeight: 22 },
+  metaBlock: { gap: 6, borderRadius: 16, padding: 14 },
+  metaHeader: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  metaTitle: { fontSize: 13, fontWeight: '700' as const },
+  metaItem: { fontSize: 13, paddingLeft: 20, lineHeight: 20 },
 });

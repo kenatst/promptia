@@ -2,12 +2,14 @@ import React, { useCallback, useState } from 'react';
 import {
   Alert,
   Linking,
+  Modal,
   Platform,
   Pressable,
   ScrollView,
   StyleSheet,
   Switch,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -15,22 +17,26 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import * as WebBrowser from 'expo-web-browser';
 import {
-  Bell,
   ChevronRight,
   ExternalLink,
   FileText,
   HelpCircle,
-  Info,
+  Key,
   Mail,
   Moon,
+  Globe,
   Shield,
   Star,
   Trash2,
   Wand2,
+  Info,
+  Check,
+  X,
 } from 'lucide-react-native';
 
-import Colors from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { usePromptStore } from '@/store/promptStore';
+import { Language, LANGUAGE_LABELS } from '@/i18n/translations';
 
 const PRIVACY_POLICY_URL = 'https://example.com/privacy-policy';
 const TERMS_OF_USE_URL = 'https://example.com/terms-of-use';
@@ -45,36 +51,39 @@ interface SettingsRowProps {
   trailing?: React.ReactNode;
   danger?: boolean;
   isLast?: boolean;
+  colors: any;
 }
 
-function SettingsRow({ icon, label, sublabel, onPress, trailing, danger, isLast }: SettingsRowProps) {
+function SettingsRow({ icon, label, sublabel, onPress, trailing, danger, isLast, colors }: SettingsRowProps) {
   return (
     <Pressable
       onPress={onPress}
       disabled={!onPress && !trailing}
       style={({ pressed }) => [
         styles.row,
-        pressed && onPress && styles.rowPressed,
-        !isLast && styles.rowBorder,
+        pressed && onPress && { backgroundColor: colors.bgSecondary },
+        !isLast && { borderBottomWidth: 1, borderBottomColor: colors.separator },
       ]}
     >
-      <View style={[styles.rowIcon, danger && { backgroundColor: Colors.dangerDim }]}>
+      <View style={[styles.rowIcon, danger && { backgroundColor: 'rgba(239,68,68,0.1)' }, !danger && { backgroundColor: colors.bgSecondary }]}>
         {icon}
       </View>
       <View style={styles.rowContent}>
-        <Text style={[styles.rowLabel, danger && { color: Colors.danger }]}>{label}</Text>
-        {sublabel && <Text style={styles.rowSublabel}>{sublabel}</Text>}
+        <Text style={[styles.rowLabel, { color: colors.text }, danger && { color: '#EF4444' }]}>{label}</Text>
+        {sublabel && <Text style={[styles.rowSublabel, { color: colors.textTertiary }]}>{sublabel}</Text>}
       </View>
-      {trailing || (onPress && <ChevronRight size={18} color="#C7C9CE" />)}
+      {trailing || (onPress && <ChevronRight size={18} color={colors.textTertiary} />)}
     </Pressable>
   );
 }
 
 export default function SettingsScreen() {
   const insets = useSafeAreaInsets();
-  const { savedPrompts } = usePromptStore();
-  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const { colors, t, isDark, toggleTheme, language, setLanguage, LANGUAGE_LABELS: langLabels } = useTheme();
+  const { savedPrompts, geminiApiKey, setGeminiApiKey } = usePromptStore();
+  const [showLanguageModal, setShowLanguageModal] = useState(false);
+  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
+  const [tempApiKey, setTempApiKey] = useState(geminiApiKey);
 
   const openURL = useCallback(async (url: string) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -97,18 +106,18 @@ export default function SettingsScreen() {
     } else if (Platform.OS === 'android') {
       Linking.openURL('https://play.google.com/store/apps/details?id=com.promptia.app');
     } else {
-      Alert.alert('Rate Us', 'Thank you for your interest! Rating is available on mobile devices.');
+      Alert.alert('Rate Us', 'Rating is available on mobile devices.');
     }
   }, []);
 
   const handleClearData = useCallback(() => {
     Alert.alert(
-      'Clear All Data',
-      `This will permanently delete all ${savedPrompts.length} saved prompts. This action cannot be undone.`,
+      t.settings.clearAllTitle,
+      t.settings.clearAllMsg,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t.settings.cancel, style: 'cancel' },
         {
-          text: 'Clear All',
+          text: t.settings.clearAll,
           style: 'destructive',
           onPress: () => {
             savedPrompts.forEach((p) => {
@@ -119,21 +128,33 @@ export default function SettingsScreen() {
         },
       ]
     );
-  }, [savedPrompts]);
+  }, [savedPrompts, t]);
+
+  const handleSaveApiKey = useCallback(() => {
+    setGeminiApiKey(tempApiKey);
+    setShowApiKeyModal(false);
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+  }, [tempApiKey, setGeminiApiKey]);
+
+  const handleSelectLanguage = useCallback((lang: Language) => {
+    setLanguage(lang);
+    setShowLanguageModal(false);
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+  }, [setLanguage]);
 
   return (
-    <View style={styles.container}>
-      <LinearGradient colors={['#F8F9FB', '#F2F0F5']} style={StyleSheet.absoluteFill} />
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+      <LinearGradient colors={[colors.gradientStart, colors.gradientMid]} style={StyleSheet.absoluteFill} />
 
       <ScrollView
         contentContainerStyle={[styles.scrollContent, { paddingTop: insets.top + 12, paddingBottom: 140 }]}
         showsVerticalScrollIndicator={false}
       >
-        <Text style={styles.pageTitle}>Settings</Text>
+        <Text style={[styles.pageTitle, { color: colors.text }]}>{t.settings.title}</Text>
 
-        <View style={styles.appHeader}>
+        <View style={[styles.appHeader, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <LinearGradient
-            colors={['#1E1B2E', '#2D2545']}
+            colors={isDark ? ['#2D2545', '#1E1B2E'] : ['#1E1B2E', '#2D2545']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.appIconWrap}
@@ -141,235 +162,236 @@ export default function SettingsScreen() {
             <Wand2 size={28} color="#F59E0B" />
           </LinearGradient>
           <View>
-            <Text style={styles.appName}>Promptia</Text>
-            <Text style={styles.appVersion}>Version {APP_VERSION}</Text>
+            <Text style={[styles.appName, { color: colors.text }]}>Promptia</Text>
+            <Text style={[styles.appVersion, { color: colors.textTertiary }]}>{t.settings.version} {APP_VERSION}</Text>
           </View>
         </View>
 
-        <Text style={styles.sectionTitle}>Preferences</Text>
-        <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{t.settings.appearance}</Text>
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <SettingsRow
-            icon={<Bell size={18} color={Colors.blue} />}
-            label="Notifications"
-            sublabel="Get notified about new prompts"
+            icon={<Moon size={18} color="#8B5CF6" />}
+            label={t.settings.darkMode}
+            sublabel={t.settings.darkModeSub}
+            colors={colors}
             trailing={
               <Switch
-                value={notificationsEnabled}
-                onValueChange={(val) => {
-                  setNotificationsEnabled(val);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}
-                trackColor={{ false: '#E5E7EB', true: Colors.blue }}
+                value={isDark}
+                onValueChange={() => { toggleTheme(); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                trackColor={{ false: '#E5E7EB', true: '#8B5CF6' }}
                 thumbColor="#FFFFFF"
               />
             }
           />
           <SettingsRow
-            icon={<Moon size={18} color={Colors.secondary} />}
-            label="Dark Mode"
-            sublabel="Coming soon"
-            trailing={
-              <Switch
-                value={darkMode}
-                onValueChange={(val) => {
-                  setDarkMode(val);
-                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-                }}
-                trackColor={{ false: '#E5E7EB', true: Colors.secondary }}
-                thumbColor="#FFFFFF"
-                disabled
-              />
-            }
+            icon={<Globe size={18} color="#3B82F6" />}
+            label={t.settings.language}
+            sublabel={langLabels[language]}
+            onPress={() => setShowLanguageModal(true)}
+            colors={colors}
             isLast
           />
         </View>
 
-        <Text style={styles.sectionTitle}>Support</Text>
-        <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>AI</Text>
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <SettingsRow
-            icon={<Mail size={18} color={Colors.teal} />}
-            label="Contact Support"
+            icon={<Key size={18} color="#F59E0B" />}
+            label="Gemini API Key"
+            sublabel={geminiApiKey ? 'Configured' : 'Not configured'}
+            onPress={() => { setTempApiKey(geminiApiKey); setShowApiKeyModal(true); }}
+            colors={colors}
+            isLast
+          />
+        </View>
+
+        <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{t.settings.support}</Text>
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
+          <SettingsRow
+            icon={<Mail size={18} color="#14B8A6" />}
+            label={t.settings.contactSupport}
             sublabel={SUPPORT_EMAIL}
             onPress={handleContactSupport}
+            colors={colors}
           />
           <SettingsRow
-            icon={<Star size={18} color={Colors.accent} />}
-            label="Rate the App"
-            sublabel="Help us improve"
+            icon={<Star size={18} color="#F59E0B" />}
+            label={t.settings.rateApp}
+            sublabel={t.settings.rateAppSub}
             onPress={handleRateApp}
+            colors={colors}
           />
           <SettingsRow
-            icon={<HelpCircle size={18} color={Colors.cyan} />}
-            label="FAQ & Help Center"
+            icon={<HelpCircle size={18} color="#06B6D4" />}
+            label={t.settings.faq}
             onPress={() => openURL('https://example.com/help')}
+            colors={colors}
             isLast
           />
         </View>
 
-        <Text style={styles.sectionTitle}>Legal</Text>
-        <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{t.settings.legal}</Text>
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <SettingsRow
-            icon={<Shield size={18} color={Colors.tertiary} />}
-            label="Privacy Policy"
+            icon={<Shield size={18} color="#10B981" />}
+            label={t.settings.privacyPolicy}
             onPress={() => openURL(PRIVACY_POLICY_URL)}
-            trailing={<ExternalLink size={16} color="#C7C9CE" />}
+            trailing={<ExternalLink size={16} color={colors.textTertiary} />}
+            colors={colors}
           />
           <SettingsRow
-            icon={<FileText size={18} color={Colors.blue} />}
-            label="Terms of Use"
+            icon={<FileText size={18} color="#3B82F6" />}
+            label={t.settings.termsOfUse}
             onPress={() => openURL(TERMS_OF_USE_URL)}
-            trailing={<ExternalLink size={16} color="#C7C9CE" />}
-          />
-          <SettingsRow
-            icon={<Info size={18} color={Colors.secondary} />}
-            label="Licenses"
-            sublabel="Open source acknowledgements"
-            onPress={() => openURL('https://example.com/licenses')}
-            trailing={<ExternalLink size={16} color="#C7C9CE" />}
+            trailing={<ExternalLink size={16} color={colors.textTertiary} />}
+            colors={colors}
             isLast
           />
         </View>
 
-        <Text style={styles.sectionTitle}>Data</Text>
-        <View style={styles.section}>
+        <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{t.settings.data}</Text>
+        <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <SettingsRow
-            icon={<Info size={18} color={Colors.textSecondary} />}
-            label="Saved Prompts"
-            sublabel={`${savedPrompts.length} prompt${savedPrompts.length !== 1 ? 's' : ''} stored locally`}
+            icon={<Info size={18} color={colors.textSecondary} />}
+            label={t.settings.savedPrompts}
+            sublabel={`${savedPrompts.length} ${t.settings.promptsStored}`}
+            colors={colors}
             isLast={savedPrompts.length === 0}
           />
           {savedPrompts.length > 0 && (
             <SettingsRow
-              icon={<Trash2 size={18} color={Colors.danger} />}
-              label="Clear All Data"
-              sublabel="Delete all saved prompts"
+              icon={<Trash2 size={18} color="#EF4444" />}
+              label={t.settings.clearAll}
+              sublabel={t.settings.clearAllSub}
               onPress={handleClearData}
               danger
+              colors={colors}
               isLast
             />
           )}
         </View>
 
-        <Text style={styles.footerText}>
-          Made with care for prompt engineers.{'\n'}
-          All data is stored locally on your device.
+        <Text style={[styles.footerText, { color: colors.textTertiary }]}>
+          {t.settings.footer}
         </Text>
       </ScrollView>
+
+      <Modal visible={showLanguageModal} transparent animationType="fade">
+        <Pressable style={[styles.modalOverlay, { backgroundColor: colors.overlay }]} onPress={() => setShowLanguageModal(false)}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]}>
+            <Text style={[styles.modalTitle, { color: colors.text }]}>{t.settings.selectLanguage}</Text>
+            {(Object.keys(langLabels) as Language[]).map((lang) => {
+              const isActive = language === lang;
+              return (
+                <Pressable
+                  key={lang}
+                  onPress={() => handleSelectLanguage(lang)}
+                  style={[styles.langOption, isActive && { backgroundColor: isDark ? 'rgba(245,158,11,0.12)' : '#FEF3C7' }]}
+                >
+                  <Text style={[styles.langText, { color: colors.text }, isActive && { color: '#D97706', fontWeight: '700' as const }]}>
+                    {langLabels[lang]}
+                  </Text>
+                  {isActive && <Check size={18} color="#D97706" />}
+                </Pressable>
+              );
+            })}
+          </View>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={showApiKeyModal} transparent animationType="fade">
+        <Pressable style={[styles.modalOverlay, { backgroundColor: colors.overlay }]} onPress={() => setShowApiKeyModal(false)}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Gemini API Key</Text>
+              <Pressable onPress={() => setShowApiKeyModal(false)}>
+                <X size={20} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+            <Text style={[styles.modalDesc, { color: colors.textSecondary }]}>
+              Add your Google Gemini API key to enable AI-powered prompt generation. Get one at ai.google.dev
+            </Text>
+            <TextInput
+              value={tempApiKey}
+              onChangeText={setTempApiKey}
+              placeholder="AIza..."
+              placeholderTextColor={colors.textTertiary}
+              style={[styles.apiKeyInput, { color: colors.text, backgroundColor: colors.bgSecondary, borderColor: colors.cardBorder }]}
+              autoCapitalize="none"
+              autoCorrect={false}
+              secureTextEntry
+            />
+            <View style={styles.modalActions}>
+              <Pressable
+                onPress={() => setShowApiKeyModal(false)}
+                style={[styles.modalBtn, { backgroundColor: colors.bgSecondary }]}
+              >
+                <Text style={[styles.modalBtnText, { color: colors.text }]}>{t.settings.cancel}</Text>
+              </Pressable>
+              <Pressable
+                onPress={handleSaveApiKey}
+                style={[styles.modalBtn, { backgroundColor: '#F59E0B' }]}
+              >
+                <Text style={[styles.modalBtnText, { color: '#FFF' }]}>Save</Text>
+              </Pressable>
+            </View>
+          </View>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8F9FB',
-  },
-  scrollContent: {
-    paddingHorizontal: 20,
-  },
-  pageTitle: {
-    fontSize: 32,
-    fontWeight: '800' as const,
-    color: '#111827',
-    letterSpacing: -0.8,
-    marginBottom: 24,
-  },
+  container: { flex: 1 },
+  scrollContent: { paddingHorizontal: 20 },
+  pageTitle: { fontSize: 32, fontWeight: '800' as const, letterSpacing: -0.8, marginBottom: 24 },
   appHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-    marginBottom: 32,
-    backgroundColor: '#FFFFFF',
-    padding: 20,
-    borderRadius: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
+    flexDirection: 'row', alignItems: 'center', gap: 16, marginBottom: 32,
+    padding: 20, borderRadius: 24, shadowColor: '#000', shadowOpacity: 0.04,
+    shadowRadius: 12, shadowOffset: { width: 0, height: 4 }, elevation: 2, borderWidth: 1,
   },
-  appIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  appName: {
-    fontSize: 20,
-    fontWeight: '800' as const,
-    color: '#111827',
-  },
-  appVersion: {
-    fontSize: 13,
-    color: '#9CA3AF',
-    marginTop: 2,
-  },
+  appIconWrap: { width: 56, height: 56, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  appName: { fontSize: 20, fontWeight: '800' as const },
+  appVersion: { fontSize: 13, marginTop: 2 },
   sectionTitle: {
-    fontSize: 13,
-    fontWeight: '700' as const,
-    color: '#9CA3AF',
-    textTransform: 'uppercase' as const,
-    letterSpacing: 0.8,
-    marginBottom: 8,
-    marginLeft: 4,
+    fontSize: 13, fontWeight: '700' as const, textTransform: 'uppercase' as const,
+    letterSpacing: 0.8, marginBottom: 8, marginLeft: 4,
   },
   section: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    marginBottom: 24,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
-    overflow: 'hidden',
+    borderRadius: 20, marginBottom: 24, shadowColor: '#000', shadowOpacity: 0.03,
+    shadowRadius: 10, shadowOffset: { width: 0, height: 4 }, elevation: 2,
+    borderWidth: 1, overflow: 'hidden',
   },
   row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    gap: 14,
+    flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 16, gap: 14,
   },
-  rowPressed: {
-    backgroundColor: '#F9FAFB',
+  rowIcon: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  rowContent: { flex: 1, gap: 1 },
+  rowLabel: { fontSize: 15, fontWeight: '600' as const },
+  rowSublabel: { fontSize: 12 },
+  footerText: { textAlign: 'center', fontSize: 12, lineHeight: 18, marginTop: 8, marginBottom: 20 },
+  modalOverlay: {
+    flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30,
   },
-  rowBorder: {
-    borderBottomWidth: 1,
-    borderBottomColor: 'rgba(0,0,0,0.04)',
+  modalContent: {
+    width: '100%', borderRadius: 24, padding: 24,
+    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20, elevation: 10,
   },
-  rowIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
+  modalTitle: { fontSize: 20, fontWeight: '800' as const },
+  modalDesc: { fontSize: 14, lineHeight: 20, marginBottom: 16 },
+  langOption: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 14, paddingHorizontal: 16, borderRadius: 14, marginBottom: 4,
   },
-  rowContent: {
-    flex: 1,
-    gap: 1,
+  langText: { fontSize: 16, fontWeight: '500' as const },
+  apiKeyInput: {
+    borderRadius: 14, padding: 14, fontSize: 15, borderWidth: 1, marginBottom: 16,
   },
-  rowLabel: {
-    fontSize: 15,
-    fontWeight: '600' as const,
-    color: '#1F2937',
+  modalActions: { flexDirection: 'row', gap: 10 },
+  modalBtn: {
+    flex: 1, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
   },
-  rowSublabel: {
-    fontSize: 12,
-    color: '#9CA3AF',
-  },
-  footerText: {
-    textAlign: 'center',
-    fontSize: 12,
-    color: '#C7C9CE',
-    lineHeight: 18,
-    marginTop: 8,
-    marginBottom: 20,
-  },
+  modalBtnText: { fontSize: 15, fontWeight: '700' as const },
 });

@@ -6,36 +6,23 @@ import { useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import {
-  Search,
-  Trash2,
-  Copy,
-  Heart,
-  Shuffle,
-  Check,
-  Bookmark,
-  Filter,
-  MessageSquare,
-  Code,
-  PenTool,
-  Palette,
-  Camera,
-  Film,
+  Search, Trash2, Copy, Heart, Shuffle, Check, Bookmark,
+  MessageSquare, Palette, Camera, Film,
 } from 'lucide-react-native';
 
-import Colors from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { usePromptStore } from '@/store/promptStore';
 import { SavedPrompt, DEFAULT_INPUTS, ModelType } from '@/types/prompt';
 import { getModelLabel } from '@/engine/promptEngine';
-import { CREATION_CATEGORIES } from '@/data/gallerySeed';
 
 const MODEL_COLORS: Record<ModelType, string> = {
-  chatgpt: Colors.accent,
-  midjourney: Colors.secondary,
-  sdxl: Colors.cyan,
-  video: Colors.pink,
+  chatgpt: '#F59E0B',
+  midjourney: '#8B5CF6',
+  sdxl: '#06B6D4',
+  video: '#EC4899',
 };
 
-const MODEL_ICONS: Record<ModelType, (size: number, color: string) => React.ReactNode> = {
+const MODEL_ICONS: Record<ModelType, (s: number, c: string) => React.ReactNode> = {
   chatgpt: (s, c) => <MessageSquare size={s} color={c} />,
   midjourney: (s, c) => <Palette size={s} color={c} />,
   sdxl: (s, c) => <Camera size={s} color={c} />,
@@ -44,41 +31,34 @@ const MODEL_ICONS: Record<ModelType, (size: number, color: string) => React.Reac
 
 type FilterTab = 'all' | 'favorites' | 'text' | 'image' | 'video';
 
-const FILTER_TABS: { key: FilterTab; label: string }[] = [
-  { key: 'all', label: 'All' },
-  { key: 'favorites', label: 'Favorites' },
-  { key: 'text', label: 'Text' },
-  { key: 'image', label: 'Image' },
-  { key: 'video', label: 'Video' },
-];
-
 export default function SavedScreen() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
+  const { colors, t, isDark } = useTheme();
   const { savedPrompts, deletePrompt, toggleFavorite, setCurrentInputs } = usePromptStore();
   const [localSearch, setLocalSearch] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
 
+  const FILTER_TABS: { key: FilterTab; label: string }[] = useMemo(() => [
+    { key: 'all', label: t.library.all },
+    { key: 'favorites', label: t.library.favorites },
+    { key: 'text', label: t.library.text },
+    { key: 'image', label: t.library.image },
+    { key: 'video', label: t.library.video },
+  ], [t]);
+
   const filteredPrompts = useMemo(() => {
     let items = savedPrompts;
-
-    if (activeFilter === 'favorites') {
-      items = items.filter(p => p.isFavorite);
-    } else if (activeFilter === 'text') {
-      items = items.filter(p => p.type === 'text');
-    } else if (activeFilter === 'image') {
-      items = items.filter(p => p.type === 'image');
-    } else if (activeFilter === 'video') {
-      items = items.filter(p => p.type === 'video');
-    }
+    if (activeFilter === 'favorites') items = items.filter(p => p.isFavorite);
+    else if (activeFilter === 'text') items = items.filter(p => p.type === 'text');
+    else if (activeFilter === 'image') items = items.filter(p => p.type === 'image');
+    else if (activeFilter === 'video') items = items.filter(p => p.type === 'video');
 
     if (localSearch.trim()) {
       const q = localSearch.toLowerCase();
-      items = items.filter(
-        (p) =>
-          p.title.toLowerCase().includes(q) ||
-          p.tags.some((tag) => tag.toLowerCase().includes(q))
+      items = items.filter((p) =>
+        p.title.toLowerCase().includes(q) || p.tags.some((tag) => tag.toLowerCase().includes(q))
       );
     }
     return items;
@@ -93,12 +73,12 @@ export default function SavedScreen() {
 
   const handleDelete = useCallback((prompt: SavedPrompt) => {
     Alert.alert(
-      'Delete Prompt',
-      `Are you sure you want to delete "${prompt.title}"?`,
+      t.library.deleteTitle,
+      t.library.deleteMsg,
       [
-        { text: 'Cancel', style: 'cancel' },
+        { text: t.library.cancel, style: 'cancel' },
         {
-          text: 'Delete',
+          text: t.library.delete,
           style: 'destructive',
           onPress: () => {
             deletePrompt(prompt.id);
@@ -107,7 +87,7 @@ export default function SavedScreen() {
         },
       ]
     );
-  }, [deletePrompt]);
+  }, [deletePrompt, t]);
 
   const handleRemix = useCallback((prompt: SavedPrompt) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -122,16 +102,16 @@ export default function SavedScreen() {
   const getTimeAgo = useCallback((timestamp: number) => {
     const diff = Date.now() - timestamp;
     const minutes = Math.floor(diff / 60000);
-    if (minutes < 1) return 'just now';
-    if (minutes < 60) return `${minutes}m ago`;
+    if (minutes < 1) return 'now';
+    if (minutes < 60) return `${minutes}m`;
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 24) return `${hours}h`;
     const days = Math.floor(hours / 24);
-    return `${days}d ago`;
+    return `${days}d`;
   }, []);
 
   const renderItem = useCallback(({ item }: { item: SavedPrompt }) => {
-    const modelColor = MODEL_COLORS[item.model] ?? Colors.accent;
+    const modelColor = MODEL_COLORS[item.model] ?? '#F59E0B';
     const isCopied = copiedId === item.id;
     const iconFn = MODEL_ICONS[item.model];
 
@@ -140,40 +120,37 @@ export default function SavedScreen() {
         onPress={() => handleOpenDetail(item)}
         style={({ pressed }) => [
           styles.card,
-          { transform: [{ scale: pressed ? 0.98 : 1 }] },
+          { backgroundColor: colors.card, borderColor: colors.cardBorder },
+          pressed && { transform: [{ scale: 0.98 }] },
         ]}
       >
-        <View style={[styles.cardAccent, { backgroundColor: modelColor }]} />
         <View style={styles.cardBody}>
           <View style={styles.cardTop}>
             <View style={[styles.modelIcon, { backgroundColor: `${modelColor}15` }]}>
-              {iconFn ? iconFn(16, modelColor) : <MessageSquare size={16} color={modelColor} />}
+              {iconFn ? iconFn(18, modelColor) : <MessageSquare size={18} color={modelColor} />}
             </View>
             <View style={{ flex: 1 }}>
+              <Text style={[styles.cardTitle, { color: colors.text }]} numberOfLines={2}>{item.title}</Text>
               <View style={styles.cardMeta}>
-                <Text style={[styles.modelLabel, { color: modelColor }]}>
-                  {getModelLabel(item.model)}
-                </Text>
-                <Text style={styles.timeText}>{getTimeAgo(item.createdAt)}</Text>
+                <View style={[styles.modelBadge, { backgroundColor: `${modelColor}12` }]}>
+                  <Text style={[styles.modelLabel, { color: modelColor }]}>{getModelLabel(item.model)}</Text>
+                </View>
+                <Text style={[styles.timeText, { color: colors.textTertiary }]}>{getTimeAgo(item.createdAt)}</Text>
               </View>
-              <Text style={styles.cardTitle} numberOfLines={2}>{item.title}</Text>
             </View>
             <Pressable
-              onPress={() => {
-                toggleFavorite(item.id);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }}
+              onPress={() => { toggleFavorite(item.id); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
               hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
             >
               <Heart
                 size={20}
-                color={item.isFavorite ? Colors.pink : '#D1D5DB'}
-                fill={item.isFavorite ? Colors.pink : 'transparent'}
+                color={item.isFavorite ? '#EC4899' : colors.textTertiary}
+                fill={item.isFavorite ? '#EC4899' : 'transparent'}
               />
             </Pressable>
           </View>
 
-          <Text style={styles.promptPreview} numberOfLines={2}>
+          <Text style={[styles.promptPreview, { color: colors.textSecondary }]} numberOfLines={2}>
             {item.finalPrompt}
           </Text>
 
@@ -187,39 +164,39 @@ export default function SavedScreen() {
             </View>
           )}
 
-          <View style={styles.cardActions}>
+          <View style={[styles.cardActions, { borderTopColor: colors.separator }]}>
             <Pressable
               onPress={() => handleCopy(item)}
-              style={[styles.actionBtn, isCopied && { backgroundColor: Colors.tertiaryDim }]}
+              style={[styles.actionBtn, { backgroundColor: colors.bgSecondary }, isCopied && { backgroundColor: 'rgba(16,185,129,0.12)' }]}
             >
-              {isCopied ? <Check size={14} color={Colors.tertiary} /> : <Copy size={14} color="#6B7280" />}
-              <Text style={[styles.actionText, isCopied && { color: Colors.tertiary }]}>
-                {isCopied ? 'Copied' : 'Copy'}
+              {isCopied ? <Check size={14} color="#10B981" /> : <Copy size={14} color={colors.textSecondary} />}
+              <Text style={[styles.actionText, { color: colors.textSecondary }, isCopied && { color: '#10B981' }]}>
+                {isCopied ? t.create.copied : t.library.copy}
               </Text>
             </Pressable>
-            <Pressable onPress={() => handleRemix(item)} style={styles.actionBtn}>
-              <Shuffle size={14} color="#6B7280" />
-              <Text style={styles.actionText}>Remix</Text>
+            <Pressable onPress={() => handleRemix(item)} style={[styles.actionBtn, { backgroundColor: colors.bgSecondary }]}>
+              <Shuffle size={14} color={colors.textSecondary} />
+              <Text style={[styles.actionText, { color: colors.textSecondary }]}>{t.library.remix}</Text>
             </Pressable>
             <View style={{ flex: 1 }} />
-            <Pressable onPress={() => handleDelete(item)} style={styles.deleteBtn}>
-              <Trash2 size={14} color={Colors.danger} />
+            <Pressable onPress={() => handleDelete(item)} style={[styles.deleteBtn, { backgroundColor: 'rgba(239,68,68,0.08)' }]}>
+              <Trash2 size={14} color="#EF4444" />
             </Pressable>
           </View>
         </View>
       </Pressable>
     );
-  }, [copiedId, handleCopy, handleDelete, handleRemix, handleOpenDetail, toggleFavorite, getTimeAgo]);
+  }, [copiedId, handleCopy, handleDelete, handleRemix, handleOpenDetail, toggleFavorite, getTimeAgo, colors, t]);
 
   return (
-    <View style={styles.container}>
-      <LinearGradient colors={['#FAFAFA', '#F5F0FF', '#FFF8EE']} style={StyleSheet.absoluteFill} />
+    <View style={[styles.container, { backgroundColor: colors.bg }]}>
+      <LinearGradient colors={[colors.gradientStart, colors.gradientMid, colors.gradientEnd]} style={StyleSheet.absoluteFill} />
 
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <View style={styles.headerLeft}>
-          <Text style={styles.headerTitle}>Library</Text>
+          <Text style={[styles.headerTitle, { color: colors.text }]}>{t.library.title}</Text>
           {savedPrompts.length > 0 && (
-            <View style={styles.countBadge}>
+            <View style={[styles.countBadge, { backgroundColor: '#F59E0B' }]}>
               <Text style={styles.countText}>{savedPrompts.length}</Text>
             </View>
           )}
@@ -227,12 +204,12 @@ export default function SavedScreen() {
       </View>
 
       <View style={styles.searchSection}>
-        <View style={styles.searchBar}>
-          <Search size={18} color="#9CA3AF" />
+        <View style={[styles.searchBar, { backgroundColor: colors.searchBg, borderColor: colors.cardBorder }]}>
+          <Search size={18} color={colors.textTertiary} />
           <TextInput
-            placeholder="Search your prompts..."
-            placeholderTextColor="#B0B5BE"
-            style={styles.searchInput}
+            placeholder={t.library.searchPlaceholder}
+            placeholderTextColor={colors.textTertiary}
+            style={[styles.searchInput, { color: colors.text }]}
             value={localSearch}
             onChangeText={setLocalSearch}
           />
@@ -240,23 +217,34 @@ export default function SavedScreen() {
       </View>
 
       <View style={styles.filterRow}>
-        {FILTER_TABS.map((tab) => {
-          const isActive = activeFilter === tab.key;
-          return (
-            <Pressable
-              key={tab.key}
-              onPress={() => {
-                setActiveFilter(tab.key);
-                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-              }}
-              style={[styles.filterTab, isActive && styles.filterTabActive]}
-            >
-              <Text style={[styles.filterTabText, isActive && styles.filterTabTextActive]}>
-                {tab.label}
-              </Text>
-            </Pressable>
-          );
-        })}
+        <FlatList
+          data={FILTER_TABS}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item.key}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+          renderItem={({ item: tab }) => {
+            const isActive = activeFilter === tab.key;
+            return (
+              <Pressable
+                onPress={() => { setActiveFilter(tab.key); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                style={[
+                  styles.filterTab,
+                  { backgroundColor: colors.chipBg },
+                  isActive && { backgroundColor: isDark ? '#F59E0B' : '#111827' },
+                ]}
+              >
+                <Text style={[
+                  styles.filterTabText,
+                  { color: colors.textSecondary },
+                  isActive && { color: '#FFFFFF' },
+                ]}>
+                  {tab.label}
+                </Text>
+              </Pressable>
+            );
+          }}
+        />
       </View>
 
       <FlatList
@@ -267,16 +255,14 @@ export default function SavedScreen() {
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <View style={styles.emptyIconWrap}>
-              <Bookmark size={32} color="#D1D5DB" />
+            <View style={[styles.emptyIconWrap, { backgroundColor: colors.bgSecondary }]}>
+              <Bookmark size={32} color={colors.textTertiary} />
             </View>
-            <Text style={styles.emptyTitle}>
-              {savedPrompts.length === 0 ? 'No prompts yet' : 'No results'}
+            <Text style={[styles.emptyTitle, { color: colors.textSecondary }]}>
+              {savedPrompts.length === 0 ? t.library.noPrompts : t.library.noResults}
             </Text>
-            <Text style={styles.emptySubtitle}>
-              {savedPrompts.length === 0
-                ? 'Create your first prompt and it will appear here'
-                : 'Try a different search term or filter'}
+            <Text style={[styles.emptySubtitle, { color: colors.textTertiary }]}>
+              {savedPrompts.length === 0 ? t.library.noPromptsMsg : t.library.noResultsMsg}
             </Text>
           </View>
         }
@@ -286,212 +272,61 @@ export default function SavedScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#FAFAFA',
-  },
+  container: { flex: 1 },
   header: {
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 16,
+    paddingHorizontal: 20, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'space-between', marginBottom: 16,
   },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-  },
-  headerTitle: {
-    fontSize: 32,
-    fontWeight: '800' as const,
-    color: '#111827',
-    letterSpacing: -0.8,
-  },
-  countBadge: {
-    backgroundColor: Colors.secondary,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-  },
-  countText: {
-    fontSize: 13,
-    fontWeight: '700' as const,
-    color: '#FFF',
-  },
-  searchSection: {
-    paddingHorizontal: 20,
-    marginBottom: 16,
-  },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  headerTitle: { fontSize: 32, fontWeight: '800' as const, letterSpacing: -0.8 },
+  countBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 12 },
+  countText: { fontSize: 13, fontWeight: '700' as const, color: '#FFF' },
+  searchSection: { paddingHorizontal: 20, marginBottom: 16 },
   searchBar: {
-    height: 48,
-    borderRadius: 16,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    gap: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.04,
-    shadowRadius: 8,
-    elevation: 2,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
+    height: 48, borderRadius: 16, flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, gap: 10, shadowColor: '#000', shadowOpacity: 0.04,
+    shadowRadius: 8, elevation: 2, borderWidth: 1,
   },
-  searchInput: {
-    flex: 1,
-    color: '#111827',
-    fontSize: 15,
-  },
-  filterRow: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
-    gap: 8,
-    marginBottom: 16,
-  },
+  searchInput: { flex: 1, fontSize: 15 },
+  filterRow: { marginBottom: 16 },
   filterTab: {
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    borderRadius: 12,
-    backgroundColor: '#F3F4F6',
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12,
   },
-  filterTabActive: {
-    backgroundColor: '#111827',
-  },
-  filterTabText: {
-    fontSize: 13,
-    fontWeight: '600' as const,
-    color: '#6B7280',
-  },
-  filterTabTextActive: {
-    color: '#FFFFFF',
-  },
-  listContent: {
-    paddingHorizontal: 20,
-    paddingBottom: 120,
-    gap: 14,
-  },
+  filterTabText: { fontSize: 13, fontWeight: '600' as const },
+  listContent: { paddingHorizontal: 20, paddingBottom: 120, gap: 14 },
   card: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 22,
-    flexDirection: 'row',
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.03)',
+    borderRadius: 22, overflow: 'hidden',
+    shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 }, elevation: 3, borderWidth: 1,
   },
-  cardAccent: {
-    width: 5,
-  },
-  cardBody: {
-    flex: 1,
-    padding: 16,
-    gap: 10,
-  },
-  cardTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 12,
-  },
+  cardBody: { padding: 16, gap: 12 },
+  cardTop: { flexDirection: 'row', alignItems: 'flex-start', gap: 12 },
   modelIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
+    width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
   },
-  cardMeta: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 4,
-  },
-  modelLabel: {
-    fontSize: 11,
-    fontWeight: '700' as const,
-  },
-  timeText: {
-    fontSize: 11,
-    color: '#B0B5BE',
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: '700' as const,
-    color: '#111827',
-    lineHeight: 21,
-  },
-  promptPreview: {
-    fontSize: 13,
-    color: '#6B7280',
-    lineHeight: 19,
-  },
-  tagsRow: {
-    flexDirection: 'row',
-    gap: 6,
-  },
-  tag: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  tagText: {
-    fontSize: 11,
-    fontWeight: '600' as const,
-  },
+  cardTitle: { fontSize: 16, fontWeight: '700' as const, lineHeight: 21, marginBottom: 4 },
+  cardMeta: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  modelBadge: { paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  modelLabel: { fontSize: 11, fontWeight: '700' as const },
+  timeText: { fontSize: 11 },
+  promptPreview: { fontSize: 13, lineHeight: 19 },
+  tagsRow: { flexDirection: 'row', gap: 6 },
+  tag: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  tagText: { fontSize: 11, fontWeight: '600' as const },
   cardActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.04)',
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingTop: 12, borderTopWidth: 1,
   },
   actionBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 10,
-    backgroundColor: '#F9FAFB',
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10,
   },
-  actionText: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    color: '#6B7280',
-  },
-  deleteBtn: {
-    padding: 6,
-    borderRadius: 10,
-    backgroundColor: Colors.dangerDim,
-  },
-  emptyState: {
-    alignItems: 'center',
-    marginTop: 80,
-    gap: 10,
-  },
+  actionText: { fontSize: 12, fontWeight: '600' as const },
+  deleteBtn: { padding: 7, borderRadius: 10 },
+  emptyState: { alignItems: 'center', marginTop: 80, gap: 10 },
   emptyIconWrap: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: 4,
+    width: 64, height: 64, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 4,
   },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '700' as const,
-    color: '#4B5563',
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#9CA3AF',
-    textAlign: 'center',
-    paddingHorizontal: 40,
-  },
+  emptyTitle: { fontSize: 18, fontWeight: '700' as const },
+  emptySubtitle: { fontSize: 14, textAlign: 'center', paddingHorizontal: 40 },
 });

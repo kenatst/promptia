@@ -4,20 +4,27 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import Colors from "@/constants/colors";
+import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 
 SplashScreen.preventAutoHideAsync();
 
 const queryClient = new QueryClient();
 
+function ThemedStatusBar() {
+  const { colors } = useTheme();
+  return <StatusBar style={colors.statusBar} />;
+}
+
 function RootLayoutNav() {
+  const { colors } = useTheme();
+
   return (
     <Stack
       screenOptions={{
         headerBackTitle: "Back",
-        headerStyle: { backgroundColor: '#FAFAFA' },
-        headerTintColor: '#111827',
-        contentStyle: { backgroundColor: '#FAFAFA' },
+        headerStyle: { backgroundColor: colors.bg },
+        headerTintColor: colors.text,
+        contentStyle: { backgroundColor: colors.bg },
       }}
     >
       <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
@@ -26,8 +33,8 @@ function RootLayoutNav() {
         options={{
           presentation: "modal",
           headerTitle: "Prompt Detail",
-          headerStyle: { backgroundColor: '#FAFAFA' },
-          headerTintColor: '#111827',
+          headerStyle: { backgroundColor: colors.bg },
+          headerTintColor: colors.text,
           headerShadowVisible: false,
         }}
       />
@@ -42,10 +49,12 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <GestureHandlerRootView>
-        <StatusBar style="dark" />
-        <RootLayoutNav />
-      </GestureHandlerRootView>
+      <ThemeProvider>
+        <GestureHandlerRootView>
+          <ThemedStatusBar />
+          <RootLayoutNav />
+        </GestureHandlerRootView>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

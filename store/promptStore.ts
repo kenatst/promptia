@@ -14,14 +14,17 @@ interface PromptStore {
   toggleFavorite: (id: string) => void;
   searchQuery: string;
   setSearchQuery: (query: string) => void;
+  geminiApiKey: string;
+  setGeminiApiKey: (key: string) => void;
 }
 
 export const usePromptStore = create<PromptStore>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       savedPrompts: [],
       currentInputs: { ...DEFAULT_INPUTS },
       searchQuery: '',
+      geminiApiKey: '',
 
       setCurrentInputs: (inputs) =>
         set((state) => ({
@@ -60,12 +63,15 @@ export const usePromptStore = create<PromptStore>()(
         })),
 
       setSearchQuery: (query) => set({ searchQuery: query }),
+
+      setGeminiApiKey: (key) => set({ geminiApiKey: key }),
     }),
     {
       name: 'promptia-store',
       storage: createJSONStorage(() => AsyncStorage),
       partialize: (state) => ({
         savedPrompts: state.savedPrompts,
+        geminiApiKey: state.geminiApiKey,
       }),
     }
   )
