@@ -8,12 +8,13 @@ import * as Haptics from 'expo-haptics';
 import { Search, Heart, ArrowRight, Type, ImageIcon, Film, Star } from 'lucide-react-native';
 
 import { useTheme } from '@/contexts/ThemeContext';
-import { gallerySeed, CREATION_CATEGORIES } from '@/data/gallerySeed';
-import { usePromptStore } from '@/store/promptStore';
+import { gallerySeed } from '@/data/gallerySeed';
+import { usePromptStore } from '@/contexts/PromptContext';
 import { GalleryItem } from '@/types/prompt';
 import { getModelLabel } from '@/engine/promptEngine';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-export default function GalleryScreen() {
+function GalleryContent() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, t, isDark } = useTheme();
@@ -45,6 +46,7 @@ export default function GalleryScreen() {
   }, [activeFilter, searchQuery]);
 
   const handlePromptPress = useCallback((item: GalleryItem) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push(`/prompt/${item.id}` as any);
   }, [router]);
 
@@ -63,6 +65,7 @@ export default function GalleryScreen() {
           styles.card,
           { backgroundColor: cardBg, transform: [{ scale: pressed ? 0.97 : 1 }] },
         ]}
+        testID={`gallery-card-${item.id}`}
       >
         {hasThumb && (
           <View style={styles.cardImageWrap}>
@@ -125,6 +128,7 @@ export default function GalleryScreen() {
             style={[styles.searchInput, { color: colors.text }]}
             value={searchQuery}
             onChangeText={setSearchQuery}
+            testID="gallery-search-input"
           />
         </View>
       </View>
@@ -163,6 +167,14 @@ export default function GalleryScreen() {
         }
       />
     </View>
+  );
+}
+
+export default function GalleryScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Gallery Error">
+      <GalleryContent />
+    </ErrorBoundary>
   );
 }
 

@@ -1,10 +1,12 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, useRouter } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
+import { PromptProvider, usePromptStore } from "@/contexts/PromptContext";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -15,30 +17,52 @@ function ThemedStatusBar() {
   return <StatusBar style={colors.statusBar} />;
 }
 
+function OnboardingGate({ children }: { children: React.ReactNode }) {
+  const { hasSeenOnboarding, isLoading } = usePromptStore();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isLoading && !hasSeenOnboarding) {
+      router.replace('/onboarding' as any);
+    }
+  }, [isLoading, hasSeenOnboarding, router]);
+
+  return <>{children}</>;
+}
+
 function RootLayoutNav() {
   const { colors } = useTheme();
 
   return (
-    <Stack
-      screenOptions={{
-        headerBackTitle: "Back",
-        headerStyle: { backgroundColor: colors.bg },
-        headerTintColor: colors.text,
-        contentStyle: { backgroundColor: colors.bg },
-      }}
-    >
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-      <Stack.Screen
-        name="prompt/[id]"
-        options={{
-          presentation: "modal",
-          headerTitle: "Prompt Detail",
+    <OnboardingGate>
+      <Stack
+        screenOptions={{
+          headerBackTitle: "Back",
           headerStyle: { backgroundColor: colors.bg },
           headerTintColor: colors.text,
-          headerShadowVisible: false,
+          contentStyle: { backgroundColor: colors.bg },
         }}
-      />
-    </Stack>
+      >
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+        <Stack.Screen
+          name="prompt/[id]"
+          options={{
+            presentation: "modal",
+            headerTitle: "Prompt Detail",
+            headerStyle: { backgroundColor: colors.bg },
+            headerTintColor: colors.text,
+            headerShadowVisible: false,
+          }}
+        />
+        <Stack.Screen
+          name="onboarding"
+          options={{
+            headerShown: false,
+            animation: 'fade',
+          }}
+        />
+      </Stack>
+    </OnboardingGate>
   );
 }
 
@@ -50,10 +74,14 @@ export default function RootLayout() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
-        <GestureHandlerRootView>
-          <ThemedStatusBar />
-          <RootLayoutNav />
-        </GestureHandlerRootView>
+        <PromptProvider>
+          <ErrorBoundary fallbackTitle="Promptia encountered an error">
+            <GestureHandlerRootView>
+              <ThemedStatusBar />
+              <RootLayoutNav />
+            </GestureHandlerRootView>
+          </ErrorBoundary>
+        </PromptProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );

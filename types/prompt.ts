@@ -32,6 +32,13 @@ export interface PromptResult {
   };
 }
 
+export interface PromptFolder {
+  id: string;
+  name: string;
+  color: string;
+  createdAt: number;
+}
+
 export interface SavedPrompt {
   id: string;
   title: string;
@@ -42,6 +49,7 @@ export interface SavedPrompt {
   type: PromptType;
   tags: string[];
   isFavorite: boolean;
+  folderId?: string;
   createdAt: number;
   updatedAt: number;
 }

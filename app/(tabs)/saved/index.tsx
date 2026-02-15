@@ -1,5 +1,14 @@
 import React, { useMemo, useCallback, useState } from 'react';
-import { FlatList, Pressable, StyleSheet, Text, TextInput, View, Alert } from 'react-native';
+import {
+  Alert,
+  FlatList,
+  Modal,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
@@ -7,13 +16,15 @@ import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import {
   Search, Trash2, Copy, Heart, Shuffle, Check, Bookmark,
-  MessageSquare, Palette, Camera, Film,
+  MessageSquare, Palette, Camera, Film, FolderPlus, Folder,
+  X, ChevronRight, MoreHorizontal,
 } from 'lucide-react-native';
 
 import { useTheme } from '@/contexts/ThemeContext';
-import { usePromptStore } from '@/store/promptStore';
-import { SavedPrompt, DEFAULT_INPUTS, ModelType } from '@/types/prompt';
+import { usePromptStore } from '@/contexts/PromptContext';
+import { SavedPrompt, DEFAULT_INPUTS, ModelType, PromptFolder } from '@/types/prompt';
 import { getModelLabel } from '@/engine/promptEngine';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const MODEL_COLORS: Record<ModelType, string> = {
   chatgpt: '#F59E0B',
@@ -29,16 +40,28 @@ const MODEL_ICONS: Record<ModelType, (s: number, c: string) => React.ReactNode> 
   video: (s, c) => <Film size={s} color={c} />,
 };
 
+const FOLDER_COLORS = ['#F59E0B', '#8B5CF6', '#10B981', '#EC4899', '#3B82F6', '#06B6D4', '#EF4444', '#14B8A6'];
+
 type FilterTab = 'all' | 'favorites' | 'text' | 'image' | 'video';
 
-export default function SavedScreen() {
+function SavedContent() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, t, isDark } = useTheme();
-  const { savedPrompts, deletePrompt, toggleFavorite, setCurrentInputs } = usePromptStore();
+  const {
+    savedPrompts, deletePrompt, toggleFavorite, setCurrentInputs,
+    folders, createFolder, deleteFolder, moveToFolder,
+  } = usePromptStore();
+
   const [localSearch, setLocalSearch] = useState('');
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
+  const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
+  const [showFolderModal, setShowFolderModal] = useState(false);
+  const [newFolderName, setNewFolderName] = useState('');
+  const [selectedFolderColor, setSelectedFolderColor] = useState(FOLDER_COLORS[0]);
+  const [showMoveModal, setShowMoveModal] = useState(false);
+  const [movePromptId, setMovePromptId] = useState<string | null>(null);
 
   const FILTER_TABS: { key: FilterTab; label: string }[] = useMemo(() => [
     { key: 'all', label: t.library.all },
@@ -50,6 +73,11 @@ export default function SavedScreen() {
 
   const filteredPrompts = useMemo(() => {
     let items = savedPrompts;
+
+    if (selectedFolderId) {
+      items = items.filter(p => p.folderId === selectedFolderId);
+    }
+
     if (activeFilter === 'favorites') items = items.filter(p => p.isFavorite);
     else if (activeFilter === 'text') items = items.filter(p => p.type === 'text');
     else if (activeFilter === 'image') items = items.filter(p => p.type === 'image');
@@ -62,7 +90,7 @@ export default function SavedScreen() {
       );
     }
     return items;
-  }, [savedPrompts, localSearch, activeFilter]);
+  }, [savedPrompts, localSearch, activeFilter, selectedFolderId]);
 
   const handleCopy = useCallback(async (prompt: SavedPrompt) => {
     await Clipboard.setStringAsync(prompt.finalPrompt);
@@ -72,6 +100,7 @@ export default function SavedScreen() {
   }, []);
 
   const handleDelete = useCallback((prompt: SavedPrompt) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     Alert.alert(
       t.library.deleteTitle,
       t.library.deleteMsg,
@@ -96,8 +125,45 @@ export default function SavedScreen() {
   }, [setCurrentInputs, router]);
 
   const handleOpenDetail = useCallback((prompt: SavedPrompt) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     router.push(`/prompt/${prompt.id}` as any);
   }, [router]);
+
+  const handleCreateFolder = useCallback(() => {
+    if (newFolderName.trim().length === 0) return;
+    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    createFolder(newFolderName.trim(), selectedFolderColor);
+    setNewFolderName('');
+    setShowFolderModal(false);
+  }, [newFolderName, selectedFolderColor, createFolder]);
+
+  const handleDeleteFolder = useCallback((folder: PromptFolder) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+    Alert.alert(
+      'Delete Folder',
+      `Delete "${folder.name}"? Prompts inside will be moved to "All".`,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete',
+          style: 'destructive',
+          onPress: () => {
+            deleteFolder(folder.id);
+            if (selectedFolderId === folder.id) setSelectedFolderId(null);
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+          },
+        },
+      ]
+    );
+  }, [deleteFolder, selectedFolderId]);
+
+  const handleMoveToFolder = useCallback((folderId: string | undefined) => {
+    if (!movePromptId) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    moveToFolder(movePromptId, folderId);
+    setShowMoveModal(false);
+    setMovePromptId(null);
+  }, [movePromptId, moveToFolder]);
 
   const getTimeAgo = useCallback((timestamp: number) => {
     const diff = Date.now() - timestamp;
@@ -109,6 +175,66 @@ export default function SavedScreen() {
     const days = Math.floor(hours / 24);
     return `${days}d`;
   }, []);
+
+  const renderFolders = () => {
+    if (folders.length === 0 && savedPrompts.length === 0) return null;
+
+    return (
+      <View style={styles.foldersSection}>
+        <FlatList
+          data={[{ id: '__all', name: 'All', color: isDark ? '#F59E0B' : '#111827' } as PromptFolder, ...folders]}
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ paddingHorizontal: 20, gap: 8 }}
+          renderItem={({ item }) => {
+            const isAll = item.id === '__all';
+            const isActive = isAll ? !selectedFolderId : selectedFolderId === item.id;
+            const count = isAll
+              ? savedPrompts.length
+              : savedPrompts.filter(p => p.folderId === item.id).length;
+
+            return (
+              <Pressable
+                onPress={() => {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                  setSelectedFolderId(isAll ? null : item.id);
+                }}
+                onLongPress={() => {
+                  if (!isAll) handleDeleteFolder(item);
+                }}
+                style={[
+                  styles.folderChip,
+                  { backgroundColor: colors.chipBg, borderColor: 'transparent' },
+                  isActive && { backgroundColor: `${item.color}18`, borderColor: item.color },
+                ]}
+              >
+                <Folder size={14} color={isActive ? item.color : colors.textTertiary} />
+                <Text style={[
+                  styles.folderChipText,
+                  { color: colors.textSecondary },
+                  isActive && { color: item.color, fontWeight: '700' as const },
+                ]}>
+                  {item.name}
+                </Text>
+                <View style={[styles.folderCount, { backgroundColor: isActive ? `${item.color}20` : colors.bgTertiary }]}>
+                  <Text style={[styles.folderCountText, { color: isActive ? item.color : colors.textTertiary }]}>{count}</Text>
+                </View>
+              </Pressable>
+            );
+          }}
+          ListFooterComponent={
+            <Pressable
+              onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); setShowFolderModal(true); }}
+              style={[styles.addFolderBtn, { backgroundColor: colors.chipBg }]}
+            >
+              <FolderPlus size={16} color={colors.textTertiary} />
+            </Pressable>
+          }
+        />
+      </View>
+    );
+  };
 
   const renderItem = useCallback(({ item }: { item: SavedPrompt }) => {
     const modelColor = MODEL_COLORS[item.model] ?? '#F59E0B';
@@ -123,6 +249,7 @@ export default function SavedScreen() {
           { backgroundColor: colors.card, borderColor: colors.cardBorder },
           pressed && { transform: [{ scale: 0.98 }] },
         ]}
+        testID={`saved-card-${item.id}`}
       >
         <View style={styles.cardBody}>
           <View style={styles.cardTop}>
@@ -178,6 +305,12 @@ export default function SavedScreen() {
               <Shuffle size={14} color={colors.textSecondary} />
               <Text style={[styles.actionText, { color: colors.textSecondary }]}>{t.library.remix}</Text>
             </Pressable>
+            <Pressable
+              onPress={() => { setMovePromptId(item.id); setShowMoveModal(true); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+              style={[styles.actionBtn, { backgroundColor: colors.bgSecondary }]}
+            >
+              <Folder size={14} color={colors.textSecondary} />
+            </Pressable>
             <View style={{ flex: 1 }} />
             <Pressable onPress={() => handleDelete(item)} style={[styles.deleteBtn, { backgroundColor: 'rgba(239,68,68,0.08)' }]}>
               <Trash2 size={14} color="#EF4444" />
@@ -186,7 +319,7 @@ export default function SavedScreen() {
         </View>
       </Pressable>
     );
-  }, [copiedId, handleCopy, handleDelete, handleRemix, handleOpenDetail, toggleFavorite, getTimeAgo, colors, t]);
+  }, [copiedId, handleCopy, handleDelete, handleRemix, handleOpenDetail, toggleFavorite, getTimeAgo, colors, t, isDark]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
@@ -212,9 +345,12 @@ export default function SavedScreen() {
             style={[styles.searchInput, { color: colors.text }]}
             value={localSearch}
             onChangeText={setLocalSearch}
+            testID="library-search-input"
           />
         </View>
       </View>
+
+      {renderFolders()}
 
       <View style={styles.filterRow}>
         <FlatList
@@ -267,7 +403,88 @@ export default function SavedScreen() {
           </View>
         }
       />
+
+      <Modal visible={showFolderModal} transparent animationType="fade">
+        <Pressable style={[styles.modalOverlay, { backgroundColor: colors.overlay }]} onPress={() => setShowFolderModal(false)}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>New Folder</Text>
+              <Pressable onPress={() => setShowFolderModal(false)} hitSlop={8}>
+                <X size={20} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+            <TextInput
+              value={newFolderName}
+              onChangeText={setNewFolderName}
+              placeholder="Folder name..."
+              placeholderTextColor={colors.textTertiary}
+              style={[styles.folderInput, { color: colors.text, backgroundColor: colors.bgSecondary, borderColor: colors.cardBorder }]}
+              autoFocus
+            />
+            <View style={styles.colorPicker}>
+              {FOLDER_COLORS.map((color) => (
+                <Pressable
+                  key={color}
+                  onPress={() => { setSelectedFolderColor(color); Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light); }}
+                  style={[
+                    styles.colorDot,
+                    { backgroundColor: color },
+                    selectedFolderColor === color && styles.colorDotActive,
+                  ]}
+                >
+                  {selectedFolderColor === color && <Check size={14} color="#FFF" />}
+                </Pressable>
+              ))}
+            </View>
+            <Pressable
+              onPress={handleCreateFolder}
+              style={[styles.createFolderBtn, { backgroundColor: selectedFolderColor }]}
+            >
+              <Text style={styles.createFolderText}>Create Folder</Text>
+            </Pressable>
+          </View>
+        </Pressable>
+      </Modal>
+
+      <Modal visible={showMoveModal} transparent animationType="fade">
+        <Pressable style={[styles.modalOverlay, { backgroundColor: colors.overlay }]} onPress={() => setShowMoveModal(false)}>
+          <View style={[styles.modalContent, { backgroundColor: colors.card }]} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: colors.text }]}>Move to Folder</Text>
+              <Pressable onPress={() => setShowMoveModal(false)} hitSlop={8}>
+                <X size={20} color={colors.textSecondary} />
+              </Pressable>
+            </View>
+            <Pressable
+              onPress={() => handleMoveToFolder(undefined)}
+              style={[styles.moveFolderOption, { borderBottomColor: colors.separator }]}
+            >
+              <Folder size={18} color={colors.textSecondary} />
+              <Text style={[styles.moveFolderText, { color: colors.text }]}>No Folder</Text>
+            </Pressable>
+            {folders.map((folder) => (
+              <Pressable
+                key={folder.id}
+                onPress={() => handleMoveToFolder(folder.id)}
+                style={[styles.moveFolderOption, { borderBottomColor: colors.separator }]}
+              >
+                <Folder size={18} color={folder.color} />
+                <Text style={[styles.moveFolderText, { color: colors.text }]}>{folder.name}</Text>
+                <ChevronRight size={16} color={colors.textTertiary} />
+              </Pressable>
+            ))}
+          </View>
+        </Pressable>
+      </Modal>
     </View>
+  );
+}
+
+export default function SavedScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Library Error">
+      <SavedContent />
+    </ErrorBoundary>
   );
 }
 
@@ -288,6 +505,19 @@ const styles = StyleSheet.create({
     shadowRadius: 8, elevation: 2, borderWidth: 1,
   },
   searchInput: { flex: 1, fontSize: 15 },
+  foldersSection: { marginBottom: 12 },
+  folderChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    paddingHorizontal: 12, paddingVertical: 8, borderRadius: 12,
+    borderWidth: 1.5,
+  },
+  folderChipText: { fontSize: 13, fontWeight: '600' as const },
+  folderCount: { paddingHorizontal: 6, paddingVertical: 1, borderRadius: 6, marginLeft: 2 },
+  folderCountText: { fontSize: 10, fontWeight: '700' as const },
+  addFolderBtn: {
+    width: 40, height: 36, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+  },
   filterRow: { marginBottom: 16 },
   filterTab: {
     paddingHorizontal: 16, paddingVertical: 8, borderRadius: 12,
@@ -329,4 +559,35 @@ const styles = StyleSheet.create({
   },
   emptyTitle: { fontSize: 18, fontWeight: '700' as const },
   emptySubtitle: { fontSize: 14, textAlign: 'center', paddingHorizontal: 40 },
+  modalOverlay: {
+    flex: 1, justifyContent: 'center', alignItems: 'center', paddingHorizontal: 30,
+  },
+  modalContent: {
+    width: '100%', borderRadius: 24, padding: 24,
+    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20, elevation: 10,
+  },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
+  modalTitle: { fontSize: 20, fontWeight: '800' as const },
+  folderInput: {
+    borderRadius: 14, padding: 14, fontSize: 15, borderWidth: 1, marginBottom: 16,
+  },
+  colorPicker: {
+    flexDirection: 'row', gap: 10, marginBottom: 20, justifyContent: 'center',
+  },
+  colorDot: {
+    width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
+  },
+  colorDotActive: {
+    borderWidth: 3, borderColor: '#FFF',
+    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 4, elevation: 3,
+  },
+  createFolderBtn: {
+    height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+  },
+  createFolderText: { color: '#FFF', fontSize: 15, fontWeight: '700' as const },
+  moveFolderOption: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 14, borderBottomWidth: 1,
+  },
+  moveFolderText: { fontSize: 16, fontWeight: '500' as const, flex: 1 },
 });

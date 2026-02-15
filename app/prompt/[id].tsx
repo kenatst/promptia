@@ -13,10 +13,11 @@ import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import { Copy, User, Tag, Star, Shuffle, Heart, Check } from 'lucide-react-native';
 import { gallerySeed } from '@/data/gallerySeed';
-import { usePromptStore } from '@/store/promptStore';
+import { usePromptStore } from '@/contexts/PromptContext';
 import { getModelLabel } from '@/engine/promptEngine';
 import { GalleryItem, SavedPrompt, ModelType, DEFAULT_INPUTS } from '@/types/prompt';
 import { useTheme } from '@/contexts/ThemeContext';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const MODEL_COLORS: Record<ModelType, string> = {
   chatgpt: '#F59E0B',
@@ -71,7 +72,7 @@ function parseSegments(prompt: string): { label: string; content: string }[] {
   return segments;
 }
 
-export default function PromptDetailScreen() {
+function PromptDetailContent() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const { savedPrompts, setCurrentInputs } = usePromptStore();
   const router = useRouter();
@@ -244,6 +245,14 @@ export default function PromptDetailScreen() {
         <View style={styles.bottomPad} />
       </ScrollView>
     </View>
+  );
+}
+
+export default function PromptDetailScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Detail Error">
+      <PromptDetailContent />
+    </ErrorBoundary>
   );
 }
 

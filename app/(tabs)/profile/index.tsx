@@ -9,7 +9,6 @@ import {
   StyleSheet,
   Switch,
   Text,
-  TextInput,
   View,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -21,7 +20,6 @@ import {
   ExternalLink,
   FileText,
   HelpCircle,
-  Key,
   Mail,
   Moon,
   Globe,
@@ -31,12 +29,13 @@ import {
   Wand2,
   Info,
   Check,
-  X,
 } from 'lucide-react-native';
 
 import { useTheme } from '@/contexts/ThemeContext';
-import { usePromptStore } from '@/store/promptStore';
+import { usePromptStore } from '@/contexts/PromptContext';
 import { Language, LANGUAGE_LABELS } from '@/i18n/translations';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { isGeminiConfigured } from '@/services/gemini';
 
 const PRIVACY_POLICY_URL = 'https://example.com/privacy-policy';
 const TERMS_OF_USE_URL = 'https://example.com/terms-of-use';
@@ -57,7 +56,12 @@ interface SettingsRowProps {
 function SettingsRow({ icon, label, sublabel, onPress, trailing, danger, isLast, colors }: SettingsRowProps) {
   return (
     <Pressable
-      onPress={onPress}
+      onPress={() => {
+        if (onPress) {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+          onPress();
+        }
+      }}
       disabled={!onPress && !trailing}
       style={({ pressed }) => [
         styles.row,
@@ -77,16 +81,15 @@ function SettingsRow({ icon, label, sublabel, onPress, trailing, danger, isLast,
   );
 }
 
-export default function SettingsScreen() {
+function SettingsContent() {
   const insets = useSafeAreaInsets();
   const { colors, t, isDark, toggleTheme, language, setLanguage, LANGUAGE_LABELS: langLabels } = useTheme();
-  const { savedPrompts, geminiApiKey, setGeminiApiKey } = usePromptStore();
+  const { savedPrompts, clearAllData } = usePromptStore();
   const [showLanguageModal, setShowLanguageModal] = useState(false);
-  const [showApiKeyModal, setShowApiKeyModal] = useState(false);
-  const [tempApiKey, setTempApiKey] = useState(geminiApiKey);
+
+  const geminiStatus = isGeminiConfigured() ? 'Configured' : 'Not configured';
 
   const openURL = useCallback(async (url: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
       await WebBrowser.openBrowserAsync(url);
     } catch {
@@ -95,12 +98,10 @@ export default function SettingsScreen() {
   }, []);
 
   const handleContactSupport = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Promptia Support`);
   }, []);
 
   const handleRateApp = useCallback(() => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     if (Platform.OS === 'ios') {
       Linking.openURL('https://apps.apple.com/app/id0000000000?action=write-review');
     } else if (Platform.OS === 'android') {
@@ -120,21 +121,13 @@ export default function SettingsScreen() {
           text: t.settings.clearAll,
           style: 'destructive',
           onPress: () => {
-            savedPrompts.forEach((p) => {
-              usePromptStore.getState().deletePrompt(p.id);
-            });
+            clearAllData();
             Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
           },
         },
       ]
     );
-  }, [savedPrompts, t]);
-
-  const handleSaveApiKey = useCallback(() => {
-    setGeminiApiKey(tempApiKey);
-    setShowApiKeyModal(false);
-    Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-  }, [tempApiKey, setGeminiApiKey]);
+  }, [clearAllData, t]);
 
   const handleSelectLanguage = useCallback((lang: Language) => {
     setLanguage(lang);
@@ -196,10 +189,9 @@ export default function SettingsScreen() {
         <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>AI</Text>
         <View style={[styles.section, { backgroundColor: colors.card, borderColor: colors.cardBorder }]}>
           <SettingsRow
-            icon={<Key size={18} color="#F59E0B" />}
-            label="Gemini API Key"
-            sublabel={geminiApiKey ? 'Configured' : 'Not configured'}
-            onPress={() => { setTempApiKey(geminiApiKey); setShowApiKeyModal(true); }}
+            icon={<Wand2 size={18} color="#F59E0B" />}
+            label="Gemini API"
+            sublabel={geminiStatus}
             colors={colors}
             isLast
           />
@@ -298,47 +290,15 @@ export default function SettingsScreen() {
           </View>
         </Pressable>
       </Modal>
-
-      <Modal visible={showApiKeyModal} transparent animationType="fade">
-        <Pressable style={[styles.modalOverlay, { backgroundColor: colors.overlay }]} onPress={() => setShowApiKeyModal(false)}>
-          <View style={[styles.modalContent, { backgroundColor: colors.card }]} onStartShouldSetResponder={() => true}>
-            <View style={styles.modalHeader}>
-              <Text style={[styles.modalTitle, { color: colors.text }]}>Gemini API Key</Text>
-              <Pressable onPress={() => setShowApiKeyModal(false)}>
-                <X size={20} color={colors.textSecondary} />
-              </Pressable>
-            </View>
-            <Text style={[styles.modalDesc, { color: colors.textSecondary }]}>
-              Add your Google Gemini API key to enable AI-powered prompt generation. Get one at ai.google.dev
-            </Text>
-            <TextInput
-              value={tempApiKey}
-              onChangeText={setTempApiKey}
-              placeholder="AIza..."
-              placeholderTextColor={colors.textTertiary}
-              style={[styles.apiKeyInput, { color: colors.text, backgroundColor: colors.bgSecondary, borderColor: colors.cardBorder }]}
-              autoCapitalize="none"
-              autoCorrect={false}
-              secureTextEntry
-            />
-            <View style={styles.modalActions}>
-              <Pressable
-                onPress={() => setShowApiKeyModal(false)}
-                style={[styles.modalBtn, { backgroundColor: colors.bgSecondary }]}
-              >
-                <Text style={[styles.modalBtnText, { color: colors.text }]}>{t.settings.cancel}</Text>
-              </Pressable>
-              <Pressable
-                onPress={handleSaveApiKey}
-                style={[styles.modalBtn, { backgroundColor: '#F59E0B' }]}
-              >
-                <Text style={[styles.modalBtnText, { color: '#FFF' }]}>Save</Text>
-              </Pressable>
-            </View>
-          </View>
-        </Pressable>
-      </Modal>
     </View>
+  );
+}
+
+export default function SettingsScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Settings Error">
+      <SettingsContent />
+    </ErrorBoundary>
   );
 }
 
@@ -378,20 +338,10 @@ const styles = StyleSheet.create({
     width: '100%', borderRadius: 24, padding: 24,
     shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 20, elevation: 10,
   },
-  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  modalTitle: { fontSize: 20, fontWeight: '800' as const },
-  modalDesc: { fontSize: 14, lineHeight: 20, marginBottom: 16 },
+  modalTitle: { fontSize: 20, fontWeight: '800' as const, marginBottom: 12 },
   langOption: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingVertical: 14, paddingHorizontal: 16, borderRadius: 14, marginBottom: 4,
   },
   langText: { fontSize: 16, fontWeight: '500' as const },
-  apiKeyInput: {
-    borderRadius: 14, padding: 14, fontSize: 15, borderWidth: 1, marginBottom: 16,
-  },
-  modalActions: { flexDirection: 'row', gap: 10 },
-  modalBtn: {
-    flex: 1, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
-  },
-  modalBtnText: { fontSize: 15, fontWeight: '700' as const },
 });

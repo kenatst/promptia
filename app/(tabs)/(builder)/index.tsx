@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   Alert,
   Animated,
@@ -52,16 +52,26 @@ import {
 import { useTheme } from '@/contexts/ThemeContext';
 import {
   CREATION_CATEGORIES,
-  OBJECTIVE_CHIPS,
-  STYLE_CHIPS,
-  TONE_OPTIONS,
-  OUTPUT_FORMATS,
   CreationCategory,
 } from '@/data/gallerySeed';
-import { usePromptStore } from '@/store/promptStore';
+import { usePromptStore } from '@/contexts/PromptContext';
 import { assemblePrompt } from '@/engine/promptEngine';
 import { PromptInputs, DEFAULT_INPUTS, PromptResult } from '@/types/prompt';
-import { generateWithGemini, isGeminiConfigured, setGeminiApiKey } from '@/services/gemini';
+import { generateWithGemini, isGeminiConfigured } from '@/services/gemini';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
+
+const TONE_OPTIONS = [
+  { label: 'Professional', value: 'professional' },
+  { label: 'Casual', value: 'casual' },
+  { label: 'Creative', value: 'creative' },
+  { label: 'Technical', value: 'technical' },
+  { label: 'Persuasive', value: 'persuasive' },
+  { label: 'Academic', value: 'academic' },
+];
+
+const OUTPUT_FORMATS = [
+  'Text', 'Markdown', 'JSON', 'HTML', 'CSV', 'Code', 'List', 'Table',
+];
 
 const CATEGORY_ICONS: Record<string, (color: string) => React.ReactNode> = {
   chat: (c) => <MessageSquare size={20} color={c} />,
@@ -84,11 +94,11 @@ const CATEGORY_ICONS: Record<string, (color: string) => React.ReactNode> = {
 
 type BuilderMode = 'simple' | 'advanced';
 
-export default function BuilderScreen() {
+function BuilderContent() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, t, isDark } = useTheme();
-  const { currentInputs, setCurrentInputs, resetInputs, savePrompt, geminiApiKey } = usePromptStore();
+  const { currentInputs, setCurrentInputs, resetInputs, savePrompt } = usePromptStore();
 
   const [mode, setMode] = useState<BuilderMode>('simple');
   const [selectedCategoryId, setSelectedCategoryId] = useState('chat');
@@ -98,12 +108,6 @@ export default function BuilderScreen() {
   const [isGenerating, setIsGenerating] = useState(false);
 
   const WIZARD_STEPS = [t.create.category, t.create.details, t.create.options, t.create.result];
-
-  useEffect(() => {
-    if (geminiApiKey) {
-      setGeminiApiKey(geminiApiKey);
-    }
-  }, [geminiApiKey]);
 
   const selectedCategory = useMemo(() =>
     CREATION_CATEGORIES.find(c => c.id === selectedCategoryId) || CREATION_CATEGORIES[0],
@@ -132,11 +136,13 @@ export default function BuilderScreen() {
     if (isGeminiConfigured()) {
       setIsGenerating(true);
       try {
+        console.log('[Builder] Generating with Gemini API...');
         const result = await generateWithGemini(currentInputs);
         setGeneratedResult(result);
         if (mode === 'advanced') setWizardStep(3);
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       } catch (e: any) {
-        console.log('[Generate] Gemini error, falling back to local:', e.message);
+        console.log('[Builder] Gemini error, falling back to local engine:', e.message);
         const result = assemblePrompt(currentInputs);
         setGeneratedResult(result);
         if (mode === 'advanced') setWizardStep(3);
@@ -144,6 +150,7 @@ export default function BuilderScreen() {
         setIsGenerating(false);
       }
     } else {
+      console.log('[Builder] No Gemini key, using local engine');
       const result = assemblePrompt(currentInputs);
       setGeneratedResult(result);
       if (mode === 'advanced') setWizardStep(3);
@@ -199,16 +206,6 @@ export default function BuilderScreen() {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
   }, [wizardStep]);
-
-  const toggleChip = useCallback((chip: string) => {
-    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    const current = currentInputs.objectiveChips;
-    if (current.includes(chip)) {
-      setCurrentInputs({ objectiveChips: current.filter(c => c !== chip) });
-    } else {
-      setCurrentInputs({ objectiveChips: [...current, chip] });
-    }
-  }, [currentInputs.objectiveChips, setCurrentInputs]);
 
   const renderCategoryCard = useCallback(({ item }: { item: CreationCategory }) => {
     const isSelected = selectedCategoryId === item.id;
@@ -314,12 +311,14 @@ export default function BuilderScreen() {
           multiline
           style={[styles.mainInput, { color: colors.text }]}
           textAlignVertical="top"
+          testID="builder-objective-input"
         />
 
         <Pressable
           onPress={handleGenerate}
           disabled={isGenerating}
           style={({ pressed }) => [styles.generateBtn, pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] }]}
+          testID="builder-generate-btn"
         >
           <LinearGradient
             colors={[accentColor, isDark ? '#1A1A24' : '#111827']}
@@ -681,6 +680,14 @@ export default function BuilderScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
+  );
+}
+
+export default function BuilderScreen() {
+  return (
+    <ErrorBoundary fallbackTitle="Builder Error">
+      <BuilderContent />
+    </ErrorBoundary>
   );
 }
 
