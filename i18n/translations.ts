@@ -9,7 +9,7 @@ export const LANGUAGE_LABELS: Record<Language, string> = {
 };
 
 type TranslationKeys = {
-  tabs: { discover: string; create: string; library: string; settings: string };
+  tabs: { discover: string; create: string; library: string; settings: string; reverse: string };
   create: {
     title: string; quick: string; advanced: string; describeIdea: string;
     generatePrompt: string; generatedPrompt: string; describeWhat: string;
@@ -43,6 +43,12 @@ type TranslationKeys = {
     language: string; languageSub: string; footer: string; version: string;
     selectLanguage: string;
   };
+  reverse: {
+    title: string; subtitle: string; pickImage: string; pickDesc: string;
+    takePhoto: string; changeImage: string; analyze: string; analyzing: string;
+    analyzingSub: string; resultTitle: string; copy: string; save: string;
+    retry: string; tip: string;
+  };
   detail: {
     promptSegments: string; tags: string; copyFull: string; remixBuilder: string;
     editorPick: string; notFound: string;
@@ -52,7 +58,7 @@ type TranslationKeys = {
 };
 
 const en: TranslationKeys = {
-  tabs: { discover: 'Discover', create: 'Create', library: 'Library', settings: 'Settings' },
+  tabs: { discover: 'Discover', create: 'Create', library: 'Library', settings: 'Settings', reverse: 'Reverse' },
   create: {
     title: 'Create', quick: 'Quick', advanced: 'Advanced',
     describeIdea: 'Describe your idea in detail...',
@@ -72,6 +78,14 @@ const en: TranslationKeys = {
     copied: 'Copied!', saved: 'Saved', savedAlert: 'Prompt saved to your library.',
     emptyPrompt: 'Empty Prompt', emptyPromptMsg: 'Please describe what you want to create.',
     pro: 'Pro', category: 'Category', details: 'Details', options: 'Options', result: 'Result',
+  },
+  reverse: {
+    title: 'Reverse Prompt', subtitle: 'Upload an image and AI will reverse-engineer the perfect prompt to recreate it',
+    pickImage: 'Choose from Library', pickDesc: 'Select any image from your photo library',
+    takePhoto: 'Take a Photo', changeImage: 'Change', analyze: 'Analyze Image',
+    analyzing: 'Analyzing your image...', analyzingSub: 'AI is studying every detail',
+    resultTitle: 'Reconstructed Prompt', copy: 'Copy', save: 'Save', retry: 'Retry',
+    tip: 'Tip: Paste this prompt into Midjourney, DALL-E, or Stable Diffusion to recreate similar results',
   },
   discover: {
     title: 'Discover', subtitle: 'Explore Prompts',
@@ -111,7 +125,7 @@ const en: TranslationKeys = {
 };
 
 const fr: TranslationKeys = {
-  tabs: { discover: 'Explorer', create: 'Créer', library: 'Bibliothèque', settings: 'Réglages' },
+  tabs: { discover: 'Explorer', create: 'Créer', library: 'Bibliothèque', settings: 'Réglages', reverse: 'Reverse' },
   create: {
     title: 'Créer', quick: 'Rapide', advanced: 'Avancé',
     describeIdea: 'Décrivez votre idée en détail...',
@@ -132,6 +146,14 @@ const fr: TranslationKeys = {
     copied: 'Copié !', saved: 'Sauvegardé', savedAlert: 'Prompt sauvegardé dans votre bibliothèque.',
     emptyPrompt: 'Prompt vide', emptyPromptMsg: 'Veuillez décrire ce que vous voulez créer.',
     pro: 'Pro', category: 'Catégorie', details: 'Détails', options: 'Options', result: 'Résultat',
+  },
+  reverse: {
+    title: 'Reverse Prompt', subtitle: "Importez une image et l'IA retrouvera le prompt parfait pour la recréer",
+    pickImage: 'Choisir depuis la galerie', pickDesc: 'Sélectionnez une image de votre bibliothèque',
+    takePhoto: 'Prendre une photo', changeImage: 'Changer', analyze: 'Analyser l\'image',
+    analyzing: 'Analyse en cours...', analyzingSub: "L'IA étudie chaque détail",
+    resultTitle: 'Prompt reconstruit', copy: 'Copier', save: 'Sauvegarder', retry: 'Réessayer',
+    tip: 'Astuce : Collez ce prompt dans Midjourney, DALL-E ou Stable Diffusion pour recréer des résultats similaires',
   },
   discover: {
     title: 'Explorer', subtitle: 'Explorer les Prompts',
@@ -172,7 +194,7 @@ const fr: TranslationKeys = {
 };
 
 const it: TranslationKeys = {
-  tabs: { discover: 'Scopri', create: 'Crea', library: 'Libreria', settings: 'Impostazioni' },
+  tabs: { discover: 'Scopri', create: 'Crea', library: 'Libreria', settings: 'Impostazioni', reverse: 'Reverse' },
   create: {
     title: 'Crea', quick: 'Rapido', advanced: 'Avanzato',
     describeIdea: 'Descrivi la tua idea in dettaglio...',
@@ -192,6 +214,14 @@ const it: TranslationKeys = {
     copied: 'Copiato!', saved: 'Salvato', savedAlert: 'Prompt salvato nella tua libreria.',
     emptyPrompt: 'Prompt vuoto', emptyPromptMsg: 'Descrivi cosa vuoi creare.',
     pro: 'Pro', category: 'Categoria', details: 'Dettagli', options: 'Opzioni', result: 'Risultato',
+  },
+  reverse: {
+    title: 'Reverse Prompt', subtitle: 'Carica un\'immagine e l\'IA ricostruirà il prompt perfetto per ricrearla',
+    pickImage: 'Scegli dalla libreria', pickDesc: 'Seleziona un\'immagine dalla tua libreria foto',
+    takePhoto: 'Scatta una foto', changeImage: 'Cambia', analyze: 'Analizza immagine',
+    analyzing: 'Analisi in corso...', analyzingSub: "L'IA sta studiando ogni dettaglio",
+    resultTitle: 'Prompt ricostruito', copy: 'Copia', save: 'Salva', retry: 'Riprova',
+    tip: 'Suggerimento: Incolla questo prompt in Midjourney, DALL-E o Stable Diffusion per ricreare risultati simili',
   },
   discover: {
     title: 'Scopri', subtitle: 'Esplora i Prompt',
@@ -232,7 +262,7 @@ const it: TranslationKeys = {
 };
 
 const de: TranslationKeys = {
-  tabs: { discover: 'Entdecken', create: 'Erstellen', library: 'Bibliothek', settings: 'Einstellungen' },
+  tabs: { discover: 'Entdecken', create: 'Erstellen', library: 'Bibliothek', settings: 'Einstellungen', reverse: 'Reverse' },
   create: {
     title: 'Erstellen', quick: 'Schnell', advanced: 'Erweitert',
     describeIdea: 'Beschreibe deine Idee im Detail...',
@@ -252,6 +282,14 @@ const de: TranslationKeys = {
     copied: 'Kopiert!', saved: 'Gespeichert', savedAlert: 'Prompt in Bibliothek gespeichert.',
     emptyPrompt: 'Leerer Prompt', emptyPromptMsg: 'Beschreibe bitte, was du erstellen möchtest.',
     pro: 'Pro', category: 'Kategorie', details: 'Details', options: 'Optionen', result: 'Ergebnis',
+  },
+  reverse: {
+    title: 'Reverse Prompt', subtitle: 'Lade ein Bild hoch und die KI rekonstruiert den perfekten Prompt',
+    pickImage: 'Aus Bibliothek wählen', pickDesc: 'Wähle ein Bild aus deiner Fotobibliothek',
+    takePhoto: 'Foto aufnehmen', changeImage: 'Ändern', analyze: 'Bild analysieren',
+    analyzing: 'Bild wird analysiert...', analyzingSub: 'KI untersucht jedes Detail',
+    resultTitle: 'Rekonstruierter Prompt', copy: 'Kopieren', save: 'Speichern', retry: 'Wiederholen',
+    tip: 'Tipp: Füge diesen Prompt in Midjourney, DALL-E oder Stable Diffusion ein, um ähnliche Ergebnisse zu erzielen',
   },
   discover: {
     title: 'Entdecken', subtitle: 'Prompts erkunden',
@@ -292,7 +330,7 @@ const de: TranslationKeys = {
 };
 
 const es: TranslationKeys = {
-  tabs: { discover: 'Descubrir', create: 'Crear', library: 'Biblioteca', settings: 'Ajustes' },
+  tabs: { discover: 'Descubrir', create: 'Crear', library: 'Biblioteca', settings: 'Ajustes', reverse: 'Reverse' },
   create: {
     title: 'Crear', quick: 'Rápido', advanced: 'Avanzado',
     describeIdea: 'Describe tu idea en detalle...',
@@ -312,6 +350,14 @@ const es: TranslationKeys = {
     copied: '¡Copiado!', saved: 'Guardado', savedAlert: 'Prompt guardado en tu biblioteca.',
     emptyPrompt: 'Prompt vacío', emptyPromptMsg: 'Describe lo que quieres crear.',
     pro: 'Pro', category: 'Categoría', details: 'Detalles', options: 'Opciones', result: 'Resultado',
+  },
+  reverse: {
+    title: 'Reverse Prompt', subtitle: 'Sube una imagen y la IA reconstruirá el prompt perfecto para recrearla',
+    pickImage: 'Elegir de la galería', pickDesc: 'Selecciona una imagen de tu biblioteca de fotos',
+    takePhoto: 'Tomar una foto', changeImage: 'Cambiar', analyze: 'Analizar imagen',
+    analyzing: 'Analizando tu imagen...', analyzingSub: 'La IA estudia cada detalle',
+    resultTitle: 'Prompt reconstruido', copy: 'Copiar', save: 'Guardar', retry: 'Reintentar',
+    tip: 'Consejo: Pega este prompt en Midjourney, DALL-E o Stable Diffusion para recrear resultados similares',
   },
   discover: {
     title: 'Descubrir', subtitle: 'Explorar Prompts',

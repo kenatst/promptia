@@ -117,6 +117,77 @@ function buildUserMessage(inputs: PromptInputs): string {
   return parts.join('\n');
 }
 
+export async function reversePromptFromImage(base64Image: string, mimeType: string): Promise<string> {
+  const apiKey = getApiKey();
+  if (!apiKey) {
+    throw new Error('Gemini API key not configured. Set EXPO_PUBLIC_GEMINI_API_KEY in environment variables.');
+  }
+
+  console.log('[Gemini] Reverse prompt request, mime:', mimeType);
+
+  const systemPrompt = `You are the world's best reverse prompt engineer. Given an image, you analyze every visual detail and produce the exact prompt that would recreate it using AI image generation tools (Midjourney, DALL-E, Stable Diffusion, Flux).
+
+RULES:
+- Output ONLY the reconstructed prompt, nothing else
+- Be extremely detailed: describe subject, composition, lighting, colors, mood, style, camera angle, textures
+- Include technical parameters: aspect ratio, quality flags, style references
+- Use comma-separated descriptors in Midjourney style
+- Include artistic references when identifiable (photographer style, art movement, etc.)
+- Describe the atmosphere and emotional tone
+- Note any post-processing effects (film grain, bokeh, color grading)
+- If text is visible in the image, include it in quotes
+- End with suggested parameters (--ar, --v, --q, --s) for Midjourney`;
+
+  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      system_instruction: {
+        parts: [{ text: systemPrompt }],
+      },
+      contents: [{
+        parts: [
+          {
+            inline_data: {
+              mime_type: mimeType,
+              data: base64Image,
+            },
+          },
+          { text: 'Analyze this image and generate the exact AI prompt that would recreate it. Output ONLY the prompt.' },
+        ],
+      }],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 2048,
+        topP: 0.9,
+        topK: 40,
+      },
+    }),
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.text();
+    console.log('[Gemini] Reverse prompt error:', response.status, errorBody);
+    if (response.status === 401 || response.status === 403) {
+      throw new Error('Invalid Gemini API key. Please check your configuration.');
+    }
+    if (response.status === 429) {
+      throw new Error('Rate limit exceeded. Please wait a moment and try again.');
+    }
+    throw new Error(`Gemini API error (${response.status}). Please try again.`);
+  }
+
+  const data = await response.json();
+  const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+
+  if (!generatedText) {
+    throw new Error('No response from Gemini. Please try again.');
+  }
+
+  console.log('[Gemini] Reverse prompt received, length:', generatedText.length);
+  return generatedText.trim();
+}
+
 export async function generateWithGemini(inputs: PromptInputs): Promise<PromptResult> {
   const apiKey = getApiKey();
   if (!apiKey) {

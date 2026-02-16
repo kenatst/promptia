@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { Tabs } from 'expo-router';
-import { Bookmark, Compass, Plus, Settings } from 'lucide-react-native';
+import { Bookmark, ScanSearch, Plus, Settings } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useTheme } from '@/contexts/ThemeContext';
 
@@ -11,7 +11,7 @@ function FloatingTabBar({ state, descriptors, navigation }: any) {
   const bottomPos = insets.bottom + 8;
 
   const TAB_CONFIG: Record<string, { Icon: any; label: string }> = {
-    'gallery': { Icon: Compass, label: t.tabs.discover },
+    'reverse': { Icon: ScanSearch, label: t.tabs.reverse || 'Reverse' },
     '(builder)': { Icon: null, label: t.tabs.create },
     'saved': { Icon: Bookmark, label: t.tabs.library },
     'profile': { Icon: Settings, label: t.tabs.settings },
@@ -23,6 +23,8 @@ function FloatingTabBar({ state, descriptors, navigation }: any) {
         {state.routes.map((route: any, index: number) => {
           const isFocused = state.index === index;
           const config = TAB_CONFIG[route.name];
+
+          if (!config) return null;
 
           const onPress = () => {
             const event = navigation.emit({
@@ -78,10 +80,11 @@ export default function TabsLayout() {
         tabBarStyle: { display: 'none' },
       }}
     >
-      <Tabs.Screen name="gallery" options={{ title: 'Discover' }} />
+      <Tabs.Screen name="reverse" options={{ title: 'Reverse' }} />
       <Tabs.Screen name="(builder)" options={{ title: 'Create' }} />
       <Tabs.Screen name="saved" options={{ title: 'Library' }} />
       <Tabs.Screen name="profile" options={{ title: 'Settings' }} />
+      <Tabs.Screen name="gallery" options={{ href: null }} />
     </Tabs>
   );
 }
