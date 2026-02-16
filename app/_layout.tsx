@@ -6,6 +6,7 @@ import React, { useEffect } from "react";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import { PromptProvider, usePromptStore } from "@/contexts/PromptContext";
+import { PurchasesProvider } from "@/contexts/PurchasesContext";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 SplashScreen.preventAutoHideAsync();
@@ -61,6 +62,14 @@ function RootLayoutNav() {
             animation: 'fade',
           }}
         />
+        <Stack.Screen
+          name="paywall"
+          options={{
+            presentation: 'modal',
+            headerShown: false,
+            animation: 'slide_from_bottom',
+          }}
+        />
       </Stack>
     </OnboardingGate>
   );
@@ -75,12 +84,14 @@ export default function RootLayout() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider>
         <PromptProvider>
-          <ErrorBoundary fallbackTitle="Promptia encountered an error">
-            <GestureHandlerRootView>
-              <ThemedStatusBar />
-              <RootLayoutNav />
-            </GestureHandlerRootView>
-          </ErrorBoundary>
+          <PurchasesProvider>
+            <ErrorBoundary fallbackTitle="Promptia encountered an error">
+              <GestureHandlerRootView>
+                <ThemedStatusBar />
+                <RootLayoutNav />
+              </GestureHandlerRootView>
+            </ErrorBoundary>
+          </PurchasesProvider>
         </PromptProvider>
       </ThemeProvider>
     </QueryClientProvider>

@@ -30,8 +30,10 @@ import {
   Zap,
 } from 'lucide-react-native';
 
+import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { usePromptStore } from '@/contexts/PromptContext';
+import { usePurchases } from '@/contexts/PurchasesContext';
 import { Language, LANGUAGE_LABELS } from '@/i18n/translations';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
@@ -82,8 +84,10 @@ function SettingsRow({ icon, label, sublabel, onPress, trailing, danger, isLast,
 
 function SettingsContent() {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
   const { colors, t, isDark, toggleTheme, language, setLanguage, LANGUAGE_LABELS: langLabels } = useTheme();
   const { savedPrompts, clearAllData } = usePromptStore();
+  const { isPro, restorePurchases, isRestoring } = usePurchases();
   const [showLanguageModal, setShowLanguageModal] = useState(false);
 
   const openURL = useCallback(async (url: string) => {
@@ -146,6 +150,40 @@ function SettingsContent() {
             <Zap size={14} color="#E8795A" />
           </View>
         </View>
+
+        {!isPro && (
+          <Pressable
+            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push('/paywall' as any); }}
+            style={({ pressed }) => [
+              styles.upgradeCard,
+              { backgroundColor: isDark ? '#2A1810' : '#FFF0ED' },
+              pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
+            ]}
+          >
+            <View style={styles.upgradeContent}>
+              <View style={[styles.upgradeCrown, { backgroundColor: '#E8795A' }]}>
+                <Zap size={18} color="#FFF" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.upgradeTitle, { color: colors.text }]}>Upgrade to Pro</Text>
+                <Text style={[styles.upgradeSub, { color: colors.textTertiary }]}>Unlimited prompts & all features</Text>
+              </View>
+              <ChevronRight size={18} color="#E8795A" />
+            </View>
+          </Pressable>
+        )}
+
+        {isPro && (
+          <View style={[styles.proActiveCard, { backgroundColor: isDark ? '#1A2A24' : '#F0FAF6' }]}>
+            <View style={[styles.upgradeCrown, { backgroundColor: '#34A77B' }]}>
+              <Check size={18} color="#FFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.upgradeTitle, { color: colors.text }]}>Promptia Pro Active</Text>
+              <Text style={[styles.upgradeSub, { color: colors.textTertiary }]}>All features unlocked</Text>
+            </View>
+          </View>
+        )}
 
         <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>{t.settings.appearance}</Text>
         <View style={[styles.section, { backgroundColor: colors.card }]}>
@@ -248,6 +286,23 @@ function SettingsContent() {
           )}
         </View>
 
+        {!isPro && (
+          <>
+            <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>Subscription</Text>
+            <View style={[styles.section, { backgroundColor: colors.card }]}>
+              <SettingsRow
+                icon={<Zap size={20} color="#E8795A" />}
+                iconBg={isDark ? '#2A1810' : '#FFF0ED'}
+                label="Restore Purchases"
+                sublabel={isRestoring ? 'Restoring...' : 'Recover your existing subscription'}
+                onPress={restorePurchases}
+                colors={colors}
+                isLast
+              />
+            </View>
+          </>
+        )}
+
         <Text style={[styles.footerText, { color: colors.textTertiary }]}>
           {t.settings.footer} {APP_VERSION}
         </Text>
@@ -336,4 +391,18 @@ const styles = StyleSheet.create({
     paddingVertical: 16, paddingHorizontal: 20, borderRadius: 16, marginBottom: 6,
   },
   langText: { fontSize: 16, fontWeight: '600' as const },
+  upgradeCard: {
+    borderRadius: 24, padding: 20, marginBottom: 28,
+  },
+  proActiveCard: {
+    borderRadius: 24, padding: 20, marginBottom: 28, flexDirection: 'row', alignItems: 'center', gap: 16,
+  },
+  upgradeContent: {
+    flexDirection: 'row', alignItems: 'center', gap: 16,
+  },
+  upgradeCrown: {
+    width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center',
+  },
+  upgradeTitle: { fontSize: 17, fontWeight: '700' as const, marginBottom: 2 },
+  upgradeSub: { fontSize: 13 },
 });
