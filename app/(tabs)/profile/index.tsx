@@ -34,7 +34,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { usePromptStore } from '@/contexts/PromptContext';
 import { Language, LANGUAGE_LABELS } from '@/i18n/translations';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
-import { isGeminiConfigured } from '@/services/gemini';
 
 const PRIVACY_POLICY_URL = 'https://example.com/privacy-policy';
 const TERMS_OF_USE_URL = 'https://example.com/terms-of-use';
@@ -86,8 +85,6 @@ function SettingsContent() {
   const { colors, t, isDark, toggleTheme, language, setLanguage, LANGUAGE_LABELS: langLabels } = useTheme();
   const { savedPrompts, clearAllData } = usePromptStore();
   const [showLanguageModal, setShowLanguageModal] = useState(false);
-
-  const geminiStatus = isGeminiConfigured() ? 'Active' : 'Not configured';
 
   const openURL = useCallback(async (url: string) => {
     try {
@@ -173,18 +170,6 @@ function SettingsContent() {
             label={t.settings.language}
             sublabel={langLabels[language]}
             onPress={() => setShowLanguageModal(true)}
-            colors={colors}
-            isLast
-          />
-        </View>
-
-        <Text style={[styles.sectionTitle, { color: colors.textTertiary }]}>Gemini API</Text>
-        <View style={[styles.section, { backgroundColor: colors.card }]}>
-          <SettingsRow
-            icon={<Zap size={20} color="#E8795A" />}
-            iconBg={isDark ? '#2A1D1B' : '#FFF0ED'}
-            label="API Key"
-            sublabel={geminiStatus}
             colors={colors}
             isLast
           />
