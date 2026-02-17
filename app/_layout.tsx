@@ -11,6 +11,7 @@ import { PromptProvider, usePromptStore } from "@/contexts/PromptContext";
 import { PurchasesProvider } from "@/contexts/PurchasesContext";
 import { ToastProvider } from "@/components/Toast";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import { OfflineBanner } from "@/components/OfflineBanner";
 
 SplashScreen.preventAutoHideAsync();
 
@@ -106,6 +107,7 @@ export default function RootLayout() {
                   <View style={{ flex: 1 }} onLayout={onLayoutRootView}>
                     <ThemedStatusBar />
                     <RootLayoutNav />
+                    <OfflineBanner />
                   </View>
                 </ToastProvider>
               </GestureHandlerRootView>

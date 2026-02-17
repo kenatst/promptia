@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback, useMemo } from 'react';
 import { Platform, Alert } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import Purchases, {
   PurchasesOffering,
   PurchasesPackage,
@@ -22,7 +23,6 @@ function getRCToken(): string {
 const rcKey = getRCToken();
 if (rcKey) {
   Purchases.configure({ apiKey: rcKey });
-  console.log('[Purchases] Configured with key:', rcKey.substring(0, 8) + '...');
 }
 
 const PRO_ENTITLEMENT = 'pro';
@@ -34,11 +34,8 @@ export const [PurchasesProvider, usePurchases] = createContextHook(() => {
     queryKey: ['customerInfo'],
     queryFn: async () => {
       try {
-        const info = await Purchases.getCustomerInfo();
-        console.log('[Purchases] Customer info fetched:', JSON.stringify(info.entitlements.active));
-        return info;
-      } catch (e) {
-        console.log('[Purchases] Error fetching customer info:', e);
+        return await Purchases.getCustomerInfo();
+      } catch {
         return null;
       }
     },
@@ -50,11 +47,8 @@ export const [PurchasesProvider, usePurchases] = createContextHook(() => {
     queryKey: ['offerings'],
     queryFn: async () => {
       try {
-        const offerings = await Purchases.getOfferings();
-        console.log('[Purchases] Offerings fetched:', offerings.current?.identifier);
-        return offerings;
-      } catch (e) {
-        console.log('[Purchases] Error fetching offerings:', e);
+        return await Purchases.getOfferings();
+      } catch {
         return null;
       }
     },
@@ -64,17 +58,16 @@ export const [PurchasesProvider, usePurchases] = createContextHook(() => {
 
   const purchaseMutation = useMutation({
     mutationFn: async (pkg: PurchasesPackage) => {
-      console.log('[Purchases] Purchasing package:', pkg.identifier);
       const result = await Purchases.purchasePackage(pkg);
       return result;
     },
     onSuccess: () => {
-      console.log('[Purchases] Purchase successful');
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
       queryClient.invalidateQueries({ queryKey: ['customerInfo'] });
     },
     onError: (error: any) => {
-      console.log('[Purchases] Purchase error:', error);
       if (!error.userCancelled) {
+        Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
         Alert.alert('Purchase Error', error.message || 'Something went wrong. Please try again.');
       }
     },
@@ -82,13 +75,15 @@ export const [PurchasesProvider, usePurchases] = createContextHook(() => {
 
   const restoreMutation = useMutation({
     mutationFn: async () => {
-      console.log('[Purchases] Restoring purchases...');
       const info = await Purchases.restorePurchases();
       return info;
     },
     onSuccess: (info) => {
       queryClient.invalidateQueries({ queryKey: ['customerInfo'] });
       const hasPro = info.entitlements.active[PRO_ENTITLEMENT] !== undefined;
+      Haptics.notificationAsync(
+        hasPro ? Haptics.NotificationFeedbackType.Success : Haptics.NotificationFeedbackType.Warning
+      );
       if (hasPro) {
         Alert.alert('Restored', 'Your Pro subscription has been restored.');
       } else {
@@ -96,7 +91,7 @@ export const [PurchasesProvider, usePurchases] = createContextHook(() => {
       }
     },
     onError: (error: any) => {
-      console.log('[Purchases] Restore error:', error);
+      Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
       Alert.alert('Restore Error', error.message || 'Failed to restore purchases.');
     },
   });

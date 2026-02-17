@@ -115,14 +115,15 @@ function PromptDetailContent() {
     if (!prompt) return;
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
+      const deepLink = `promptia://prompt/${id}`;
       await Share.share({
-        message: prompt,
+        message: `${prompt}\n\n— via Promptia\n${deepLink}`,
         title: item?.data.title || 'Prompt from Promptia',
       });
     } catch {
       // User cancelled
     }
-  }, [prompt, item]);
+  }, [prompt, item, id]);
 
   const handleRemix = useCallback(() => {
     if (!item) return;

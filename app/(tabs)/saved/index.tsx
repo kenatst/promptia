@@ -1,4 +1,4 @@
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import {
   Alert,
   FlatList,
@@ -26,6 +26,7 @@ import { SavedPrompt, DEFAULT_INPUTS, ModelType, PromptFolder } from '@/types/pr
 import { getModelLabel } from '@/engine/promptEngine';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useToast } from '@/components/Toast';
+import { SkeletonList } from '@/components/SkeletonLoader';
 
 const MODEL_COLORS: Record<ModelType, string> = {
   chatgpt: '#E8795A',
@@ -53,10 +54,12 @@ const SavedContent = () => {
   const toast = useToast();
   const {
     savedPrompts, deletePrompt, toggleFavorite, setCurrentInputs,
-    folders, createFolder, deleteFolder, moveToFolder,
+    folders, createFolder, deleteFolder, moveToFolder, isLoading,
   } = usePromptStore();
 
   const [localSearch, setLocalSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -66,6 +69,12 @@ const SavedContent = () => {
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [movePromptId, setMovePromptId] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(localSearch), 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [localSearch]);
 
   const FILTER_TABS: { key: FilterTab; label: string }[] = useMemo(() => [
     { key: 'all', label: t.library.all },
@@ -84,14 +93,16 @@ const SavedContent = () => {
     else if (activeFilter === 'text') items = items.filter((p: SavedPrompt) => p.type === 'text');
     else if (activeFilter === 'image') items = items.filter((p: SavedPrompt) => p.type === 'image');
     else if (activeFilter === 'video') items = items.filter((p: SavedPrompt) => p.type === 'video');
-    if (localSearch.trim()) {
-      const q = localSearch.toLowerCase();
+    if (debouncedSearch.trim()) {
+      const q = debouncedSearch.toLowerCase();
       items = items.filter((p: SavedPrompt) =>
-        p.title.toLowerCase().includes(q) || p.tags.some((tag: string) => tag.toLowerCase().includes(q))
+        p.title.toLowerCase().includes(q) ||
+        p.tags.some((tag: string) => tag.toLowerCase().includes(q)) ||
+        p.finalPrompt.toLowerCase().includes(q)
       );
     }
     return items;
-  }, [savedPrompts, localSearch, activeFilter, selectedFolderId]);
+  }, [savedPrompts, debouncedSearch, activeFilter, selectedFolderId]);
 
   const handleCopy = useCallback(async (prompt: SavedPrompt) => {
     await Clipboard.setStringAsync(prompt.finalPrompt);
@@ -104,7 +115,11 @@ const SavedContent = () => {
   const handleShare = useCallback(async (prompt: SavedPrompt) => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     try {
-      await Share.share({ message: prompt.finalPrompt, title: prompt.title });
+      const deepLink = `promptia://prompt/${prompt.id}`;
+      await Share.share({
+        message: `${prompt.finalPrompt}\n\n— via Promptia\n${deepLink}`,
+        title: prompt.title,
+      });
     } catch {
       // User cancelled
     }
@@ -364,13 +379,17 @@ const SavedContent = () => {
         />
       </View>
 
+      {isLoading ? (
+        <SkeletonList count={4} />
+      ) : null}
+
       <FlatList
-        data={filteredPrompts}
+        data={isLoading ? [] : filteredPrompts}
         keyExtractor={(item) => item.id}
         renderItem={renderPromptItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
+        ListEmptyComponent={isLoading ? null : (
           <View style={styles.emptyState}>
             <View style={[styles.emptyIconWrap, { backgroundColor: isDark ? colors.bgSecondary : '#FFF0ED' }]}>
               <Bookmark size={32} color="#E8795A" />
@@ -382,7 +401,7 @@ const SavedContent = () => {
               {savedPrompts.length === 0 ? t.library.noPromptsMsg : t.library.noResultsMsg}
             </Text>
           </View>
-        }
+        )}
       />
 
       <Modal visible={showFolderModal} transparent animationType="fade">
