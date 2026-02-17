@@ -86,7 +86,7 @@ function SettingsContent() {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, t, isDark, toggleTheme, language, setLanguage, LANGUAGE_LABELS: langLabels } = useTheme();
-  const { savedPrompts, clearAllData } = usePromptStore();
+  const { savedPrompts, clearAllData, clearHistory, history } = usePromptStore();
   const { isPro, restorePurchases, isRestoring } = usePurchases();
   const [showLanguageModal, setShowLanguageModal] = useState(false);
 
@@ -272,8 +272,17 @@ function SettingsContent() {
             label={t.settings.savedPrompts}
             sublabel={`${savedPrompts.length} ${t.settings.promptsStored}`}
             colors={colors}
-            isLast={savedPrompts.length === 0}
           />
+          {history.length > 0 && (
+            <SettingsRow
+              icon={<Trash2 size={20} color="#D4943A" />}
+              iconBg={isDark ? '#2A2010' : '#FFF5E0'}
+              label={t.settings.clearHistory}
+              sublabel={`${history.length} recent generations`}
+              onPress={() => { clearHistory(); Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning); }}
+              colors={colors}
+            />
+          )}
           {savedPrompts.length > 0 && (
             <SettingsRow
               icon={<Trash2 size={20} color="#DC4B4B" />}
@@ -282,6 +291,15 @@ function SettingsContent() {
               sublabel={t.settings.clearAllSub}
               onPress={handleClearData}
               danger
+              colors={colors}
+              isLast
+            />
+          )}
+          {savedPrompts.length === 0 && history.length === 0 && (
+            <SettingsRow
+              icon={<Info size={20} color={colors.textTertiary} />}
+              iconBg={colors.bgSecondary}
+              label="No data stored"
               colors={colors}
               isLast
             />

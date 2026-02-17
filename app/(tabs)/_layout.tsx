@@ -60,7 +60,11 @@ function FloatingTabBar({ state, descriptors, navigation }: any) {
                 color={isFocused ? activeColor : inactiveColor}
                 strokeWidth={isFocused ? 2.5 : 1.8}
               />
-              <Text style={[styles.tabLabel, { color: inactiveColor }, isFocused && { color: activeColor, fontWeight: '700' as const }]}>
+              <Text style={[
+                styles.tabLabel,
+                { color: inactiveColor, fontFamily: 'Inter_600SemiBold' },
+                isFocused && { color: activeColor, fontFamily: 'Inter_700Bold' },
+              ]}>
                 {label}
               </Text>
             </Pressable>
