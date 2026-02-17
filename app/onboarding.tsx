@@ -92,14 +92,14 @@ export default function OnboardingScreen() {
       flatListRef.current?.scrollToIndex({ index: currentIndex + 1, animated: true });
     } else {
       completeOnboarding();
-      router.replace('/(tabs)/(builder)' as any);
+      router.replace('/paywall' as any);
     }
   }, [currentIndex, completeOnboarding, router]);
 
   const handleSkip = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     completeOnboarding();
-    router.replace('/(tabs)/(builder)' as any);
+    router.replace('/paywall' as any);
   }, [completeOnboarding, router]);
 
   const renderSlide = useCallback(({ item }: { item: OnboardingSlide }) => (

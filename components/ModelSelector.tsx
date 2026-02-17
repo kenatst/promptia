@@ -10,11 +10,11 @@ interface ModelSelectorProps {
   onSelect: (model: ModelType) => void;
 }
 
-const models: { key: ModelType; label: string; emoji: string; icon: any }[] = [
-  { key: 'chatgpt', label: 'ChatGPT', emoji: '💬', icon: MessageSquare },
-  { key: 'midjourney', label: 'Midjourney', emoji: '🎨', icon: Palette },
-  { key: 'sdxl', label: 'SDXL', emoji: '🖼️', icon: ImageIcon },
-  { key: 'video', label: 'Video AI', emoji: '🎬', icon: Video },
+const models: { key: ModelType; label: string; icon: any }[] = [
+  { key: 'chatgpt', label: 'ChatGPT', icon: MessageSquare },
+  { key: 'midjourney', label: 'Midjourney', icon: Palette },
+  { key: 'sdxl', label: 'SDXL', icon: ImageIcon },
+  { key: 'video', label: 'Video AI', icon: Video },
 ];
 
 function ModelSelectorComponent({ selected, onSelect }: ModelSelectorProps) {
@@ -40,6 +40,7 @@ interface ModelItemProps {
 
 function ModelItemComponent({ model, isSelected, onPress }: ModelItemProps) {
   const scaleAnim = useRef(new Animated.Value(1)).current;
+  const Icon = model.icon;
 
   const handlePress = useCallback(() => {
     if (Platform.OS !== 'web') {
@@ -59,7 +60,7 @@ function ModelItemComponent({ model, isSelected, onPress }: ModelItemProps) {
         onPress={handlePress}
         activeOpacity={0.7}
       >
-        <Text style={styles.emoji}>{model.emoji}</Text>
+        <Icon size={24} color={isSelected ? Colors.accent : Colors.textSecondary} />
         <Text style={[styles.label, isSelected && styles.labelSelected]}>
           {model.label}
         </Text>
@@ -88,14 +89,11 @@ const styles = StyleSheet.create({
     backgroundColor: '#F9FAFB',
     borderWidth: 1,
     borderColor: 'rgba(0,0,0,0.05)',
-    gap: 6,
+    gap: 8,
   },
   itemSelected: {
     backgroundColor: Colors.accentDim,
     borderColor: Colors.accent,
-  },
-  emoji: {
-    fontSize: 22,
   },
   label: {
     fontSize: 11,

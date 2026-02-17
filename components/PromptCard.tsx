@@ -156,9 +156,6 @@ const styles = StyleSheet.create({
         gap: 6,
         marginBottom: 4,
     },
-    emoji: {
-        fontSize: 16,
-    },
     catName: {
         fontSize: 12,
         fontWeight: '700',

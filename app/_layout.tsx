@@ -70,7 +70,7 @@ function RootLayoutNav() {
         />
         <Stack.Screen
           name="paywall"
-          options={{ presentation: 'modal', headerShown: false, animation: 'slide_from_bottom' }}
+          options={{ presentation: 'fullScreenModal', headerShown: false, animation: 'fade', gestureEnabled: false }}
         />
       </Stack>
     </OnboardingGate>

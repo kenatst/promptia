@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 
 const CIRCLE_COLORS = [
@@ -13,20 +13,19 @@ const CIRCLE_COLORS = [
 
 interface VisualCategoryProps {
   label: string;
-  icon?: React.ReactNode;
-  emoji?: string;
+  icon: React.ReactNode;
   selected: boolean;
   onPress: () => void;
   index: number;
 }
 
-export function VisualCategory({ label, icon, emoji, selected, onPress, index }: VisualCategoryProps) {
+export function VisualCategory({ label, icon, selected, onPress, index }: VisualCategoryProps) {
   const scale = useSharedValue(1);
   const bgColor = CIRCLE_COLORS[index % CIRCLE_COLORS.length];
 
   useEffect(() => {
     scale.value = withSpring(selected ? 1.1 : 1, { damping: 12, stiffness: 200 });
-  }, [selected]);
+  }, [selected, scale]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ scale: scale.value }],
@@ -42,7 +41,7 @@ export function VisualCategory({ label, icon, emoji, selected, onPress, index }:
           animatedStyle,
         ]}
       >
-        {icon ? icon : <Text style={styles.emojiText}>{emoji}</Text>}
+        {icon}
       </Animated.View>
       <Text style={[styles.label, selected && styles.labelSelected]} numberOfLines={1}>
         {label}

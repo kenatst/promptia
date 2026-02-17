@@ -3,7 +3,6 @@ import {
   Alert,
   Linking,
   Modal,
-  Platform,
   Pressable,
   ScrollView,
   StyleSheet,
@@ -23,18 +22,16 @@ import {
   Moon,
   Globe,
   Shield,
-  Star,
   Trash2,
   Info,
   Check,
   Zap,
 } from 'lucide-react-native';
 
-import { useRouter } from 'expo-router';
 import { useTheme } from '@/contexts/ThemeContext';
 import { usePromptStore } from '@/contexts/PromptContext';
 import { usePurchases } from '@/contexts/PurchasesContext';
-import { Language, LANGUAGE_LABELS } from '@/i18n/translations';
+import { Language } from '@/i18n/translations';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const PRIVACY_POLICY_URL = 'https://promptia.app/privacy';
@@ -84,7 +81,6 @@ function SettingsRow({ icon, label, sublabel, onPress, trailing, danger, isLast,
 
 function SettingsContent() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { colors, t, isDark, toggleTheme, language, setLanguage, LANGUAGE_LABELS: langLabels } = useTheme();
   const { savedPrompts, clearAllData, clearHistory, history } = usePromptStore();
   const { isPro, restorePurchases, isRestoring } = usePurchases();
@@ -102,13 +98,7 @@ function SettingsContent() {
     Linking.openURL(`mailto:${SUPPORT_EMAIL}?subject=Promptia Support`);
   }, []);
 
-  const handleRateApp = useCallback(() => {
-    if (Platform.OS === 'ios') {
-      Linking.openURL('https://apps.apple.com/app/id6748738039?action=write-review');
-    } else if (Platform.OS === 'android') {
-      Linking.openURL('https://play.google.com/store/apps/details?id=app.promptia.builder');
-    }
-  }, []);
+
 
   const handleClearData = useCallback(() => {
     Alert.alert(t.settings.clearAllTitle, t.settings.clearAllMsg, [
@@ -153,27 +143,6 @@ function SettingsContent() {
           </View>
         </View>
 
-        {!isPro && (
-          <Pressable
-            onPress={() => { Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); router.push('/paywall' as any); }}
-            style={({ pressed }) => [
-              styles.upgradeCard,
-              { backgroundColor: isDark ? '#2A1810' : '#FFF0ED' },
-              pressed && { opacity: 0.9, transform: [{ scale: 0.98 }] },
-            ]}
-          >
-            <View style={styles.upgradeContent}>
-              <View style={[styles.upgradeCrown, { backgroundColor: '#E8795A' }]}>
-                <Zap size={18} color="#FFF" />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.upgradeTitle, { color: colors.text }]}>Upgrade to Pro</Text>
-                <Text style={[styles.upgradeSub, { color: colors.textTertiary }]}>Unlimited prompts & all features</Text>
-              </View>
-              <ChevronRight size={18} color="#E8795A" />
-            </View>
-          </Pressable>
-        )}
 
         {isPro && (
           <View style={[styles.proActiveCard, { backgroundColor: isDark ? '#1A2A24' : '#F0FAF6' }]}>
@@ -225,14 +194,7 @@ function SettingsContent() {
             onPress={handleContactSupport}
             colors={colors}
           />
-          <SettingsRow
-            icon={<Star size={20} color="#D4943A" />}
-            iconBg={isDark ? '#2A2618' : '#FFF5E0'}
-            label={t.settings.rateApp}
-            sublabel={t.settings.rateAppSub}
-            onPress={handleRateApp}
-            colors={colors}
-          />
+
           <SettingsRow
             icon={<HelpCircle size={20} color="#3B9EC4" />}
             iconBg={isDark ? '#1A2230' : '#EBF5FA'}
@@ -412,14 +374,8 @@ const styles = StyleSheet.create({
     paddingVertical: 16, paddingHorizontal: 20, borderRadius: 16, marginBottom: 6,
   },
   langText: { fontSize: 16, fontWeight: '600' as const },
-  upgradeCard: {
-    borderRadius: 24, padding: 20, marginBottom: 28,
-  },
   proActiveCard: {
     borderRadius: 24, padding: 20, marginBottom: 28, flexDirection: 'row', alignItems: 'center', gap: 16,
-  },
-  upgradeContent: {
-    flexDirection: 'row', alignItems: 'center', gap: 16,
   },
   upgradeCrown: {
     width: 40, height: 40, borderRadius: 14, alignItems: 'center', justifyContent: 'center',

@@ -13,7 +13,6 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
 import * as Clipboard from 'expo-clipboard';
 import * as Haptics from 'expo-haptics';
 import {
@@ -50,9 +49,9 @@ import {
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { CREATION_CATEGORIES, CreationCategory } from '@/data/gallerySeed';
-import { usePromptStore } from '@/contexts/PromptContext';
+import { usePromptStore, HistoryEntry } from '@/contexts/PromptContext';
 import { assemblePrompt } from '@/engine/promptEngine';
-import { PromptInputs, DEFAULT_INPUTS, PromptResult } from '@/types/prompt';
+import { PromptResult } from '@/types/prompt';
 import { generateWithGemini, isGeminiConfigured } from '@/services/gemini';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import { useToast } from '@/components/Toast';
@@ -97,7 +96,6 @@ type BuilderMode = 'simple' | 'advanced';
 
 function BuilderContent() {
   const insets = useSafeAreaInsets();
-  const router = useRouter();
   const { colors, t, isDark } = useTheme();
   const { currentInputs, setCurrentInputs, resetInputs, savePrompt, addToHistory, history } = usePromptStore();
   const toast = useToast();
@@ -318,7 +316,7 @@ function BuilderContent() {
             <Text style={[styles.historyClose, { color: colors.textTertiary }]}>Done</Text>
           </Pressable>
         </View>
-        {history.map((entry) => (
+        {history.map((entry: HistoryEntry) => (
           <Pressable
             key={entry.id}
             onPress={() => handleHistorySelect(entry.finalPrompt)}

@@ -38,11 +38,10 @@ const TOAST_CONFIGS: Record<ToastType, { bg: string; darkBg: string; icon: React
 
 function ToastNotification({ item, onDismiss }: { item: ToastItem; onDismiss: (id: string) => void }) {
   const { isDark } = useTheme();
-  const { colors } = useTheme();
   const insets = useSafeAreaInsets();
   const translateY = useRef(new Animated.Value(-100)).current;
   const opacity = useRef(new Animated.Value(0)).current;
-  const timer = useRef<ReturnType<typeof setTimeout>>();
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const dismiss = useCallback(() => {
     clearTimeout(timer.current);
@@ -59,7 +58,7 @@ function ToastNotification({ item, onDismiss }: { item: ToastItem; onDismiss: (i
     ]).start();
     timer.current = setTimeout(dismiss, item.duration ?? 3000);
     return () => clearTimeout(timer.current);
-  }, []);
+  }, [dismiss, item.duration, opacity, translateY]);
 
   const cfg = TOAST_CONFIGS[item.type];
   const Icon = cfg.icon;

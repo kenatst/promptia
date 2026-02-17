@@ -140,7 +140,7 @@ function ReverseContent() {
     } catch {
       toast.error('Failed to pick image. Please try again.');
     }
-  }, []);
+  }, [toast]);
 
   const handleAnalyze = useCallback(() => {
     if (!imageBase64) return;
@@ -151,7 +151,7 @@ function ReverseContent() {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
     startPulse();
     analyzeMutation.mutate();
-  }, [imageBase64, analyzeMutation, startPulse]);
+  }, [imageBase64, analyzeMutation, startPulse, toast]);
 
   const handleCopy = useCallback(async () => {
     if (!generatedPrompt) return;
