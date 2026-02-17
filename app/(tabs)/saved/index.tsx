@@ -1,9 +1,10 @@
-import React, { useMemo, useCallback, useState } from 'react';
+import React, { useMemo, useCallback, useState, useEffect, useRef } from 'react';
 import {
   Alert,
   FlatList,
   Modal,
   Pressable,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -16,7 +17,7 @@ import * as Haptics from 'expo-haptics';
 import {
   Search, Trash2, Copy, Heart, Shuffle, Check, Bookmark,
   MessageSquare, Palette, Camera, Film, FolderPlus, Folder,
-  X, ChevronRight,
+  X, ChevronRight, Share2,
 } from 'lucide-react-native';
 
 import { useTheme } from '@/contexts/ThemeContext';
@@ -24,6 +25,8 @@ import { usePromptStore } from '@/contexts/PromptContext';
 import { SavedPrompt, DEFAULT_INPUTS, ModelType, PromptFolder } from '@/types/prompt';
 import { getModelLabel } from '@/engine/promptEngine';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { useToast } from '@/components/Toast';
+import { SkeletonList } from '@/components/SkeletonLoader';
 
 const MODEL_COLORS: Record<ModelType, string> = {
   chatgpt: '#E8795A',
@@ -48,12 +51,15 @@ const SavedContent = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, t, isDark } = useTheme();
+  const toast = useToast();
   const {
     savedPrompts, deletePrompt, toggleFavorite, setCurrentInputs,
-    folders, createFolder, deleteFolder, moveToFolder,
+    folders, createFolder, deleteFolder, moveToFolder, isLoading,
   } = usePromptStore();
 
   const [localSearch, setLocalSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterTab>('all');
   const [selectedFolderId, setSelectedFolderId] = useState<string | null>(null);
@@ -63,6 +69,12 @@ const SavedContent = () => {
   const [showMoveModal, setShowMoveModal] = useState(false);
   const [movePromptId, setMovePromptId] = useState<string | null>(null);
   const [showSearch, setShowSearch] = useState(false);
+
+  useEffect(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedSearch(localSearch), 300);
+    return () => { if (debounceRef.current) clearTimeout(debounceRef.current); };
+  }, [localSearch]);
 
   const FILTER_TABS: { key: FilterTab; label: string }[] = useMemo(() => [
     { key: 'all', label: t.library.all },
@@ -81,20 +93,36 @@ const SavedContent = () => {
     else if (activeFilter === 'text') items = items.filter((p: SavedPrompt) => p.type === 'text');
     else if (activeFilter === 'image') items = items.filter((p: SavedPrompt) => p.type === 'image');
     else if (activeFilter === 'video') items = items.filter((p: SavedPrompt) => p.type === 'video');
-    if (localSearch.trim()) {
-      const q = localSearch.toLowerCase();
+    if (debouncedSearch.trim()) {
+      const q = debouncedSearch.toLowerCase();
       items = items.filter((p: SavedPrompt) =>
-        p.title.toLowerCase().includes(q) || p.tags.some((tag: string) => tag.toLowerCase().includes(q))
+        p.title.toLowerCase().includes(q) ||
+        p.tags.some((tag: string) => tag.toLowerCase().includes(q)) ||
+        p.finalPrompt.toLowerCase().includes(q)
       );
     }
     return items;
-  }, [savedPrompts, localSearch, activeFilter, selectedFolderId]);
+  }, [savedPrompts, debouncedSearch, activeFilter, selectedFolderId]);
 
   const handleCopy = useCallback(async (prompt: SavedPrompt) => {
     await Clipboard.setStringAsync(prompt.finalPrompt);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setCopiedId(prompt.id);
+    toast.success('Copied to clipboard!');
     setTimeout(() => setCopiedId(null), 1500);
+  }, [toast]);
+
+  const handleShare = useCallback(async (prompt: SavedPrompt) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      const deepLink = `promptia://prompt/${prompt.id}`;
+      await Share.share({
+        message: `${prompt.finalPrompt}\n\n— via Promptia\n${deepLink}`,
+        title: prompt.title,
+      });
+    } catch {
+      // User cancelled
+    }
   }, []);
 
   const handleDelete = useCallback((prompt: SavedPrompt) => {
@@ -274,6 +302,9 @@ const SavedContent = () => {
                 style={[styles.actionBtn, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF', paddingHorizontal: 10 }]}>
                 <Folder size={14} color={colors.textSecondary} />
               </Pressable>
+              <Pressable onPress={() => handleShare(item)} style={[styles.actionBtn, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF', paddingHorizontal: 10 }]} accessibilityLabel="Share prompt">
+                <Share2 size={14} color={colors.textSecondary} />
+              </Pressable>
               <Pressable onPress={() => handleDelete(item)} style={[styles.deleteBtn, { backgroundColor: isDark ? 'rgba(220,75,75,0.12)' : 'rgba(220,75,75,0.08)' }]}>
                 <Trash2 size={14} color="#DC4B4B" />
               </Pressable>
@@ -282,13 +313,13 @@ const SavedContent = () => {
         </View>
       </Pressable>
     );
-  }, [copiedId, handleCopy, handleDelete, handleRemix, handlePromptPress, toggleFavorite, getTimeAgo, colors, t, isDark]);
+  }, [copiedId, handleCopy, handleShare, handleDelete, handleRemix, handlePromptPress, toggleFavorite, getTimeAgo, colors, t, isDark]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <View style={styles.headerLeft}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{t.library.title}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text, fontFamily: 'Inter_800ExtraBold' }]}>{t.library.title}</Text>
           {savedPrompts.length > 0 && (
             <View style={[styles.countBadge, { backgroundColor: isDark ? colors.coralDim : '#FFF0ED' }]}>
               <Text style={[styles.countText, { color: '#E8795A' }]}>{savedPrompts.length}</Text>
@@ -348,13 +379,17 @@ const SavedContent = () => {
         />
       </View>
 
+      {isLoading ? (
+        <SkeletonList count={4} />
+      ) : null}
+
       <FlatList
-        data={filteredPrompts}
+        data={isLoading ? [] : filteredPrompts}
         keyExtractor={(item) => item.id}
         renderItem={renderPromptItem}
         contentContainerStyle={styles.listContent}
         showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
+        ListEmptyComponent={isLoading ? null : (
           <View style={styles.emptyState}>
             <View style={[styles.emptyIconWrap, { backgroundColor: isDark ? colors.bgSecondary : '#FFF0ED' }]}>
               <Bookmark size={32} color="#E8795A" />
@@ -366,7 +401,7 @@ const SavedContent = () => {
               {savedPrompts.length === 0 ? t.library.noPromptsMsg : t.library.noResultsMsg}
             </Text>
           </View>
-        }
+        )}
       />
 
       <Modal visible={showFolderModal} transparent animationType="fade">

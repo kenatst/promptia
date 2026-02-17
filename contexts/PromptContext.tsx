@@ -1,12 +1,22 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import createContextHook from '@nkzw/create-context-hook';
-import { SavedPrompt, PromptInputs, DEFAULT_INPUTS, PromptFolder } from '@/types/prompt';
+import { SavedPrompt, PromptInputs, DEFAULT_INPUTS, PromptFolder, PromptResult } from '@/types/prompt';
 
 const STORAGE_KEY = 'promptia-saved-prompts';
 const FOLDERS_KEY = 'promptia-folders';
 const ONBOARDING_KEY = 'promptia-onboarding-done';
+const HISTORY_KEY = 'promptia-generation-history';
+const MAX_HISTORY = 10;
+
+export interface HistoryEntry {
+  id: string;
+  finalPrompt: string;
+  model: string;
+  objective: string;
+  createdAt: number;
+}
 
 interface PromptState {
   savedPrompts: SavedPrompt[];
@@ -15,6 +25,7 @@ interface PromptState {
   searchQuery: string;
   hasSeenOnboarding: boolean;
   isLoading: boolean;
+  history: HistoryEntry[];
   setCurrentInputs: (inputs: Partial<PromptInputs>) => void;
   resetInputs: () => void;
   loadInputsFromPrompt: (prompt: SavedPrompt) => void;
@@ -29,15 +40,17 @@ interface PromptState {
   deleteFolder: (id: string) => void;
   clearAllData: () => void;
   completeOnboarding: () => void;
+  addToHistory: (result: PromptResult, inputs: PromptInputs) => void;
+  clearHistory: () => void;
 }
 
-// @ts-ignore
 export const [PromptProvider, usePromptStore] = createContextHook<PromptState>(() => {
   const queryClient = useQueryClient();
   const [currentInputs, setCurrentInputsState] = useState<PromptInputs>({ ...DEFAULT_INPUTS });
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [localPrompts, setLocalPrompts] = useState<SavedPrompt[]>([]);
   const [localFolders, setLocalFolders] = useState<PromptFolder[]>([]);
+  const [localHistory, setLocalHistory] = useState<HistoryEntry[]>([]);
   const [hasSeenOnboarding, setHasSeenOnboarding] = useState<boolean>(true);
 
   const promptsQuery = useQuery({
@@ -46,8 +59,7 @@ export const [PromptProvider, usePromptStore] = createContextHook<PromptState>((
       try {
         const stored = await AsyncStorage.getItem(STORAGE_KEY);
         return stored ? (JSON.parse(stored) as SavedPrompt[]) : [];
-      } catch (e) {
-        console.log('[PromptContext] Failed to load prompts', e);
+      } catch {
         return [];
       }
     },
@@ -59,8 +71,7 @@ export const [PromptProvider, usePromptStore] = createContextHook<PromptState>((
       try {
         const stored = await AsyncStorage.getItem(FOLDERS_KEY);
         return stored ? (JSON.parse(stored) as PromptFolder[]) : [];
-      } catch (e) {
-        console.log('[PromptContext] Failed to load folders', e);
+      } catch {
         return [];
       }
     },
@@ -78,6 +89,18 @@ export const [PromptProvider, usePromptStore] = createContextHook<PromptState>((
     },
   });
 
+  const historyQuery = useQuery({
+    queryKey: ['generation-history'],
+    queryFn: async () => {
+      try {
+        const stored = await AsyncStorage.getItem(HISTORY_KEY);
+        return stored ? (JSON.parse(stored) as HistoryEntry[]) : [];
+      } catch {
+        return [];
+      }
+    },
+  });
+
   useEffect(() => {
     if (promptsQuery.data) setLocalPrompts(promptsQuery.data);
   }, [promptsQuery.data]);
@@ -89,6 +112,10 @@ export const [PromptProvider, usePromptStore] = createContextHook<PromptState>((
   useEffect(() => {
     if (onboardingQuery.data !== undefined) setHasSeenOnboarding(onboardingQuery.data);
   }, [onboardingQuery.data]);
+
+  useEffect(() => {
+    if (historyQuery.data) setLocalHistory(historyQuery.data);
+  }, [historyQuery.data]);
 
   const syncPromptsMutation = useMutation({
     mutationFn: async (prompts: SavedPrompt[]) => {
@@ -107,6 +134,16 @@ export const [PromptProvider, usePromptStore] = createContextHook<PromptState>((
     },
     onSuccess: (data) => {
       queryClient.setQueryData(['prompt-folders'], data);
+    },
+  });
+
+  const syncHistoryMutation = useMutation({
+    mutationFn: async (history: HistoryEntry[]) => {
+      await AsyncStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+      return history;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(['generation-history'], data);
     },
   });
 
@@ -190,19 +227,39 @@ export const [PromptProvider, usePromptStore] = createContextHook<PromptState>((
   const clearAllData = useCallback(() => {
     setLocalPrompts([]);
     setLocalFolders([]);
+    setLocalHistory([]);
     syncPromptsMutation.mutate([]);
     syncFoldersMutation.mutate([]);
-  }, [syncPromptsMutation, syncFoldersMutation]);
+    syncHistoryMutation.mutate([]);
+  }, [syncPromptsMutation, syncFoldersMutation, syncHistoryMutation]);
 
   const completeOnboarding = useCallback(async () => {
     setHasSeenOnboarding(true);
     try {
       await AsyncStorage.setItem(ONBOARDING_KEY, 'true');
       queryClient.setQueryData(['onboarding-status'], true);
-    } catch (e) {
-      console.log('[PromptContext] Failed to save onboarding status', e);
+    } catch {
+      // Storage errors are non-fatal
     }
   }, [queryClient]);
+
+  const addToHistory = useCallback((result: PromptResult, inputs: PromptInputs) => {
+    const entry: HistoryEntry = {
+      id: `h_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      finalPrompt: result.finalPrompt,
+      model: inputs.model,
+      objective: inputs.objective.slice(0, 80),
+      createdAt: Date.now(),
+    };
+    const updated = [entry, ...localHistory].slice(0, MAX_HISTORY);
+    setLocalHistory(updated);
+    syncHistoryMutation.mutate(updated);
+  }, [localHistory, syncHistoryMutation]);
+
+  const clearHistory = useCallback(() => {
+    setLocalHistory([]);
+    syncHistoryMutation.mutate([]);
+  }, [syncHistoryMutation]);
 
   const isLoading = promptsQuery.isLoading || foldersQuery.isLoading || onboardingQuery.isLoading;
 
@@ -213,6 +270,7 @@ export const [PromptProvider, usePromptStore] = createContextHook<PromptState>((
     searchQuery,
     hasSeenOnboarding,
     isLoading,
+    history: localHistory,
     setCurrentInputs,
     resetInputs,
     loadInputsFromPrompt,
@@ -227,5 +285,7 @@ export const [PromptProvider, usePromptStore] = createContextHook<PromptState>((
     deleteFolder,
     clearAllData,
     completeOnboarding,
+    addToHistory,
+    clearHistory,
   };
 });

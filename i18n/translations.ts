@@ -21,7 +21,7 @@ type TranslationKeys = {
     generate: string; newPrompt: string; assumptions: string; warnings: string;
     suggestions: string; copied: string; saved: string; savedAlert: string;
     emptyPrompt: string; emptyPromptMsg: string; pro: string;
-    category: string; details: string; options: string; result: string;
+    category: string; details: string; options: string; result: string; generating: string;
   };
   discover: {
     title: string; subtitle: string; searchPlaceholder: string; all: string;
@@ -39,6 +39,7 @@ type TranslationKeys = {
     rateAppSub: string; faq: string; legal: string; privacyPolicy: string;
     termsOfUse: string; data: string; savedPrompts: string; promptsStored: string;
     clearAll: string; clearAllSub: string; clearAllTitle: string; clearAllMsg: string;
+    clearHistory: string; clearHistorySub: string;
     cancel: string; appearance: string; darkMode: string; darkModeSub: string;
     language: string; languageSub: string; footer: string; version: string;
     selectLanguage: string;
@@ -77,7 +78,7 @@ const en: TranslationKeys = {
     assumptions: 'Assumptions', warnings: 'Warnings', suggestions: 'Suggestions',
     copied: 'Copied!', saved: 'Saved', savedAlert: 'Prompt saved to your library.',
     emptyPrompt: 'Empty Prompt', emptyPromptMsg: 'Please describe what you want to create.',
-    pro: 'Pro', category: 'Category', details: 'Details', options: 'Options', result: 'Result',
+    pro: 'Pro', category: 'Category', details: 'Details', options: 'Options', result: 'Result', generating: 'Generating…',
   },
   reverse: {
     title: 'Reverse Prompt', subtitle: 'Upload an image and AI will reverse-engineer the perfect prompt to recreate it',
@@ -110,6 +111,7 @@ const en: TranslationKeys = {
     clearAll: 'Clear All Data', clearAllSub: 'Delete all saved prompts',
     clearAllTitle: 'Clear All Data',
     clearAllMsg: 'This will permanently delete all saved prompts. This action cannot be undone.',
+    clearHistory: 'Clear Generation History', clearHistorySub: 'Remove all recent generations',
     cancel: 'Cancel', appearance: 'Appearance', darkMode: 'Dark Mode',
     darkModeSub: 'Switch to dark theme', language: 'Language',
     languageSub: 'Choose your language',
@@ -145,7 +147,7 @@ const fr: TranslationKeys = {
     assumptions: 'Hypothèses', warnings: 'Avertissements', suggestions: 'Suggestions',
     copied: 'Copié !', saved: 'Sauvegardé', savedAlert: 'Prompt sauvegardé dans votre bibliothèque.',
     emptyPrompt: 'Prompt vide', emptyPromptMsg: 'Veuillez décrire ce que vous voulez créer.',
-    pro: 'Pro', category: 'Catégorie', details: 'Détails', options: 'Options', result: 'Résultat',
+    pro: 'Pro', category: 'Catégorie', details: 'Détails', options: 'Options', result: 'Résultat', generating: 'Génération…',
   },
   reverse: {
     title: 'Reverse Prompt', subtitle: "Importez une image et l'IA retrouvera le prompt parfait pour la recréer",
@@ -179,6 +181,7 @@ const fr: TranslationKeys = {
     clearAll: 'Effacer toutes les données', clearAllSub: 'Supprimer tous les prompts',
     clearAllTitle: 'Effacer toutes les données',
     clearAllMsg: 'Cela supprimera définitivement tous les prompts. Cette action est irréversible.',
+    clearHistory: "Effacer l'historique", clearHistorySub: 'Supprimer les générations récentes',
     cancel: 'Annuler', appearance: 'Apparence', darkMode: 'Mode sombre',
     darkModeSub: 'Passer au thème sombre', language: 'Langue',
     languageSub: 'Choisissez votre langue',
@@ -213,7 +216,7 @@ const it: TranslationKeys = {
     assumptions: 'Ipotesi', warnings: 'Avvisi', suggestions: 'Suggerimenti',
     copied: 'Copiato!', saved: 'Salvato', savedAlert: 'Prompt salvato nella tua libreria.',
     emptyPrompt: 'Prompt vuoto', emptyPromptMsg: 'Descrivi cosa vuoi creare.',
-    pro: 'Pro', category: 'Categoria', details: 'Dettagli', options: 'Opzioni', result: 'Risultato',
+    pro: 'Pro', category: 'Categoria', details: 'Dettagli', options: 'Opzioni', result: 'Risultato', generating: 'Generazione…',
   },
   reverse: {
     title: 'Reverse Prompt', subtitle: 'Carica un\'immagine e l\'IA ricostruirà il prompt perfetto per ricrearla',
@@ -247,6 +250,7 @@ const it: TranslationKeys = {
     clearAll: 'Cancella tutti i dati', clearAllSub: 'Elimina tutti i prompt',
     clearAllTitle: 'Cancella tutti i dati',
     clearAllMsg: 'Questo eliminerà permanentemente tutti i prompt. Azione irreversibile.',
+    clearHistory: 'Cancella cronologia', clearHistorySub: 'Rimuovi le generazioni recenti',
     cancel: 'Annulla', appearance: 'Aspetto', darkMode: 'Modalità scura',
     darkModeSub: 'Passa al tema scuro', language: 'Lingua',
     languageSub: 'Scegli la tua lingua',
@@ -281,7 +285,7 @@ const de: TranslationKeys = {
     assumptions: 'Annahmen', warnings: 'Warnungen', suggestions: 'Vorschläge',
     copied: 'Kopiert!', saved: 'Gespeichert', savedAlert: 'Prompt in Bibliothek gespeichert.',
     emptyPrompt: 'Leerer Prompt', emptyPromptMsg: 'Beschreibe bitte, was du erstellen möchtest.',
-    pro: 'Pro', category: 'Kategorie', details: 'Details', options: 'Optionen', result: 'Ergebnis',
+    pro: 'Pro', category: 'Kategorie', details: 'Details', options: 'Optionen', result: 'Ergebnis', generating: 'Generierung…',
   },
   reverse: {
     title: 'Reverse Prompt', subtitle: 'Lade ein Bild hoch und die KI rekonstruiert den perfekten Prompt',
@@ -315,6 +319,7 @@ const de: TranslationKeys = {
     clearAll: 'Alle Daten löschen', clearAllSub: 'Alle Prompts löschen',
     clearAllTitle: 'Alle Daten löschen',
     clearAllMsg: 'Dies löscht dauerhaft alle Prompts. Nicht rückgängig machbar.',
+    clearHistory: 'Verlauf löschen', clearHistorySub: 'Aktuelle Generierungen entfernen',
     cancel: 'Abbrechen', appearance: 'Erscheinungsbild', darkMode: 'Dunkelmodus',
     darkModeSub: 'Zum dunklen Thema wechseln', language: 'Sprache',
     languageSub: 'Wähle deine Sprache',
@@ -349,7 +354,7 @@ const es: TranslationKeys = {
     assumptions: 'Suposiciones', warnings: 'Advertencias', suggestions: 'Sugerencias',
     copied: '¡Copiado!', saved: 'Guardado', savedAlert: 'Prompt guardado en tu biblioteca.',
     emptyPrompt: 'Prompt vacío', emptyPromptMsg: 'Describe lo que quieres crear.',
-    pro: 'Pro', category: 'Categoría', details: 'Detalles', options: 'Opciones', result: 'Resultado',
+    pro: 'Pro', category: 'Categoría', details: 'Detalles', options: 'Opciones', result: 'Resultado', generating: 'Generando…',
   },
   reverse: {
     title: 'Reverse Prompt', subtitle: 'Sube una imagen y la IA reconstruirá el prompt perfecto para recrearla',
@@ -383,6 +388,7 @@ const es: TranslationKeys = {
     clearAll: 'Borrar todos los datos', clearAllSub: 'Eliminar todos los prompts',
     clearAllTitle: 'Borrar todos los datos',
     clearAllMsg: 'Esto eliminará permanentemente todos los prompts. No se puede deshacer.',
+    clearHistory: 'Borrar historial', clearHistorySub: 'Eliminar generaciones recientes',
     cancel: 'Cancelar', appearance: 'Apariencia', darkMode: 'Modo oscuro',
     darkModeSub: 'Cambiar al tema oscuro', language: 'Idioma',
     languageSub: 'Elige tu idioma',
