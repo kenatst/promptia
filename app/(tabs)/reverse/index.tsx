@@ -5,10 +5,9 @@ import {
   StyleSheet,
   Pressable,
   ScrollView,
+  Share,
   ActivityIndicator,
   Animated,
-  Platform,
-  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -26,17 +25,20 @@ import {
   Zap,
   ChevronDown,
   Save,
+  Share2,
 } from 'lucide-react-native';
 
 import { useTheme } from '@/contexts/ThemeContext';
 import { usePromptStore } from '@/contexts/PromptContext';
 import { reversePromptFromImage, isGeminiConfigured } from '@/services/gemini';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { useToast } from '@/components/Toast';
 
 function ReverseContent() {
   const insets = useSafeAreaInsets();
   const { colors, isDark, t } = useTheme();
   const { savePrompt } = usePromptStore();
+  const toast = useToast();
 
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
@@ -95,7 +97,7 @@ function ReverseContent() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     },
     onError: (error: Error) => {
-      Alert.alert('Error', error.message);
+      toast.error(error.message || 'Analysis failed. Please try again.');
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
     },
   });
@@ -156,7 +158,18 @@ function ReverseContent() {
     await Clipboard.setStringAsync(generatedPrompt);
     setCopied(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    toast.success('Copied to clipboard!');
     setTimeout(() => setCopied(false), 2000);
+  }, [generatedPrompt, toast]);
+
+  const handleShare = useCallback(async () => {
+    if (!generatedPrompt) return;
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      await Share.share({ message: generatedPrompt, title: 'Reverse Prompt from Promptia' });
+    } catch {
+      // User cancelled
+    }
   }, [generatedPrompt]);
 
   const handleSave = useCallback(() => {
@@ -184,8 +197,9 @@ function ReverseContent() {
     });
     setSaved(true);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    toast.success('Saved to Library!');
     setTimeout(() => setSaved(false), 2000);
-  }, [generatedPrompt, savePrompt]);
+  }, [generatedPrompt, savePrompt, toast]);
 
   const handleReset = useCallback(() => {
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
@@ -356,6 +370,19 @@ function ReverseContent() {
                     <Text style={[styles.actionBtnText, { color: saved ? '#34A77B' : colors.text }]}>
                       {saved ? (t.create?.saved || 'Saved') : (t.reverse?.save || 'Save')}
                     </Text>
+                  </Pressable>
+
+                  <Pressable
+                    onPress={handleShare}
+                    style={({ pressed }) => [
+                      styles.actionBtn,
+                      { backgroundColor: isDark ? colors.card : '#FFFFFF', borderColor: isDark ? colors.cardBorder : '#E8E4E0' },
+                      pressed && { opacity: 0.8 },
+                    ]}
+                    accessibilityLabel="Share prompt"
+                  >
+                    <Share2 size={16} color={colors.textSecondary} />
+                    <Text style={[styles.actionBtnText, { color: colors.text }]}>Share</Text>
                   </Pressable>
 
                   <Pressable

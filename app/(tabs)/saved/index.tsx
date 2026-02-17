@@ -4,6 +4,7 @@ import {
   FlatList,
   Modal,
   Pressable,
+  Share,
   StyleSheet,
   Text,
   TextInput,
@@ -16,7 +17,7 @@ import * as Haptics from 'expo-haptics';
 import {
   Search, Trash2, Copy, Heart, Shuffle, Check, Bookmark,
   MessageSquare, Palette, Camera, Film, FolderPlus, Folder,
-  X, ChevronRight,
+  X, ChevronRight, Share2,
 } from 'lucide-react-native';
 
 import { useTheme } from '@/contexts/ThemeContext';
@@ -24,6 +25,7 @@ import { usePromptStore } from '@/contexts/PromptContext';
 import { SavedPrompt, DEFAULT_INPUTS, ModelType, PromptFolder } from '@/types/prompt';
 import { getModelLabel } from '@/engine/promptEngine';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import { useToast } from '@/components/Toast';
 
 const MODEL_COLORS: Record<ModelType, string> = {
   chatgpt: '#E8795A',
@@ -48,6 +50,7 @@ const SavedContent = () => {
   const insets = useSafeAreaInsets();
   const router = useRouter();
   const { colors, t, isDark } = useTheme();
+  const toast = useToast();
   const {
     savedPrompts, deletePrompt, toggleFavorite, setCurrentInputs,
     folders, createFolder, deleteFolder, moveToFolder,
@@ -94,7 +97,17 @@ const SavedContent = () => {
     await Clipboard.setStringAsync(prompt.finalPrompt);
     Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     setCopiedId(prompt.id);
+    toast.success('Copied to clipboard!');
     setTimeout(() => setCopiedId(null), 1500);
+  }, [toast]);
+
+  const handleShare = useCallback(async (prompt: SavedPrompt) => {
+    Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    try {
+      await Share.share({ message: prompt.finalPrompt, title: prompt.title });
+    } catch {
+      // User cancelled
+    }
   }, []);
 
   const handleDelete = useCallback((prompt: SavedPrompt) => {
@@ -274,6 +287,9 @@ const SavedContent = () => {
                 style={[styles.actionBtn, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF', paddingHorizontal: 10 }]}>
                 <Folder size={14} color={colors.textSecondary} />
               </Pressable>
+              <Pressable onPress={() => handleShare(item)} style={[styles.actionBtn, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF', paddingHorizontal: 10 }]} accessibilityLabel="Share prompt">
+                <Share2 size={14} color={colors.textSecondary} />
+              </Pressable>
               <Pressable onPress={() => handleDelete(item)} style={[styles.deleteBtn, { backgroundColor: isDark ? 'rgba(220,75,75,0.12)' : 'rgba(220,75,75,0.08)' }]}>
                 <Trash2 size={14} color="#DC4B4B" />
               </Pressable>
@@ -282,13 +298,13 @@ const SavedContent = () => {
         </View>
       </Pressable>
     );
-  }, [copiedId, handleCopy, handleDelete, handleRemix, handlePromptPress, toggleFavorite, getTimeAgo, colors, t, isDark]);
+  }, [copiedId, handleCopy, handleShare, handleDelete, handleRemix, handlePromptPress, toggleFavorite, getTimeAgo, colors, t, isDark]);
 
   return (
     <View style={[styles.container, { backgroundColor: colors.bg }]}>
       <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
         <View style={styles.headerLeft}>
-          <Text style={[styles.headerTitle, { color: colors.text }]}>{t.library.title}</Text>
+          <Text style={[styles.headerTitle, { color: colors.text, fontFamily: 'Inter_800ExtraBold' }]}>{t.library.title}</Text>
           {savedPrompts.length > 0 && (
             <View style={[styles.countBadge, { backgroundColor: isDark ? colors.coralDim : '#FFF0ED' }]}>
               <Text style={[styles.countText, { color: '#E8795A' }]}>{savedPrompts.length}</Text>

@@ -37,8 +37,8 @@ import { usePurchases } from '@/contexts/PurchasesContext';
 import { Language, LANGUAGE_LABELS } from '@/i18n/translations';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-const PRIVACY_POLICY_URL = 'https://example.com/privacy-policy';
-const TERMS_OF_USE_URL = 'https://example.com/terms-of-use';
+const PRIVACY_POLICY_URL = 'https://promptia.app/privacy';
+const TERMS_OF_USE_URL = 'https://promptia.app/terms';
 const SUPPORT_EMAIL = 'support@promptia.app';
 const APP_VERSION = '1.0.0';
 
@@ -104,11 +104,9 @@ function SettingsContent() {
 
   const handleRateApp = useCallback(() => {
     if (Platform.OS === 'ios') {
-      Linking.openURL('https://apps.apple.com/app/id0000000000?action=write-review');
+      Linking.openURL('https://apps.apple.com/app/id6748738039?action=write-review');
     } else if (Platform.OS === 'android') {
-      Linking.openURL('https://play.google.com/store/apps/details?id=com.promptia.app');
-    } else {
-      Alert.alert('Rate Us', 'Rating is available on mobile devices.');
+      Linking.openURL('https://play.google.com/store/apps/details?id=app.promptia.builder');
     }
   }, []);
 
@@ -132,22 +130,26 @@ function SettingsContent() {
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.header}>
-          <Text style={[styles.pageTitle, { color: colors.text }]}>{t.settings.title}</Text>
+          <Text style={[styles.pageTitle, { color: colors.text, fontFamily: 'Inter_800ExtraBold' }]}>{t.settings.title}</Text>
           <View style={[styles.badge, { backgroundColor: isDark ? colors.bgSecondary : '#FFF0ED' }]}>
-            <Text style={[styles.badgeText, { color: '#E8795A' }]}>v{APP_VERSION}</Text>
+            <Text style={[styles.badgeText, { color: '#E8795A', fontFamily: 'Inter_700Bold' }]}>v{APP_VERSION}</Text>
           </View>
         </View>
 
         <View style={[styles.profileCard, { backgroundColor: isDark ? colors.card : '#FFF0ED' }]}>
-          <View style={[styles.profileAvatar, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF' }]}>
-            <Text style={{ fontSize: 22 }}>P</Text>
+          <View style={[styles.profileAvatar, { backgroundColor: '#E8795A' }]}>
+            <Text style={[styles.profileAvatarText, { fontFamily: 'Inter_800ExtraBold' }]}>P</Text>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.profileName, { color: colors.text }]}>Promptia User</Text>
-            <Text style={[styles.profileHandle, { color: colors.textTertiary }]}>Free Tier</Text>
+            <Text style={[styles.profileName, { color: colors.text, fontFamily: 'Inter_700Bold' }]}>
+              {savedPrompts.length > 0 ? `${savedPrompts.length} prompt${savedPrompts.length !== 1 ? 's' : ''} saved` : 'Welcome to Promptia'}
+            </Text>
+            <Text style={[styles.profileHandle, { color: colors.textTertiary }]}>
+              {isPro ? '✦ Pro Member' : 'Free Plan'}
+            </Text>
           </View>
-          <View style={[styles.profileBadge, { backgroundColor: isDark ? colors.bgTertiary : '#FFFFFF' }]}>
-            <Zap size={14} color="#E8795A" />
+          <View style={[styles.profileBadge, { backgroundColor: isPro ? 'rgba(52,167,123,0.15)' : (isDark ? colors.bgTertiary : '#FFFFFF') }]}>
+            <Zap size={14} color={isPro ? '#34A77B' : '#E8795A'} />
           </View>
         </View>
 
@@ -235,7 +237,7 @@ function SettingsContent() {
             icon={<HelpCircle size={20} color="#3B9EC4" />}
             iconBg={isDark ? '#1A2230' : '#EBF5FA'}
             label={t.settings.faq}
-            onPress={() => openURL('https://example.com/help')}
+            onPress={() => openURL('https://promptia.app/help')}
             colors={colors}
             isLast
           />
@@ -355,9 +357,10 @@ const styles = StyleSheet.create({
   },
   profileAvatar: {
     width: 48, height: 48, borderRadius: 20, alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000', shadowOpacity: 0.04, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 1,
+    shadowColor: '#000', shadowOpacity: 0.08, shadowRadius: 8, shadowOffset: { width: 0, height: 2 }, elevation: 2,
   },
-  profileName: { fontSize: 18, fontWeight: '700' as const, marginBottom: 2 },
+  profileAvatarText: { fontSize: 20, color: '#FFF' },
+  profileName: { fontSize: 16, fontWeight: '700' as const, marginBottom: 2 },
   profileHandle: { fontSize: 14 },
   profileBadge: {
     width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center',

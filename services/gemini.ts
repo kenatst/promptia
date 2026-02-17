@@ -1,6 +1,7 @@
 import { PromptInputs, PromptResult } from '@/types/prompt';
 
 const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent';
+const TIMEOUT_MS = 30000;
 
 function getApiKey(): string | null {
   const key = process.env.EXPO_PUBLIC_GEMINI_API_KEY;
@@ -9,6 +10,16 @@ function getApiKey(): string | null {
 
 export function isGeminiConfigured(): boolean {
   return Boolean(getApiKey());
+}
+
+async function fetchWithTimeout(url: string, options: RequestInit, timeoutMs = TIMEOUT_MS): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 function buildSystemPrompt(inputs: PromptInputs): string {
@@ -149,8 +160,6 @@ export async function reversePromptFromImage(base64Image: string, mimeType: stri
     throw new Error('Gemini API key not configured. Set EXPO_PUBLIC_GEMINI_API_KEY in environment variables.');
   }
 
-  console.log('[Gemini] Reverse prompt request, mime:', mimeType);
-
   const systemPrompt = `You are the world's foremost reverse prompt engineer and visual forensics expert. Given any image, you deconstruct it into the exact prompt that would reproduce it with 95%+ fidelity using AI image generation.
 
 Your analysis follows the FORENSIC DECONSTRUCTION method:
@@ -173,36 +182,25 @@ OUTPUT RULES:
 - If text is visible, include it in quotes
 - The prompt should be comprehensive enough that someone could recreate the image without ever seeing it`;
 
-  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      system_instruction: {
-        parts: [{ text: systemPrompt }],
-      },
-      contents: [{
-        parts: [
-          {
-            inline_data: {
-              mime_type: mimeType,
-              data: base64Image,
-            },
-          },
-          { text: 'Analyze this image and generate the exact AI prompt that would recreate it. Output ONLY the prompt.' },
-        ],
-      }],
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 2048,
-        topP: 0.9,
-        topK: 40,
-      },
-    }),
-  });
+  const response = await fetchWithTimeout(
+    `${GEMINI_API_URL}?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{
+          parts: [
+            { inline_data: { mime_type: mimeType, data: base64Image } },
+            { text: 'Analyze this image and generate the exact AI prompt that would recreate it. Output ONLY the prompt.' },
+          ],
+        }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 2048, topP: 0.9, topK: 40 },
+      }),
+    }
+  );
 
   if (!response.ok) {
-    const errorBody = await response.text();
-    console.log('[Gemini] Reverse prompt error:', response.status, errorBody);
     if (response.status === 401 || response.status === 403) {
       throw new Error('Invalid Gemini API key. Please check your configuration.');
     }
@@ -219,44 +217,32 @@ OUTPUT RULES:
     throw new Error('No response from Gemini. Please try again.');
   }
 
-  console.log('[Gemini] Reverse prompt received, length:', generatedText.length);
   return generatedText.trim();
 }
 
 export async function generateWithGemini(inputs: PromptInputs): Promise<PromptResult> {
   const apiKey = getApiKey();
   if (!apiKey) {
-    throw new Error('Gemini API key not configured. Set EXPO_PUBLIC_GEMINI_API_KEY in environment variables.');
+    throw new Error('Gemini API key not configured.');
   }
 
   const systemPrompt = buildSystemPrompt(inputs);
   const userMessage = buildUserMessage(inputs);
 
-  console.log('[Gemini] Sending request with model:', inputs.model);
-  console.log('[Gemini] User message length:', userMessage.length);
-
-  const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      system_instruction: {
-        parts: [{ text: systemPrompt }],
-      },
-      contents: [{
-        parts: [{ text: userMessage }],
-      }],
-      generationConfig: {
-        temperature: 0.85,
-        maxOutputTokens: 4096,
-        topP: 0.95,
-        topK: 40,
-      },
-    }),
-  });
+  const response = await fetchWithTimeout(
+    `${GEMINI_API_URL}?key=${apiKey}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ parts: [{ text: userMessage }] }],
+        generationConfig: { temperature: 0.85, maxOutputTokens: 4096, topP: 0.95, topK: 40 },
+      }),
+    }
+  );
 
   if (!response.ok) {
-    const errorBody = await response.text();
-    console.log('[Gemini] Error:', response.status, errorBody);
     if (response.status === 401 || response.status === 403) {
       throw new Error('Invalid Gemini API key. Please check your configuration.');
     }
@@ -273,10 +259,7 @@ export async function generateWithGemini(inputs: PromptInputs): Promise<PromptRe
     throw new Error('No response from Gemini. Please try again.');
   }
 
-  console.log('[Gemini] Response received, length:', generatedText.length);
-
   const cleanedPrompt = generatedText.trim();
-
   const templatePrompt = cleanedPrompt
     .replace(inputs.objective || '{objective}', '{objective}')
     .replace(inputs.audience || '{audience}', '{audience}');
