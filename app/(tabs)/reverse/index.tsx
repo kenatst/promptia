@@ -8,6 +8,7 @@ import {
   Share,
   ActivityIndicator,
   Animated,
+  Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Image } from 'expo-image';
@@ -111,7 +112,7 @@ function ReverseContent() {
       if (fromCamera) {
         const { status } = await ImagePicker.requestCameraPermissionsAsync();
         if (status !== 'granted') {
-          Alert.alert('Permission needed', 'Camera access is required to take photos.');
+          toast.error('Camera access is required to take photos.');
           return;
         }
         result = await ImagePicker.launchCameraAsync({
@@ -136,16 +137,15 @@ function ReverseContent() {
         setCopied(false);
         setSaved(false);
       }
-    } catch (e) {
-      console.log('[Reverse] Image pick error:', e);
-      Alert.alert('Error', 'Failed to pick image. Please try again.');
+    } catch {
+      toast.error('Failed to pick image. Please try again.');
     }
   }, []);
 
   const handleAnalyze = useCallback(() => {
     if (!imageBase64) return;
     if (!isGeminiConfigured()) {
-      Alert.alert('API Key Missing', 'Gemini API key is not configured.');
+      toast.error('Gemini API key is not configured.');
       return;
     }
     Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
