@@ -5,7 +5,7 @@ import { StatusBar } from "expo-status-bar";
 import React, { useCallback, useEffect } from "react";
 import { View } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold } from "@expo-google-fonts/inter";
+import { useFonts, Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold, Inter_800ExtraBold, Inter_900Black } from "@expo-google-fonts/inter";
 import { ThemeProvider, useTheme } from "@/contexts/ThemeContext";
 import { PromptProvider, usePromptStore } from "@/contexts/PromptContext";
 import { PurchasesProvider } from "@/contexts/PurchasesContext";
@@ -84,6 +84,7 @@ export default function RootLayout() {
     Inter_600SemiBold,
     Inter_700Bold,
     Inter_800ExtraBold,
+    Inter_900Black,
   });
 
   const onLayoutRootView = useCallback(async () => {
