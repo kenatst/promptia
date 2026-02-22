@@ -1,8 +1,10 @@
-import React, { useCallback, useRef } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Animated, Platform } from 'react-native';
+import React, { useCallback } from 'react';
+import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import { MessageSquare, Palette, ImageIcon, Video } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
-import Colors from '@/constants/colors';
+import { LinearGradient } from 'expo-linear-gradient';
+import { useTheme } from '@/contexts/ThemeContext';
 import { ModelType } from '@/types/prompt';
 
 interface ModelSelectorProps {
@@ -39,29 +41,47 @@ interface ModelItemProps {
 }
 
 function ModelItemComponent({ model, isSelected, onPress }: ModelItemProps) {
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  const { colors } = useTheme();
+  const scaleAnim = useSharedValue(1);
   const Icon = model.icon;
 
   const handlePress = useCallback(() => {
     if (Platform.OS !== 'web') {
       Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
     }
-    Animated.sequence([
-      Animated.timing(scaleAnim, { toValue: 0.9, duration: 60, useNativeDriver: true }),
-      Animated.spring(scaleAnim, { toValue: 1, useNativeDriver: true, speed: 50, bounciness: 8 }),
-    ]).start();
+    scaleAnim.value = withSpring(0.9, { damping: 10, stiffness: 300 }, () => {
+      scaleAnim.value = withSpring(1);
+    });
     onPress();
   }, [onPress, scaleAnim]);
 
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: scaleAnim.value }],
+  }));
+
   return (
-    <Animated.View style={[styles.itemWrapper, { transform: [{ scale: scaleAnim }] }]}>
+    <Animated.View style={[styles.itemWrapper, animatedStyle]}>
       <TouchableOpacity
-        style={[styles.item, isSelected && styles.itemSelected]}
+        style={[
+          styles.item,
+          { backgroundColor: colors.card, borderColor: colors.cardBorder },
+          isSelected && { backgroundColor: colors.coralDim, borderColor: colors.coral }
+        ]}
         onPress={handlePress}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
       >
-        <Icon size={24} color={isSelected ? Colors.accent : Colors.textSecondary} />
-        <Text style={[styles.label, isSelected && styles.labelSelected]}>
+        {isSelected && (
+          <LinearGradient
+            colors={[colors.coral + '20', colors.coral + '00']}
+            style={StyleSheet.absoluteFillObject}
+          />
+        )}
+        <Icon size={24} color={isSelected ? colors.coral : colors.textSecondary} />
+        <Text style={[
+          styles.label,
+          { color: colors.textTertiary },
+          isSelected && { color: colors.coral }
+        ]}>
           {model.label}
         </Text>
       </TouchableOpacity>
@@ -75,7 +95,7 @@ export const ModelSelector = React.memo(ModelSelectorComponent);
 const styles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    gap: 10,
+    gap: 12,
   },
   itemWrapper: {
     flex: 1,
@@ -84,25 +104,21 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 16,
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.05)',
-    gap: 8,
-  },
-  itemSelected: {
-    backgroundColor: Colors.accentDim,
-    borderColor: Colors.accent,
+    paddingVertical: 18,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    gap: 10,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 2,
+    overflow: 'hidden',
   },
   label: {
     fontSize: 11,
-    fontWeight: '700' as const,
-    color: Colors.textTertiary,
+    fontWeight: '800' as const,
     textTransform: 'uppercase' as const,
     letterSpacing: 0.5,
-  },
-  labelSelected: {
-    color: Colors.accent,
   },
 });

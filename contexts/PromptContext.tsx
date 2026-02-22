@@ -44,7 +44,7 @@ interface PromptState {
   clearHistory: () => void;
 }
 
-export const [PromptProvider, usePromptStore] = createContextHook<PromptState>(() => {
+export const [PromptProvider, usePromptStore] = createContextHook((): PromptState => {
   const queryClient = useQueryClient();
   const [currentInputs, setCurrentInputsState] = useState<PromptInputs>({ ...DEFAULT_INPUTS });
   const [searchQuery, setSearchQuery] = useState<string>('');

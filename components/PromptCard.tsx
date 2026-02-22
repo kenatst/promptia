@@ -1,12 +1,12 @@
 import React from 'react';
 import { Pressable, StyleSheet, Text, View, ViewStyle } from 'react-native';
 import * as Haptics from 'expo-haptics';
-import { Copy, Edit2, Share2, Trash2, Heart, ChefHat } from 'lucide-react-native';
+import { Copy, Edit2, Share2, Heart } from 'lucide-react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 
-import Colors from '@/constants/colors';
+import { useTheme } from '@/contexts/ThemeContext';
 import { CREATION_CATEGORIES } from '@/data/gallerySeed';
-import { AnimatedChip } from './AnimatedChip';
 
 interface PromptCardProps {
     prompt: any;
@@ -29,17 +29,15 @@ export function PromptCard({
     onPress,
     onCopy,
     onEdit,
-    onDelete,
     onSave,
     onShare,
-    onUseInBuilder,
-    onRemoveTag,
 }: PromptCardProps) {
+    const { colors, isDark } = useTheme();
     const category = CREATION_CATEGORIES.find(c => c.model === prompt.model) || CREATION_CATEGORIES[0];
-    const accentColor = category.color || Colors.accent;
+    const accentColor = category.color || colors.coral;
 
-    // Light Mode: Pastel Backgrounds instead of Glass
-    const cardBgColor = variant === 'gallery' ? `${accentColor}15` : '#FFFFFF';
+    const Wrapper = variant === 'gallery' ? BlurView : View;
+    const wrapperProps = variant === 'gallery' ? { intensity: isDark ? 60 : 80, tint: (isDark ? 'dark' : 'light') as 'dark' | 'light' | 'default' } : {};
 
     return (
         <Pressable
@@ -49,157 +47,160 @@ export function PromptCard({
             }}
             style={({ pressed }) => [
                 styles.container,
-                { backgroundColor: cardBgColor, transform: [{ scale: pressed ? 0.98 : 1 }] },
+                { transform: [{ scale: pressed ? 0.97 : 1 }] },
                 style,
             ]}
         >
-            {/* 3D Bottom Lip/Border */}
-            <View style={[styles.bottomBorder, { backgroundColor: accentColor }]} />
+            <Wrapper {...wrapperProps} style={[styles.inner, { backgroundColor: variant === 'gallery' ? colors.glassBg : colors.card, borderColor: colors.glassBorder }]}>
+                {/* Glowing Bottom Line */}
+                <LinearGradient
+                    colors={[accentColor, accentColor + '00']}
+                    start={{ x: 0, y: 1 }} end={{ x: 0, y: 0 }}
+                    style={[styles.bottomGlow, { backgroundColor: accentColor }]}
+                />
 
-            <View style={styles.content}>
-                {/* Header */}
-                <View style={styles.header}>
-                    <View style={{ flex: 1 }}>
-                        <View style={styles.catRow}>
-                            <Text style={[styles.catName, { color: accentColor }]}>{category.label}</Text>
+                <View style={styles.content}>
+                    <View style={styles.header}>
+                        <View style={{ flex: 1 }}>
+                            <View style={styles.catRow}>
+                                <Text style={[styles.catName, { color: accentColor }]}>{category.label}</Text>
+                            </View>
+                            <Text style={[styles.title, { color: colors.text }]} numberOfLines={2}>{prompt.title}</Text>
                         </View>
-                        <Text style={styles.title} numberOfLines={2}>{prompt.title}</Text>
+
+                        <Pressable
+                            hitSlop={10}
+                            onPress={() => onSave?.(prompt)}
+                            style={[styles.iconBtn, { backgroundColor: colors.card }]}
+                        >
+                            {variant === 'gallery' ? (
+                                <Heart size={20} color={accentColor} />
+                            ) : (
+                                <Edit2 size={18} color={colors.textSecondary} />
+                            )}
+                        </Pressable>
                     </View>
 
-                    {/* Action Button (Heart or Menu) */}
-                    <Pressable
-                        hitSlop={10}
-                        onPress={() => onSave?.(prompt)}
-                        style={styles.iconBtn}
-                    >
-                        {variant === 'gallery' ? (
-                            <Heart size={20} color={accentColor} />
-                        ) : (
-                            <Edit2 size={18} color="#4B5563" />
-                        )}
-                    </Pressable>
-                </View>
+                    <Text style={[styles.preview, { color: colors.textSecondary }]} numberOfLines={3}>
+                        {prompt.concisePrompt || prompt.fullPrompt || prompt.prompt}
+                    </Text>
 
-                {/* Preview Text */}
-                <Text style={styles.preview} numberOfLines={3}>
-                    {prompt.concisePrompt || prompt.fullPrompt || prompt.prompt}
-                </Text>
+                    <View style={styles.tagsRow}>
+                        {prompt.tags?.slice(0, 3).map((tag: string) => (
+                            <View key={tag} style={[styles.miniTag, { backgroundColor: colors.chipBg, borderColor: colors.glassBorder }]}>
+                                <Text style={[styles.miniTagText, { color: colors.textSecondary }]}>#{tag}</Text>
+                            </View>
+                        ))}
+                    </View>
 
-                {/* Tags */}
-                <View style={styles.tagsRow}>
-                    {prompt.tags?.slice(0, 3).map((tag: string) => (
-                        <View key={tag} style={styles.miniTag}>
-                            <Text style={styles.miniTagText}>#{tag}</Text>
+                    <View style={[styles.footer, { borderTopColor: colors.separator }]}>
+                        <View style={styles.stats}>
+                            <Text style={[styles.statText, { color: colors.textTertiary }]}>5 mins</Text>
+                            <Text style={[styles.statText, { color: colors.textTertiary }]}>•</Text>
+                            <Text style={[styles.statText, { color: colors.textTertiary }]}>1.2k views</Text>
                         </View>
-                    ))}
-                </View>
 
-                {/* Footer Actions */}
-                <View style={styles.footer}>
-                    <View style={styles.stats}>
-                        <Text style={styles.statText}>5 mins ago</Text>
-                        <Text style={styles.statText}>•</Text>
-                        <Text style={styles.statText}>1.2k views</Text>
-                    </View>
-
-                    <View style={styles.actionsRow}>
-                        {onCopy && (
-                            <Pressable onPress={() => onCopy(prompt)} style={styles.actionIcon}>
-                                <Copy size={16} color="#6B7280" />
-                            </Pressable>
-                        )}
-                        {onShare && (
-                            <Pressable onPress={() => onShare(prompt)} style={styles.actionIcon}>
-                                <Share2 size={16} color="#6B7280" />
-                            </Pressable>
-                        )}
+                        <View style={styles.actionsRow}>
+                            {onCopy && (
+                                <Pressable onPress={() => onCopy(prompt)} style={styles.actionIcon}>
+                                    <Copy size={16} color={colors.textTertiary} />
+                                </Pressable>
+                            )}
+                            {onShare && (
+                                <Pressable onPress={() => onShare(prompt)} style={styles.actionIcon}>
+                                    <Share2 size={16} color={colors.textTertiary} />
+                                </Pressable>
+                            )}
+                        </View>
                     </View>
                 </View>
-
-            </View>
+            </Wrapper>
         </Pressable>
     );
 }
 
 const styles = StyleSheet.create({
     container: {
-        borderRadius: 24,
-        // Light 3D Shadow
+        borderRadius: 28,
         shadowColor: '#000',
-        shadowOpacity: 0.08,
-        shadowRadius: 12,
-        shadowOffset: { width: 0, height: 6 },
-        elevation: 4,
+        shadowOpacity: 0.1,
+        shadowRadius: 16,
+        shadowOffset: { width: 0, height: 8 },
+        elevation: 6,
+        borderWidth: 1,
+        borderColor: 'transparent',
+    },
+    inner: {
+        borderRadius: 28,
         overflow: 'hidden',
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.03)',
     },
-    bottomBorder: {
-        height: 6,
+    bottomGlow: {
+        height: 4,
         width: '100%',
         position: 'absolute',
         bottom: 0,
+        opacity: 0.8,
     },
     content: {
-        padding: 20,
-        paddingBottom: 24, // Space for bottom border
+        padding: 24,
+        paddingBottom: 28,
     },
     header: {
         flexDirection: 'row',
         justifyContent: 'space-between',
         alignItems: 'flex-start',
-        marginBottom: 12,
+        marginBottom: 16,
     },
     catRow: {
         flexDirection: 'row',
         alignItems: 'center',
         gap: 6,
-        marginBottom: 4,
+        marginBottom: 6,
     },
     catName: {
         fontSize: 12,
-        fontWeight: '700',
+        fontWeight: '800',
         textTransform: 'uppercase',
+        letterSpacing: 0.5,
     },
     title: {
-        fontSize: 20,
-        fontWeight: '800', // Heavy font like reference
-        color: '#111827',
-        lineHeight: 26,
+        fontSize: 22,
+        fontWeight: '800',
+        lineHeight: 28,
+        letterSpacing: -0.5,
     },
     iconBtn: {
-        width: 36,
-        height: 36,
-        borderRadius: 18,
-        backgroundColor: '#FFF',
+        width: 40,
+        height: 40,
+        borderRadius: 20,
         justifyContent: 'center',
         alignItems: 'center',
         shadowColor: '#000',
-        shadowOpacity: 0.05,
-        shadowRadius: 5,
+        shadowOpacity: 0.08,
+        shadowRadius: 8,
+        elevation: 2,
     },
     preview: {
         fontSize: 15,
-        color: '#4B5563',
-        lineHeight: 22,
-        marginBottom: 16,
+        lineHeight: 24,
+        marginBottom: 20,
+        fontWeight: '400',
     },
     tagsRow: {
         flexDirection: 'row',
         gap: 8,
-        marginBottom: 16,
+        marginBottom: 20,
+        flexWrap: 'wrap',
     },
     miniTag: {
-        backgroundColor: '#FFF',
-        paddingHorizontal: 10,
-        paddingVertical: 4,
-        borderRadius: 8,
+        paddingHorizontal: 12,
+        paddingVertical: 6,
+        borderRadius: 12,
         borderWidth: 1,
-        borderColor: 'rgba(0,0,0,0.05)',
     },
     miniTagText: {
-        fontSize: 11,
-        color: '#6B7280',
+        fontSize: 12,
         fontWeight: '600',
     },
     footer: {
@@ -208,7 +209,6 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         paddingTop: 16,
         borderTopWidth: 1,
-        borderTopColor: 'rgba(0,0,0,0.05)',
     },
     stats: {
         flexDirection: 'row',
@@ -216,11 +216,11 @@ const styles = StyleSheet.create({
     },
     statText: {
         fontSize: 12,
-        color: '#9CA3AF',
+        fontWeight: '500',
     },
     actionsRow: {
         flexDirection: 'row',
-        gap: 12,
+        gap: 16,
     },
     actionIcon: {
         padding: 4,

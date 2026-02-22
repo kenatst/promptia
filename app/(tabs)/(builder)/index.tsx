@@ -45,6 +45,7 @@ import {
   HelpCircle,
   Info,
   Clock,
+  Trash2,
 } from 'lucide-react-native';
 
 import { useTheme } from '@/contexts/ThemeContext';
@@ -359,15 +360,24 @@ function BuilderContent() {
             <Text style={[styles.cardTitle, { color: colors.text }]}>{selectedCategory.label}</Text>
             <Text style={[styles.cardSubtitle, { color: colors.textTertiary }]}>{t.create.describeWhat}</Text>
           </View>
-          {history.length > 0 && (
+          <View style={{ flexDirection: 'row', gap: 8 }}>
             <Pressable
-              onPress={() => setShowHistory(v => !v)}
+              onPress={handleReset}
               style={[styles.historyBtn, { backgroundColor: colors.chipBg }]}
-              accessibilityLabel="View recent generations"
+              accessibilityLabel="Clear chat"
             >
-              <Clock size={15} color={colors.textSecondary} />
+              <Trash2 size={15} color={colors.textSecondary} />
             </Pressable>
-          )}
+            {history.length > 0 && (
+              <Pressable
+                onPress={() => setShowHistory(v => !v)}
+                style={[styles.historyBtn, { backgroundColor: colors.chipBg }]}
+                accessibilityLabel="View recent generations"
+              >
+                <Clock size={15} color={colors.textSecondary} />
+              </Pressable>
+            )}
+          </View>
         </View>
 
         {showHistory && renderHistory()}
